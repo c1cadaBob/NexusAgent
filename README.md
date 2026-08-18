@@ -1,18 +1,22 @@
 # NexusAgent
 
-NexusAgent is an independent, product-facing AI Agent platform. Hermes, OpenClaw, and DeepSeek Harness are internal implementation dependencies only; their native APIs and concepts are not part of the public platform contract.
+NexusAgent 是一个独立交付、面向用户使用的一体化 AI Agent 平台。Hermes、OpenClaw 和 DeepSeek Harness 只作为平台内部实现依赖；它们的原生 API、原生概念和原生存储不属于平台对外契约。
 
-## Current status
+## 当前状态
 
-The repository is in the P0 project-initialization and feasibility-planning stage. This stage contains the project skeleton, upstream snapshots, platform contract placeholders, and implementation planning documentation. It does not contain production business logic.
+项目当前处于 P0 项目初始化与可行性规划阶段。本阶段已完成项目骨架、上游源码快照、平台契约占位和完整实施规划，尚未编写生产业务代码。
 
-## Repository map
+## 目录说明
 
-- `platform/`: platform kernel and internal anti-corruption adapters.
-- `product/`: public API, management console, channel management, SDK, and developer-facing material.
-- `vendor/`: pinned, locally copied upstream source snapshots. Do not edit the original source directories under `/opt/project/`.
-- `deploy/`: development and production orchestration.
-- `tests/`: smoke, contract, integration, security, fault-injection, and evaluation tests.
-- `docs/`: staged implementation plan and operational documentation.
+- `platform/`：平台内核和内部防腐适配器。
+- `product/`：对外 API、管理控制台、渠道管理、SDK 和开发者资料。
+- `vendor/`：锁定版本的上游源码本地快照。禁止修改 `/opt/project/` 下的原始只读源码目录。
+- `deploy/`：开发和生产部署编排。
+- `tests/`：冒烟、契约、单元、集成、安全、故障注入和业务评测测试。
+- `docs/`：分阶段实施规划、架构、测试、风险和运维文档。
 
-See [the implementation plan](docs/planning/integrated-platform-plan.md) for the phase gates and delivery criteria.
+## 开发边界
+
+平台对外只暴露统一的 REST/gRPC API、Web 管理控制台和平台层任务/技能/记忆/租户/RBAC/审计能力。所有底层调用必须经过 `Coordinator`、`Policy-Gate` 和 `platform/adapters/`，禁止外部直接访问 Hermes、OpenClaw 或 DSH。
+
+详细阶段门禁、任务拆解和验收条件见[完整实施规划](docs/planning/integrated-platform-plan.md)。
