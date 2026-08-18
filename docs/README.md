@@ -14,5 +14,9 @@
 - [完整实施规划](planning/integrated-platform-plan.md)
 - [对外 API 契约](contracts/openapi.yaml)
 - [需求追踪矩阵](traceability/requirements-matrix.md)
+- [开发端口规划](architecture/ports.md)
+- [测试策略](testing/strategy.md)
+- [风险登记册](risks/risk-register.md)
+- [上游接口摸底](architecture/upstream-interface-inventory.md)
 
 所有文档使用 UTC 时间、平台统一标识和平台层术语。Hermes、OpenClaw、DSH 只在内部实现、适配器、风险和源码追踪语境中出现。

@@ -15,6 +15,238 @@ tags:
   - name: memory
   - name: tenants
   - name: approvals
-paths: {}
+paths:
+  /v1/tasks:
+    post:
+      tags: [tasks]
+      operationId: createTask
+      summary: Submit a platform task
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TaskRequest'
+      responses:
+        '202':
+          description: Task accepted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+        '400':
+          $ref: '#/components/responses/PlatformError'
+        '403':
+          $ref: '#/components/responses/PlatformError'
+    get:
+      tags: [tasks]
+      operationId: listTasks
+      summary: List tasks visible to the caller
+      responses:
+        '200':
+          description: Task list
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Task'
+        '401':
+          $ref: '#/components/responses/PlatformError'
+  /v1/tasks/{task_id}:
+    parameters:
+      - $ref: '#/components/parameters/TaskId'
+    get:
+      tags: [tasks]
+      operationId: getTask
+      summary: Read a task and its current platform state
+      responses:
+        '200':
+          description: Task
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+        '404':
+          $ref: '#/components/responses/PlatformError'
+  /v1/tasks/{task_id}/cancel:
+    post:
+      tags: [tasks]
+      operationId: cancelTask
+      summary: Request cancellation of the current attempt
+      parameters:
+        - $ref: '#/components/parameters/TaskId'
+      responses:
+        '202':
+          description: Cancellation accepted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+        '404':
+          $ref: '#/components/responses/PlatformError'
+  /v1/skills:
+    get:
+      tags: [skills]
+      operationId: listSkills
+      summary: List platform skills
+      responses:
+        '200':
+          description: Skills
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Skill'
+  /v1/memory/search:
+    post:
+      tags: [memory]
+      operationId: searchMemory
+      summary: Search memory through the platform gateway
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [query]
+              properties:
+                query:
+                  type: string
+                limit:
+                  type: integer
+                  minimum: 1
+                  maximum: 100
+      responses:
+        '200':
+          description: Memory results
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      required: [memory_id, text]
+                      properties:
+                        memory_id: { type: string }
+                        text: { type: string }
+  /v1/tenants:
+    get:
+      tags: [tenants]
+      operationId: listTenants
+      summary: List tenants visible to an administrator
+      responses:
+        '200':
+          description: Tenants
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Tenant'
+        '403':
+          $ref: '#/components/responses/PlatformError'
+  /v1/approvals:
+    get:
+      tags: [approvals]
+      operationId: listApprovals
+      summary: List approvals visible to the caller
+      responses:
+        '200':
+          description: Approvals
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Approval'
 components:
-  schemas: {}
+  parameters:
+    TaskId:
+      name: task_id
+      in: path
+      required: true
+      schema:
+        type: string
+        minLength: 1
+  responses:
+    PlatformError:
+      description: Platform error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/PlatformError'
+  schemas:
+    TaskRequest:
+      type: object
+      required: [conversation_id, input]
+      properties:
+        conversation_id: { type: string, minLength: 1 }
+        input: { type: string, minLength: 1 }
+        skill_id: { type: string }
+        budget:
+          type: object
+          properties:
+            max_tokens: { type: integer, minimum: 1 }
+            deadline_ms: { type: integer, minimum: 1 }
+    Task:
+      type: object
+      required: [task_id, conversation_id, state, trace_id]
+      properties:
+        task_id: { type: string }
+        conversation_id: { type: string }
+        attempt_id: { type: string }
+        execution_id: { type: string }
+        state: { type: string }
+        trace_id: { type: string }
+        artifact_ids:
+          type: array
+          items: { type: string }
+    Skill:
+      type: object
+      required: [skill_id, name, enabled]
+      properties:
+        skill_id: { type: string }
+        name: { type: string }
+        enabled: { type: boolean }
+    Tenant:
+      type: object
+      required: [tenant_id, name]
+      properties:
+        tenant_id: { type: string }
+        name: { type: string }
+    Approval:
+      type: object
+      required: [approval_id, task_id, status]
+      properties:
+        approval_id: { type: string }
+        task_id: { type: string }
+        status: { type: string }
+    PlatformError:
+      type: object
+      required: [code, message, trace_id]
+      properties:
+        code: { type: string }
+        message: { type: string }
+        trace_id: { type: string }
