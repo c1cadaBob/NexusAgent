@@ -1,0 +1,24 @@
+generated_at_utc: 2026-08-18T17:01:10Z
+project_root: /opt/project/NexusAgent
+sources:
+  - name: hermes-agent-main
+    source_path: /opt/project/hermes-agent-main
+    version: "0.20.1"
+    upstream_commit: "【待确认问题】"
+    upstream_remote: "【待确认问题】"
+    tree_sha256: "f437a73c0156f201259dda92d3b3079e1235753442b2ca4542178cfbca09711c"
+    local_patches: []
+  - name: openclaw-main
+    source_path: /opt/project/openclaw-main
+    version: "2026.8.1"
+    upstream_commit: "【待确认问题】"
+    upstream_remote: "【待确认问题】"
+    tree_sha256: "28e5ee02da1a92a3a720966a0e20c70467f4bb7af37cb4c38fc2b7aa5dc1e1e1"
+    local_patches: []
+  - name: deepseek-harness-master
+    source_path: /opt/project/deepseek-harness-master
+    version: "0.1.0-rc.5"
+    upstream_commit: "【待确认问题】"
+    upstream_remote: "【待确认问题】"
+    tree_sha256: "4c8d57d9e226e56af85f4a39c4e90e8dfd16084f257be5113180d05b705c3764"
+    local_patches: []

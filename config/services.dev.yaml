@@ -1,0 +1,5 @@
+version: 1
+mode: development
+hot_reload: true
+debug_ports: true
+services: {}

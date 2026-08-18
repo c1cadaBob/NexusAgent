@@ -1,0 +1,5 @@
+version: 1
+mode: production
+hot_reload: false
+debug_ports: false
+services: {}

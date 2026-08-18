@@ -1,0 +1,4 @@
+version: 1
+base_host_port: 3050
+debug_base_port: 9250
+services: {}

@@ -1,0 +1,20 @@
+openapi: 3.1.0
+info:
+  title: NexusAgent Platform API
+  version: 0.1.0
+  description: >-
+    Platform-facing contract placeholder. This document must expose only
+    NexusAgent concepts and must never expose native Hermes, OpenClaw, or
+    DeepSeek Harness APIs.
+servers:
+  - url: http://localhost:3050
+    description: Development platform API
+tags:
+  - name: tasks
+  - name: skills
+  - name: memory
+  - name: tenants
+  - name: approvals
+paths: {}
+components:
+  schemas: {}
