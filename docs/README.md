@@ -23,6 +23,7 @@
 - [需求追踪矩阵](traceability/requirements-matrix.md)
 - [开发端口规划](architecture/ports.md)
 - [测试策略](testing/strategy.md)
+- [远端上传与关键节点提交规则](operations/remote-upload-policy.md)
 - [风险登记册](risks/risk-register.md)
 - [上游接口摸底](architecture/upstream-interface-inventory.md)
 
