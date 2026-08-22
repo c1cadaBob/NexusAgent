@@ -16,3 +16,4 @@
 | REQ-012 | 明确哪些能力复用 OpenClaw/Hermes/DSH，哪些必须平台自研 | P0-P4 | P0-02/P0-03/P0-04/P0-07/P2-02/P3-03/P4-02 | `docs/architecture/service-blueprint.md`、`platform/adapters/`、`vendor/` | `tests/security/`、`tests/integration/` | 已规划 |
 | REQ-013 | 评估 Event Bus、Credential、Observability、Artifact、Memory 等外部参考项目 | P0-P8 | P0-07/P1-03/P1-04/P1-05/P8-03 | `docs/architecture/service-blueprint.md`、`docs/risks/risk-register.md` | `tests/smoke/P1.sh`、`tests/smoke/P8.sh` | 已规划 |
 | REQ-014 | 建立开发日历、阶段门禁、并行工作流和资源排期基线 | P0-P8 | P0-08/P1-06/P6-01/P8-04 | `docs/planning/development-schedule.md`、`docs/planning/integrated-platform-plan.md` | `tests/smoke/P0.sh`、阶段门禁评审 | 已规划 |
+| REQ-015 | 建立可自动填充的 AI 排期提示词模板，覆盖阶段、任务、周计划、延期和门禁评审 | P0-P8 | P0-09/P1-06/P6-01/P8-04 | `docs/planning/ai-schedule-prompt-template.md`、`docs/planning/development-schedule.md` | `tests/smoke/P0.sh`、阶段门禁评审 | 已规划 |
