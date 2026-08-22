@@ -2,6 +2,7 @@
  * Gateway node registry tests.
  */
 import { EventEmitter } from "node:events";
+import path from "node:path";
 import {
   MAX_DATE_TIMESTAMP_MS,
   MAX_TIMER_TIMEOUT_MS,
@@ -18,12 +19,15 @@ import {
   NODE_WORKER_WORKSPACE_EXEC_COMMAND,
 } from "../infra/node-commands.js";
 import { NODE_WORKER_SUPERVISOR_PROTOCOL_FEATURE } from "../infra/node-runner-inventory.js";
+import { resolvePreferredOpenClawTmpDir } from "../infra/tmp-openclaw-dir.js";
+import { resetLogger, setLoggerOverride } from "../logging/logger.js";
+import { createDiagnosticLogRecordCapture } from "../logging/test-helpers/diagnostic-log-capture.js";
 import { createEmptyPluginRegistry } from "../plugins/registry-empty.js";
 import { listConnectedNodePluginTools } from "./node-plugin-tool-snapshot.js";
 import {
   createNodeRegistryRuntime,
   isNodeRunnerSessionHost,
-  setNodeRunnerInventoryChangedListener,
+  setNodeRunnerStateChangedListener,
   updateNodeRunnerInventory,
 } from "./node-registry-private.js";
 import { NodeRegistry, serializeEventPayload } from "./node-registry.js";
@@ -386,7 +390,7 @@ describe("gateway/node-registry", () => {
         connId: "conn-1",
         declaration: {
           protocolFeatures: [NODE_WORKER_SUPERVISOR_PROTOCOL_FEATURE],
-          workerHost: { enabled: true, capacity: "available" },
+          workerHost: { enabled: true, capacity: { total: 2, available: 2 } },
         },
       }),
     ).toEqual({ changed: true });
@@ -397,7 +401,7 @@ describe("gateway/node-registry", () => {
         pairingIdentity: "identity-a",
         pairingGeneration: "generation-a",
         protocolFeature: NODE_WORKER_SUPERVISOR_PROTOCOL_FEATURE,
-        workerHost: { enabled: true, capacity: "available" },
+        workerHost: { enabled: true, capacity: { total: 2, available: 2 } },
         commands: ["system.run"],
       }),
     ]);
@@ -424,6 +428,26 @@ describe("gateway/node-registry", () => {
         },
       ),
     ).not.toBeNull();
+    await expect(nodeWorkerSupervisorTransport.listCurrentNodes()).resolves.toEqual([]);
+    expect(
+      isNodeRunnerSessionHost({
+        registry: nodeRegistry,
+        nodeId: "node-1",
+        connId: "conn-1",
+        pairingGeneration: "generation-b",
+      }),
+    ).toBe(false);
+    expect(
+      updateNodeRunnerInventory({
+        registry: nodeRegistry,
+        nodeId: "node-1",
+        connId: "conn-1",
+        declaration: {
+          protocolFeatures: [NODE_WORKER_SUPERVISOR_PROTOCOL_FEATURE],
+          workerHost: { enabled: true, capacity: { total: 2, available: 2 } },
+        },
+      }),
+    ).toEqual({ changed: true });
     await expect(nodeWorkerSupervisorTransport.listCurrentNodes()).resolves.toEqual([
       expect.objectContaining({ pairingGeneration: "generation-b" }),
     ]);
@@ -444,7 +468,7 @@ describe("gateway/node-registry", () => {
         connId: "conn-1",
         declaration: {
           protocolFeatures: [NODE_WORKER_SUPERVISOR_PROTOCOL_FEATURE],
-          workerHost: { enabled: true, capacity: "available" },
+          workerHost: { enabled: true, capacity: { total: 2, available: 2 } },
         },
       }),
     ).toBeNull();
@@ -455,7 +479,7 @@ describe("gateway/node-registry", () => {
         connId: "conn-2",
         declaration: {
           protocolFeatures: [NODE_WORKER_SUPERVISOR_PROTOCOL_FEATURE],
-          workerHost: { enabled: true, capacity: "available" },
+          workerHost: { enabled: true, capacity: { total: 2, available: 2 } },
         },
       }),
     ).toEqual({ changed: true });
@@ -463,15 +487,199 @@ describe("gateway/node-registry", () => {
       expect.objectContaining({
         connId: "conn-2",
         pairingGeneration: "generation-b",
-        workerHost: { enabled: true, capacity: "available" },
+        workerHost: { enabled: true, capacity: { total: 2, available: 2 } },
       }),
     ]);
   });
 
-  it("notifies when same-node replacement removes runner eligibility", async () => {
-    const inventoryChanged = vi.fn();
+  it("publishes current-runner edges once across disconnect, reconnect, and replacement", () => {
+    const runnerStateChanged = vi.fn();
     const { nodeRegistry, nodeWorkerSupervisorTransport } = createPrivateNodeRegistryRuntime();
-    setNodeRunnerInventoryChangedListener(nodeRegistry, inventoryChanged);
+    setNodeRunnerStateChangedListener(nodeRegistry, runnerStateChanged);
+    const publish = (connId: string) =>
+      updateNodeRunnerInventory({
+        registry: nodeRegistry,
+        nodeId: "node-1",
+        connId,
+        declaration: {
+          protocolFeatures: [NODE_WORKER_SUPERVISOR_PROTOCOL_FEATURE],
+          workerHost: { enabled: true, capacity: { total: 2, available: 2 } },
+        },
+      });
+    const register = (connId: string) =>
+      registerNodeSession(
+        nodeRegistry,
+        makeClient(connId, "node-1", [], {
+          clientId: GATEWAY_CLIENT_IDS.NODE_HOST,
+          commands: ["system.run"],
+        }),
+        { pairingIdentity: "identity-a", pairingGeneration: "generation-a" },
+      );
+
+    register("conn-1");
+    expect(publish("conn-1")).toEqual({ changed: true });
+    expect(runnerStateChanged).toHaveBeenLastCalledWith("node-1", {
+      inventoryChanged: true,
+      availabilityChanged: true,
+    });
+
+    runnerStateChanged.mockClear();
+    expect(nodeRegistry.unregister("conn-1")).toBe("node-1");
+    expect(runnerStateChanged).toHaveBeenCalledExactlyOnceWith("node-1", {
+      inventoryChanged: true,
+      availabilityChanged: true,
+    });
+    expect(nodeWorkerSupervisorTransport.hasCurrentRunner("node-1")).toBe(false);
+
+    runnerStateChanged.mockClear();
+    register("conn-2");
+    expect(runnerStateChanged).not.toHaveBeenCalled();
+    expect(publish("conn-2")).toEqual({ changed: true });
+    expect(runnerStateChanged).toHaveBeenCalledExactlyOnceWith("node-1", {
+      inventoryChanged: true,
+      availabilityChanged: true,
+    });
+
+    runnerStateChanged.mockClear();
+    register("conn-3");
+    expect(runnerStateChanged).toHaveBeenCalledExactlyOnceWith("node-1", {
+      inventoryChanged: true,
+      availabilityChanged: true,
+    });
+    expect(nodeWorkerSupervisorTransport.hasCurrentRunner("node-1")).toBe(false);
+
+    runnerStateChanged.mockClear();
+    expect(nodeRegistry.unregister("conn-2")).toBeNull();
+    expect(runnerStateChanged).not.toHaveBeenCalled();
+    expect(publish("conn-3")).toEqual({ changed: true });
+    expect(runnerStateChanged).toHaveBeenCalledExactlyOnceWith("node-1", {
+      inventoryChanged: true,
+      availabilityChanged: true,
+    });
+  });
+
+  it("separates inventory topology from availability across proof mutations", async () => {
+    const runnerStateChanged = vi.fn();
+    const { nodeRegistry, nodeWorkerSupervisorTransport } = createPrivateNodeRegistryRuntime();
+    setNodeRunnerStateChangedListener(nodeRegistry, runnerStateChanged);
+    registerNodeSession(
+      nodeRegistry,
+      makeClient("conn-1", "node-1", [], {
+        clientId: GATEWAY_CLIENT_IDS.NODE_HOST,
+        commands: ["system.run"],
+      }),
+      { pairingIdentity: "identity-a", pairingGeneration: "generation-a" },
+    );
+    const publish = (workerHost: {
+      enabled: true;
+      capacity: { total: number; available: number };
+      bundleRetention?: 1;
+      bundleStatus?: 1;
+    }) =>
+      updateNodeRunnerInventory({
+        registry: nodeRegistry,
+        nodeId: "node-1",
+        connId: "conn-1",
+        declaration: {
+          protocolFeatures: [NODE_WORKER_SUPERVISOR_PROTOCOL_FEATURE],
+          workerHost,
+        },
+      });
+    const retained = {
+      enabled: true as const,
+      capacity: { total: 2, available: 2 },
+      bundleRetention: 1 as const,
+      bundleStatus: 1 as const,
+    };
+
+    expect(publish(retained)).toEqual({ changed: true });
+    runnerStateChanged.mockClear();
+    expect(publish({ ...retained, capacity: { total: 2, available: 0 } })).toEqual({
+      changed: true,
+    });
+    expect(runnerStateChanged).toHaveBeenCalledExactlyOnceWith("node-1", {
+      inventoryChanged: true,
+      availabilityChanged: false,
+    });
+    expect(nodeWorkerSupervisorTransport.hasCurrentRunner("node-1")).toBe(true);
+
+    runnerStateChanged.mockClear();
+    expect(publish({ ...retained, capacity: { total: 2, available: 0 } })).toEqual({
+      changed: false,
+    });
+    expect(runnerStateChanged).not.toHaveBeenCalled();
+
+    const [proof] = await nodeWorkerSupervisorTransport.listCurrentNodes();
+    if (!proof) {
+      throw new Error("expected current runner proof");
+    }
+    expect(
+      nodeWorkerSupervisorTransport.acceptBundleStatus?.(proof, {
+        bundleHash: "a".repeat(64),
+        status: { status: "missing" },
+      }),
+    ).toBe(true);
+    expect(runnerStateChanged).toHaveBeenCalledExactlyOnceWith("node-1", {
+      inventoryChanged: true,
+      availabilityChanged: false,
+    });
+
+    runnerStateChanged.mockClear();
+    expect(
+      nodeRegistry.updateSurface(
+        "node-1",
+        { commands: ["system.run"] },
+        {
+          expectedConnId: "conn-1",
+          expectedPairingIdentity: "identity-a",
+          expectedPairingGeneration: "generation-a",
+          nextPairingGeneration: "generation-b",
+        },
+      ),
+    ).not.toBeNull();
+    expect(runnerStateChanged).toHaveBeenCalledExactlyOnceWith("node-1", {
+      inventoryChanged: true,
+      availabilityChanged: true,
+    });
+
+    runnerStateChanged.mockClear();
+    expect(publish(retained)).toEqual({ changed: true });
+    runnerStateChanged.mockClear();
+    expect(
+      updateNodeRunnerInventory({
+        registry: nodeRegistry,
+        nodeId: "node-1",
+        connId: "conn-1",
+        declaration: {
+          protocolFeatures: [NODE_WORKER_SUPERVISOR_PROTOCOL_FEATURE],
+          workerHost: { enabled: false },
+        },
+      }),
+    ).toEqual({ changed: true });
+    expect(runnerStateChanged).toHaveBeenCalledExactlyOnceWith("node-1", {
+      inventoryChanged: true,
+      availabilityChanged: true,
+    });
+
+    runnerStateChanged.mockClear();
+    expect(
+      updateNodeRunnerInventory({
+        registry: nodeRegistry,
+        nodeId: "node-1",
+        connId: "conn-1",
+        declaration: { protocolFeatures: [] },
+      }),
+    ).toEqual({ changed: true });
+    expect(runnerStateChanged).toHaveBeenCalledExactlyOnceWith("node-1", {
+      inventoryChanged: true,
+      availabilityChanged: false,
+    });
+  });
+
+  it("publishes one availability edge when pairing invalidation retires a current runner", () => {
+    const runnerStateChanged = vi.fn();
+    const { nodeRegistry } = createPrivateNodeRegistryRuntime();
+    setNodeRunnerStateChangedListener(nodeRegistry, runnerStateChanged);
     registerNodeSession(
       nodeRegistry,
       makeClient("conn-1", "node-1", [], {
@@ -487,24 +695,17 @@ describe("gateway/node-registry", () => {
         connId: "conn-1",
         declaration: {
           protocolFeatures: [NODE_WORKER_SUPERVISOR_PROTOCOL_FEATURE],
-          workerHost: { enabled: true, capacity: "available" },
+          workerHost: { enabled: true, capacity: { total: 2, available: 2 } },
         },
       }),
     ).toEqual({ changed: true });
-    expect(inventoryChanged).toHaveBeenCalledTimes(1);
+    runnerStateChanged.mockClear();
 
-    registerNodeSession(
-      nodeRegistry,
-      makeClient("conn-2", "node-1", [], {
-        clientId: GATEWAY_CLIENT_IDS.NODE_HOST,
-        commands: ["system.run"],
-      }),
-      { pairingIdentity: "identity-a", pairingGeneration: "generation-a" },
-    );
-
-    expect(inventoryChanged).toHaveBeenCalledTimes(2);
-    expect(inventoryChanged).toHaveBeenLastCalledWith("node-1");
-    await expect(nodeWorkerSupervisorTransport.listCurrentNodes()).resolves.toEqual([]);
+    expect(nodeRegistry.invalidateConnectionForPairingChange("conn-1")).toBe(true);
+    expect(runnerStateChanged).toHaveBeenCalledExactlyOnceWith("node-1", {
+      inventoryChanged: true,
+      availabilityChanged: true,
+    });
   });
 
   it("keeps status proof current across capacity changes while fencing launches", async () => {
@@ -525,7 +726,7 @@ describe("gateway/node-registry", () => {
         connId: "conn-1",
         declaration: {
           protocolFeatures: [NODE_WORKER_SUPERVISOR_PROTOCOL_FEATURE],
-          workerHost: { enabled: true, capacity: "available" },
+          workerHost: { enabled: true, capacity: { total: 2, available: 2 } },
         },
       }),
     ).toEqual({ changed: true });
@@ -540,10 +741,18 @@ describe("gateway/node-registry", () => {
         connId: "conn-1",
         declaration: {
           protocolFeatures: [NODE_WORKER_SUPERVISOR_PROTOCOL_FEATURE],
-          workerHost: { enabled: true, capacity: "full" },
+          workerHost: { enabled: true, capacity: { total: 2, available: 0 } },
         },
       }),
     ).toEqual({ changed: true });
+    expect(
+      isNodeRunnerSessionHost({
+        registry: nodeRegistry,
+        nodeId: "node-1",
+        connId: "conn-1",
+        pairingGeneration: "generation-a",
+      }),
+    ).toBe(true);
 
     const workspaceInvoke = nodeWorkerSupervisorTransport.invoke({
       node: proof,
@@ -593,7 +802,7 @@ describe("gateway/node-registry", () => {
         connId: "conn-1",
         declaration: {
           protocolFeatures: [NODE_WORKER_SUPERVISOR_PROTOCOL_FEATURE],
-          workerHost: { enabled: true, capacity: "available" },
+          workerHost: { enabled: true, capacity: { total: 2, available: 2 } },
         },
       }),
     ).toEqual({ changed: true });
@@ -641,7 +850,7 @@ describe("gateway/node-registry", () => {
     );
     const declaration = {
       protocolFeatures: [NODE_WORKER_SUPERVISOR_PROTOCOL_FEATURE] as const,
-      workerHost: { enabled: true, capacity: "available" as const },
+      workerHost: { enabled: true, capacity: { total: 2, available: 2 } as const },
     };
     expect(
       updateNodeRunnerInventory({
@@ -669,7 +878,7 @@ describe("gateway/node-registry", () => {
     expect(priorProof && nodeWorkerSupervisorTransport.isCurrent(priorProof, true)).toBe(true);
     expect(negotiatedProof?.workerHost).toEqual({
       enabled: true,
-      capacity: "available",
+      capacity: { total: 2, available: 2 },
       bundlePrewarm: 1,
     });
   });
@@ -2602,6 +2811,52 @@ describe("gateway/node-registry", () => {
       expect(socket.send).not.toHaveBeenCalled();
     },
   );
+
+  it("rate-limits failed event delivery warnings for registered nodes", async () => {
+    const capture = createDiagnosticLogRecordCapture();
+    setLoggerOverride({
+      level: "warn",
+      consoleLevel: "silent",
+      file: path.join(resolvePreferredOpenClawTmpDir(), `node-event-send-${process.pid}.log`),
+    });
+    const now = vi.spyOn(Date, "now").mockReturnValue(1_000);
+    const registry = createTestNodeRegistry();
+    const client = makeClient("conn-1", "node-1", [], {
+      socket: createTestNodeSocket([], WebSocket.CLOSING) as unknown as GatewayWsClient["socket"],
+    });
+    registerNodeSession(registry, client, {});
+
+    try {
+      expect(registry.sendEvent("node-1", "normal.failed", {})).toBe(false);
+      expect(registry.sendEvent("node-1", "normal.failed", {})).toBe(false);
+      expect(registry.sendEventRaw("node-1", "raw.failed", null)).toBe(false);
+
+      now.mockReturnValue(31_001);
+      expect(registry.sendEventRaw("node-1", "raw.failed", null)).toBe(false);
+      now.mockReturnValue(61_002);
+      expect(registry.sendEvent("node-1", "normal.failed", {})).toBe(false);
+
+      client.invalidated = true;
+      expect(registry.sendEvent("node-1", "invalidated.failed", {})).toBe(false);
+      expect(registry.unregister("conn-1")).toBe("node-1");
+      expect(registry.sendEvent("node-1", "unregistered.failed", {})).toBe(false);
+      await capture.flush();
+
+      const warnings = capture.records.filter(
+        (record) => record.message === "node event delivery failed",
+      );
+      expect(warnings.map((record) => record.attributes)).toEqual([
+        expect.objectContaining({ nodeId: "node-1", event: "normal.failed" }),
+        expect.objectContaining({ nodeId: "node-1", event: "raw.failed" }),
+        expect.objectContaining({ nodeId: "node-1", event: "normal.failed" }),
+      ]);
+    } finally {
+      capture.cleanup();
+      setLoggerOverride(null);
+      resetLogger();
+      now.mockRestore();
+    }
+  });
 
   it("drops a delayed voice-wake snapshot after persistent generation changes", async () => {
     let resolveCurrent!: (state: { identity: string; generation?: string } | undefined) => void;

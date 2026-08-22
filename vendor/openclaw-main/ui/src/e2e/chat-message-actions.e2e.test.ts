@@ -237,7 +237,10 @@ describeControlUiE2e("Control UI chat message actions", () => {
       await page.goto(`${server.baseUrl}chat`);
       await setThemeMode(page, "dark");
       const commandPaletteShortcut = process.platform === "darwin" ? "⌘K" : "Ctrl K";
-      await expectHoverTooltip(page.getByRole("button", { name: "New session" }), "New session");
+      await expectHoverTooltip(
+        page.locator(".sidebar-brand").getByRole("button", { name: "New session" }),
+        "New session",
+      );
       await expectHoverTooltip(
         page.getByRole("button", { name: "Open command palette" }),
         `Open command palette (${commandPaletteShortcut})`,
@@ -355,7 +358,26 @@ describeControlUiE2e("Control UI chat message actions", () => {
         "Reply",
         "Copy as markdown",
       ]);
+      await page.evaluate(
+        () =>
+          new Promise<void>((resolve) => {
+            window.setTimeout(resolve, 0);
+          }),
+      );
+      expect(await page.locator(".chat-selection-popup").count()).toBe(0);
       await screenshot(page, "04-selected-text-context-menu.png");
+      await bubble.dispatchEvent("pointerup", {
+        button: 0,
+        ctrlKey: true,
+        pointerType: "mouse",
+      });
+      await page.evaluate(
+        () =>
+          new Promise<void>((resolve) => {
+            window.setTimeout(resolve, 0);
+          }),
+      );
+      expect(await page.locator(".chat-selection-popup").count()).toBe(0);
       await menu.getByRole("menuitem", { name: "Copy", exact: true }).click();
       await expect
         .poll(() => page.evaluate(() => navigator.clipboard.readText()))

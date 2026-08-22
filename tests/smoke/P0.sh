@@ -34,9 +34,9 @@ for path in "${required_paths[@]}"; do
   [[ -e "$path" ]] || fail "missing required path: $path"
 done
 
-rg -q 'version: "0\.20\.1"' vendor/MANIFEST.yaml || fail 'Hermes version missing from manifest'
+rg -q 'version: "0\.20\.5"' vendor/MANIFEST.yaml || fail 'Hermes version missing from manifest'
 rg -q 'version: "2026\.8\.1"' vendor/MANIFEST.yaml || fail 'OpenClaw version missing from manifest'
-rg -q 'version: "0\.1\.0-rc\.5"' vendor/MANIFEST.yaml || fail 'DSH version missing from manifest'
+rg -q 'version: "0\.1\.1-rc\.2"' vendor/MANIFEST.yaml || fail 'DSH version missing from manifest'
 rg -q 'upstream_commit: "【待确认问题】"' vendor/MANIFEST.yaml || fail 'unknown upstream commit must remain explicit'
 
 for section in {0..14}; do
@@ -44,6 +44,23 @@ for section in {0..14}; do
 done
 
 [[ -x scripts/planning/generate-task-prompts.py ]] || fail 'task prompt generator is not executable'
+bash -n scripts/bootstrap/vendor-snapshot.sh || fail 'vendor snapshot script has syntax errors'
+bash -n scripts/source-manifest/create-manifest.sh || fail 'source manifest script has syntax errors'
+rg -q 'upstream version drift' scripts/bootstrap/vendor-snapshot.sh || fail 'vendor snapshot script must guard pinned upstream versions'
+rg -q 'vendor version drift' scripts/source-manifest/create-manifest.sh || fail 'manifest script must guard pinned vendor versions'
+
+for manifest_marker in \
+  'snapshot_policy:' \
+  'upstream_name: Hermes' \
+  'upstream_name: OpenClaw' \
+  'upstream_name: DSH' \
+  'vendor_name: hermes-agent-main' \
+  'vendor_name: openclaw-main' \
+  'vendor_name: deepseek-harness-master' \
+  'file_manifest_sha256:'; do
+  rg -q "$manifest_marker" vendor/MANIFEST.yaml || fail "manifest marker missing: $manifest_marker"
+done
+
 mapfile -t task_ids < <(rg -o '^\| P[0-8]-[0-9]{2} \|' docs/planning/integrated-platform-plan.md | awk '{print $2}' | sort -u)
 [[ "${#task_ids[@]}" -gt 0 ]] || fail 'no task IDs found in planning document'
 for task_id in "${task_ids[@]}"; do
@@ -63,9 +80,22 @@ for endpoint in '/v1/tasks:' '/v1/skills:' '/v1/memory/search:' '/v1/tenants:' '
   rg -q "^  ${endpoint}" docs/contracts/openapi.yaml || fail "OpenAPI endpoint missing: ${endpoint}"
 done
 
-if find vendor -type d \( -name node_modules -o -name .pnpm-store -o -name __pycache__ \) -print -quit | grep -q .; then
+if find vendor -type d \( \
+  -name node_modules -o \
+  -name .pnpm-store -o \
+  -name .cache -o \
+  -name .turbo -o \
+  -name .next -o \
+  -name .vite -o \
+  -name .venv -o \
+  -name venv -o \
+  -name __pycache__ -o \
+  -name .pytest_cache -o \
+  -name .ruff_cache -o \
+  -name .mypy_cache \
+\) -print -quit | grep -q .; then
   fail 'excluded dependency/cache directory found in vendor snapshot'
 fi
 
-git diff --check || fail 'whitespace errors found'
+git diff --check -- . ':!vendor/**' || fail 'whitespace errors found outside vendor snapshot'
 printf 'PASS: P0 structure, vendor manifest, plan sections, OpenAPI placeholders, task prompts, audit templates, and exclusions\n'

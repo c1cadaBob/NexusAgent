@@ -166,6 +166,9 @@ export function registerDefaultAuthTokenSuite(): void {
         GATEWAY_SERVER_CAPS.NODE_WORKER_BUNDLE_RETENTION,
       );
       expect(payload?.features?.capabilities).toContain(
+        GATEWAY_SERVER_CAPS.NODE_WORKER_BUNDLE_STATUS,
+      );
+      expect(payload?.features?.capabilities).toContain(
         GATEWAY_SERVER_CAPS.SYSTEM_AGENT_WIZARD_CANCEL,
       );
       expect(payload?.features?.capabilities).toContain(
@@ -381,7 +384,9 @@ export function registerDefaultAuthTokenSuite(): void {
           "role",
           "scopes",
         ]);
-        const admin = await rpcReq(wsReconnect, "config.schema");
+        const schema = await rpcReq(wsReconnect, "config.schema");
+        expect(schema.ok).toBe(true);
+        const admin = await rpcReq(wsReconnect, "config.patch");
         expect(admin.ok).toBe(false);
         expect(admin.error?.message).toBe("missing scope: operator.admin");
       } finally {

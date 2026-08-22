@@ -1,24 +1,65 @@
-generated_at_utc: 2026-08-18T17:01:10Z
+generated_at_utc: 2026-08-22T08:52:31Z
 project_root: /opt/project/NexusAgent
+snapshot_policy:
+  excluded_directories:
+    - .git
+    - .hg
+    - .svn
+    - node_modules
+    - .pnpm-store
+    - .yarn/cache
+    - dist
+    - build
+    - out
+    - coverage
+    - .cache
+    - .turbo
+    - .next
+    - .vite
+    - .venv
+    - venv
+    - env
+    - __pycache__
+    - .pytest_cache
+    - .ruff_cache
+    - .mypy_cache
+  excluded_files:
+    - "*.py[cod]"
+    - "*.log"
 sources:
-  - name: hermes-agent-main
+  - upstream_name: Hermes
+    vendor_name: hermes-agent-main
+    internal_role: planner-only
     source_path: /opt/project/hermes-agent-main
-    version: "0.20.1"
+    vendor_path: /opt/project/NexusAgent/vendor/hermes-agent-main
+    version: "0.20.5"
+    snapshot_time_utc: 2026-08-22T08:52:31Z
     upstream_commit: "【待确认问题】"
     upstream_remote: "【待确认问题】"
-    tree_sha256: "f437a73c0156f201259dda92d3b3079e1235753442b2ca4542178cfbca09711c"
+    file_manifest_sha256: "7407f4aa1c4b7058c4df8bad02b07be45e0bc2d321804095a3873550dad46d3a"
+    tree_sha256: "7407f4aa1c4b7058c4df8bad02b07be45e0bc2d321804095a3873550dad46d3a"
     local_patches: []
-  - name: openclaw-main
+  - upstream_name: OpenClaw
+    vendor_name: openclaw-main
+    internal_role: gateway-only
     source_path: /opt/project/openclaw-main
+    vendor_path: /opt/project/NexusAgent/vendor/openclaw-main
     version: "2026.8.1"
+    snapshot_time_utc: 2026-08-22T08:52:31Z
     upstream_commit: "【待确认问题】"
     upstream_remote: "【待确认问题】"
-    tree_sha256: "28e5ee02da1a92a3a720966a0e20c70467f4bb7af37cb4c38fc2b7aa5dc1e1e1"
+    file_manifest_sha256: "ba6799694e6aabe947b110bd1091cac0c015c1b008d96ca924fc6daa45422a91"
+    tree_sha256: "ba6799694e6aabe947b110bd1091cac0c015c1b008d96ca924fc6daa45422a91"
     local_patches: []
-  - name: deepseek-harness-master
+  - upstream_name: DSH
+    vendor_name: deepseek-harness-master
+    internal_role: executor-only
     source_path: /opt/project/deepseek-harness-master
-    version: "0.1.0-rc.5"
+    vendor_path: /opt/project/NexusAgent/vendor/deepseek-harness-master
+    version: "0.1.1-rc.2"
+    snapshot_time_utc: 2026-08-22T08:52:31Z
     upstream_commit: "【待确认问题】"
     upstream_remote: "【待确认问题】"
-    tree_sha256: "4c8d57d9e226e56af85f4a39c4e90e8dfd16084f257be5113180d05b705c3764"
+    file_manifest_sha256: "e73c0ee88a4d5522e8d37a8ffc9cc3204d777a829810d302267a10c9c1048b25"
+    tree_sha256: "e73c0ee88a4d5522e8d37a8ffc9cc3204d777a829810d302267a10c9c1048b25"
     local_patches: []

@@ -42,9 +42,18 @@
 | Credential Center | 无 | 不复用 | 凭据不能继承上游分散机制，必须平台代理。 |
 | Observability | 无 | 不复用 | 统一 trace/metrics/logs 由平台定义，上游日志只作为内部诊断输入。 |
 
-### 3.1 DSH 版本隔离与可替换边界
+### 3.1 Community Plugin Bridge / Plugin Gateway
 
-DSH 当前处于快速迭代阶段，不假设后续版本与当前 `0.1.0-rc.5` 快照兼容。P2 接入时必须把 DSH 视为可替换 executor provider，而不是平台核心依赖；详细升级、回滚和替换规则维护在 [DSH 版本兼容与替换策略](dsh-versioning-and-replacement.md)。
+Community Plugin Bridge 是平台治理能力，不是第四套插件运行时。首版采用“平台内置白名单 + 原生宿主侧车 + OpenClaw 渠道插件优先”：OpenClaw、Hermes、DSH 的社区插件尽量在各自原生宿主中运行，平台只负责能力发现、准入、权限、凭据、事件、artifact、审计和观测。详细规则见 [上游版本适配与社区插件复用桥接策略](upstream-versioning-and-plugin-bridge.md)。
+
+- OpenClaw 优先复用 ClawHub/npm 渠道插件、消息插件、MCP 声明和 manifest 元数据，但所有渠道消息必须经过 Coordinator 和 Policy-Gate。
+- Hermes 优先复用 skills、Agent Plugins v1、MCP 和规划辅助插件；工具类插件只能输出平台 `ToolIntent` 或交由 DSH 执行，不能在 Hermes 内直接执行。
+- DSH 复用 Cordis 工具插件和执行型工具，但必须保留 sandbox policy、credential reference、artifact reference 和 execution event 的平台治理。
+- 产品层只展示平台 `PluginInventory`、`CapabilityDescriptor`、`PluginAdmissionPolicy` 和 `NativeHostBinding` 的治理视图，不展示原生插件 API、URL、错误码或存储路径。
+
+### 3.2 DSH 版本隔离与可替换边界
+
+DSH 当前处于快速迭代阶段，不假设后续版本与当前 `0.1.1-rc.2` 快照兼容。P2 接入时必须把 DSH 视为可替换 executor provider，而不是平台核心依赖；详细升级、回滚和替换规则维护在 [DSH 版本兼容与替换策略](dsh-versioning-and-replacement.md)。
 
 - 平台稳定面只包括 `ExecutionRequest`、`ExecutionResult`、`ExecutionEvent`、`ArtifactReference`、`CredentialReference`、`SandboxPolicy`、取消/超时/重试语义、平台错误码和统一 ID。
 - `platform/adapters/dsh/` 必须预留 provider registry 和版本目录；DSH 原生对象只能存在于具体 provider 内部。
@@ -65,6 +74,7 @@ DSH 当前处于快速迭代阶段，不假设后续版本与当前 `0.1.0-rc.5`
 | Observability | OpenTelemetry / Prometheus / Grafana / Loki / Tempo | 统一 OTEL 埋点；Prometheus 拉指标；Grafana 面板；日志和 trace 后端按生产标准选型 | 采集与面板不从零写；指标语义自研 |
 | Web 控制台信息架构 | Backstage / Grafana | 借鉴插件化、目录、数据源和仪表盘组织；不直接把 NexusAgent 做成 Backstage 插件 | 产品控制台自研 |
 | Memory Gateway 检索 | PostgreSQL + pgvector / Qdrant | 小到中型优先 Postgres + pgvector 简化一致性；大规模语义检索评估 Qdrant | 记忆策略自研，向量存储不从零写 |
+| 社区插件准入治理 | OpenClaw ClawHub、Hermes Agent Plugins v1、MCP、DSH Cordis | 原生插件生态通过 Plugin Bridge 白名单复用；平台自研 inventory、admission、capability descriptor 和 host binding | 不重写三大生态插件主体，但准入、权限、审计、凭据和产品展示必须平台化 |
 
 ## 5. 服务整合方式
 
@@ -122,6 +132,7 @@ Policy-Gate
 | adapter -> Memory Gateway | 内部 HTTP/gRPC；读写必须带租户和版本条件 | 可做并发控制、冲突检测和审计 | Hermes 直接读写 `MEMORY.md`/`USER.md` |
 | 任意服务 -> Credential Center | 内部 mTLS；请求只包含 `credential_ref` 和用途 | 支持最小权限、短租约和脱敏 | 在环境变量、事件、日志或 artifact 中传递明文 secret |
 | 任意服务 -> Observability | OTLP/HTTP 或 OTLP/gRPC | 统一 trace、metrics、logs 数据模型 | 将上游原生日志原样作为平台 API 响应 |
+| Plugin Bridge -> OpenClaw/Hermes/DSH sidecar | 内部 HTTP/gRPC 或原生宿主配置写入；只传平台批准的 capability binding | 复用社区生态且不重写插件主体 | 让租户直接安装任意第三方插件或绕过平台白名单 |
 
 十个服务是逻辑边界，不代表每个服务都必须永久独立扩缩容。P1 可以按表中端口提供独立开发容器；生产部署时允许把低流量模块合并进平台内核进程，但必须保留相同的 contracts、权限边界和可观测性。
 

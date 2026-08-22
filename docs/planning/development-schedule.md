@@ -36,12 +36,12 @@
 | P0 | 24 | 2026-08-24 至 2026-09-04 | W1-W2 | 架构/产品、上游改造、测试、安全 | P0 可行性报告、vendor 快照、OpenAPI 初稿、服务蓝图、排期基线、AI 排期提示词模板、任务提示词文档 | 仓库和上游只读路径可访问 | 三种剥离实验有证据；P0 smoke PASS；待确认问题有责任人 |
 | P1 | 32 | 2026-09-07 至 2026-09-25 | W3-W5 | 平台内核、SRE、测试、安全 | contracts、Coordinator、Policy-Gate、Event Bus、Memory/Artifact/Credential 最小实现、开发 Compose | P0 门禁通过 | P1 smoke PASS；mock adapter 跑通任务生命周期；绕过 Policy-Gate 失败 |
 | P2 | 19 | 2026-09-28 至 2026-10-16 | W6-W8 | 上游改造、平台内核、测试 | DSH executor-only adapter、provider registry、沙箱策略、artifact 事件 | P1 内核可运行，P0-04 证据可用 | 直接调用 DSH 原生入口失败；平台执行请求 PASS；provider 可禁用/回滚 |
-| P3 | 20 | 2026-09-28 至 2026-10-16 | W6-W8 | 上游改造、平台内核、测试 | Hermes planner-only adapter、ExecutionPlan、Memory Gateway 接入 | P1 内核可运行，P0-03 证据可用 | Hermes 只返回平台计划；原生记忆直读失败 |
-| P4 | 17 | 2026-09-28 至 2026-10-16 | W6-W8 | 上游改造、渠道、测试、安全 | OpenClaw gateway-only adapter、渠道入站/出站、继续/重做/取消映射 | P1 内核可运行，P0-02 证据可用 | 渠道消息全部经过 Coordinator 和 Policy-Gate |
-| P5 | 32 | 2026-10-19 至 2026-11-13 | W9-W12 | API、前端、SDK、测试、产品 | 平台 API、控制台、渠道管理、SDK、开发者文档 | P2/P3/P4 全部通过 | 契约测试通过；产品层无上游原生类型泄漏 |
-| P6 | 17 | 2026-11-16 至 2026-11-27 | W13-W14 | 测试、安全、平台、SRE、上游改造 | E2E、安全、防绕过、故障注入、DSH provider 回滚、降级路径、评测报告 | P5 产品层 Alpha 完成 | 主链路、provider 回滚和轻量化降级链路均 PASS；MVP 可冻结 |
+| P3 | 20 | 2026-09-28 至 2026-10-16 | W6-W8 | 上游改造、平台内核、测试 | Hermes planner-only adapter、provider 边界、skills/MCP 白名单、ExecutionPlan、Memory Gateway 接入 | P1 内核可运行，P0-03 证据可用 | Hermes 只返回平台计划；原生记忆直读和原生工具执行失败 |
+| P4 | 17 | 2026-09-28 至 2026-10-16 | W6-W8 | 上游改造、渠道、测试、安全 | OpenClaw gateway-only adapter、渠道插件白名单、渠道入站/出站、继续/重做/取消映射 | P1 内核可运行，P0-02 证据可用 | 渠道消息全部经过 Coordinator 和 Policy-Gate；未批准渠道插件不可启用 |
+| P5 | 32 | 2026-10-19 至 2026-11-13 | W9-W12 | API、前端、SDK、测试、产品 | 平台 API、控制台、渠道管理、管理员插件治理、SDK、开发者文档 | P2/P3/P4 全部通过 | 契约测试通过；产品层无上游原生类型泄漏；不开放租户自助安装 |
+| P6 | 17 | 2026-11-16 至 2026-11-27 | W13-W14 | 测试、安全、平台、SRE、上游改造 | E2E、安全、防绕过、恶意插件测试、故障注入、provider/插件回滚、降级路径、评测报告 | P5 产品层 Alpha 完成 | 主链路、provider/插件回滚和轻量化降级链路均 PASS；MVP 可冻结 |
 | P7 | 20 | 2026-11-30 至 2026-12-18 | W15-W17 | 平台、评测、产品 | 高级能力包，可按开关裁剪 | P6 通过，且产品确认纳入首版 | 每项高级能力有开关、指标、回退和资源预算 |
-| P8 | 20 | 2026-11-30 至 2026-12-24 | W15-W18 | SRE、平台、安全、测试、文档 | 生产编排、CI/CD、告警、备份恢复、交付手册 | P6 通过；P7 可选 | 生产配置无热更新/调试端口；恢复演练和交付文档通过 |
+| P8 | 20 | 2026-11-30 至 2026-12-24 | W15-W18 | SRE、平台、安全、测试、文档 | 生产编排、CI/CD、provider/插件兼容矩阵、告警、备份恢复、交付手册 | P6 通过；P7 可选 | 生产配置无热更新/调试端口；恢复演练、插件升级回滚和交付文档通过 |
 
 ## 4. 每周执行计划
 
@@ -52,15 +52,15 @@
 | W3 | 2026-09-07 至 2026-09-11 | 建立 `platform/contracts/`、Task State、Event Envelope、错误码、trace 规范 | schema 单元测试和非法状态转移测试通过 |
 | W4 | 2026-09-14 至 2026-09-18 | Coordinator、Policy-Gate、最小 Event Bus、Clock、Audit 骨架 | mock task 生命周期可跑通 |
 | W5 | 2026-09-21 至 2026-09-25 | Memory Gateway、Artifact Store、Credential Center 最小实现；开发 Compose 和 P1 smoke | P1 smoke PASS；三类空 adapter 可接入 |
-| W6 | 2026-09-28 至 2026-10-02 | DSH/Hermes/OpenClaw adapter 开始真实接入；锁定 vendor patch 点；建立 DSH provider registry 初版 | adapter contract test 初版通过 |
-| W7 | 2026-10-05 至 2026-10-09 | 三个 adapter 完成核心请求/响应映射；补充 sandbox、memory、channel 负向测试 | 原生入口绕过测试初版通过 |
-| W8 | 2026-10-12 至 2026-10-16 | 三组件联调、取消/重试/超时语义、事件和 artifact 对齐；验证 DSH provider 禁用和回滚 | P2/P3/P4 smoke PASS；进入 P5 决策完成 |
+| W6 | 2026-09-28 至 2026-10-02 | DSH/Hermes/OpenClaw adapter 开始真实接入；锁定 vendor patch 点；建立 DSH provider registry 初版和 Plugin Bridge 元数据草案 | adapter contract test 初版通过 |
+| W7 | 2026-10-05 至 2026-10-09 | 三个 adapter 完成核心请求/响应映射；补充 sandbox、memory、channel、插件白名单负向测试 | 原生入口和未批准插件绕过测试初版通过 |
+| W8 | 2026-10-12 至 2026-10-16 | 三组件联调、取消/重试/超时语义、事件和 artifact 对齐；验证 DSH provider 禁用/回滚、Hermes skills/MCP 发现、OpenClaw 渠道插件白名单 | P2/P3/P4 smoke PASS；进入 P5 决策完成 |
 | W9 | 2026-10-19 至 2026-10-23 | 平台 REST API、认证、任务、审批、artifact、memory 查询接口 | API 契约测试初版通过 |
-| W10 | 2026-10-26 至 2026-10-30 | Web 控制台任务面板、租户/RBAC、审计、监控骨架；SDK 初版 | 控制台只调用平台 API |
-| W11 | 2026-11-02 至 2026-11-06 | 渠道管理、技能管理、开发者文档、Webhook/SSE 事件出口 | 产品功能 Alpha 可演示 |
+| W10 | 2026-10-26 至 2026-10-30 | Web 控制台任务面板、租户/RBAC、审计、监控骨架、插件治理骨架；SDK 初版 | 控制台只调用平台 API |
+| W11 | 2026-11-02 至 2026-11-06 | 渠道管理、技能管理、管理员插件治理、开发者文档、Webhook/SSE 事件出口 | 产品功能 Alpha 可演示 |
 | W12 | 2026-11-09 至 2026-11-13 | P5 缺陷收敛、契约补全、API/SDK/控制台一致性检查 | P5 契约测试和产品验收通过 |
 | W13 | 2026-11-16 至 2026-11-20 | E2E 主链路、安全、防绕过、跨租户、明文凭据测试 | 关键安全测试全部进入 CI |
-| W14 | 2026-11-23 至 2026-11-27 | 故障注入、DSH provider 破坏性输出/回滚、降级路线、性能/Token 预算评测、MVP 验收报告 | P6 smoke PASS；MVP 发布候选冻结 |
+| W14 | 2026-11-23 至 2026-11-27 | 故障注入、provider/插件破坏性输出与回滚、恶意插件测试、降级路线、性能/Token 预算评测、MVP 验收报告 | P6 smoke PASS；MVP 发布候选冻结 |
 | W15 | 2026-11-30 至 2026-12-04 | MVP 缓冲；P7/P8 分支启动；生产配置差异检查 | MVP 缺陷清零或明确延后 |
 | W16 | 2026-12-07 至 2026-12-11 | P8 CI/CD、生产 Compose、Kubernetes 初版；P7 可选能力开发 | 生产配置不暴露内部端口 |
 | W17 | 2026-12-14 至 2026-12-18 | 告警、备份恢复、升级迁移、P7 可选能力评测 | 备份恢复演练初版通过 |

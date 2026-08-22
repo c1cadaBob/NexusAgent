@@ -1,0 +1,60 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://nexusagent.local/contracts/capability-descriptor.schema.json",
+  "title": "CapabilityDescriptor",
+  "description": "Platform-facing capability mapped from an approved native plugin or provider metadata entry.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "capability_id",
+    "capability_type",
+    "display_name",
+    "native_host",
+    "plugin_id",
+    "required_credentials",
+    "required_permissions",
+    "tenant_visibility"
+  ],
+  "properties": {
+    "capability_id": { "type": "string", "minLength": 1 },
+    "capability_type": {
+      "type": "string",
+      "enum": [
+        "channel",
+        "message_transform",
+        "skill",
+        "mcp_server",
+        "tool",
+        "planner_hint",
+        "provider_metadata",
+        "hook_metadata"
+      ]
+    },
+    "display_name": { "type": "string", "minLength": 1 },
+    "native_host": {
+      "type": "string",
+      "enum": ["channel_gateway_sidecar", "planner_sidecar", "executor_sidecar"]
+    },
+    "plugin_id": { "type": "string", "minLength": 1 },
+    "required_credentials": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "required_permissions": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "tenant_visibility": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mode"],
+      "properties": {
+        "mode": { "type": "string", "enum": ["platform_admin_only", "approved_tenants", "all_tenants"] },
+        "tenant_ids": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        }
+      }
+    }
+  }
+}

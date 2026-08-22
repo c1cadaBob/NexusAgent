@@ -52,7 +52,7 @@ describe("sessionsCommand", () => {
 
     const row = logs.find((line) => line.includes("agent:main:+15555550123")) ?? "";
     expect(row).toBe(
-      "direct      agent:main:+15555550123    45m ago   test:opus      OpenAI Codex       2.0k/32k (6%)        id:abc123",
+      "direct      agent:main:+15555550123    45m ago   test:opus      OpenAI Codex       2.0k/200k (1%)       id:abc123",
     );
   });
 
@@ -75,7 +75,7 @@ describe("sessionsCommand", () => {
     cleanupStore(store);
 
     const row = logs.find((line) => line.includes("agent:main:+15555550123")) ?? "";
-    expect(row).toContain("2.0k/32k (?%)");
+    expect(row).toContain("2.0k/200k (?%)");
   });
 
   it("renders the agent runtime in the tabular view", async () => {
@@ -86,7 +86,6 @@ describe("sessionsCommand", () => {
           models: {
             "anthropic/claude-opus-4-7": { agentRuntime: { id: "claude-cli" } },
           },
-          contextTokens: 200_000,
         },
       },
     }));
@@ -123,7 +122,6 @@ describe("sessionsCommand", () => {
           models: {
             "anthropic/claude-opus-4-7": { agentRuntime: { id: "claude-cli" } },
           },
-          contextTokens: 200_000,
         },
       },
     }));
@@ -150,6 +148,51 @@ describe("sessionsCommand", () => {
     );
   });
 
+  it("renders recorded runtime with current context after a same-model runtime change", async () => {
+    setMockSessionsConfig(() => ({
+      agents: {
+        defaults: {
+          model: { primary: "openai/gpt-5.6-sol" },
+          models: {
+            "openai/gpt-5.6-sol": { agentRuntime: { id: "codex" } },
+          },
+        },
+      },
+      models: {
+        providers: {
+          openai: {
+            models: [{ id: "gpt-5.6-sol", contextTokens: 1_000_000, contextWindow: 1_050_000 }],
+          },
+        },
+      },
+    }));
+    const store = await writeStore(
+      {
+        "agent:main:main": {
+          sessionId: "stale-openclaw-window",
+          updatedAt: Date.now() - 60_000,
+          modelProvider: "openai",
+          model: "gpt-5.6-sol",
+          agentHarnessId: "openclaw",
+          contextTokens: 272_000,
+          contextTokensSource: "runtime",
+          totalTokens: 11,
+          totalTokensFresh: true,
+          totalTokensVersion: 1,
+        },
+      },
+      "sessions-current-runtime-table",
+    );
+
+    const { runtime, logs } = makeRuntime();
+    await sessionsCommand({ store }, runtime);
+    cleanupStore(store);
+
+    const row = logs.find((line) => line.includes("agent:main:main")) ?? "";
+    expect(row).toContain("OpenClaw Default");
+    expect(row).toContain("0.0k/1000k (0%)");
+  });
+
   it("shows placeholder rows when tokens are missing", async () => {
     const store = await writeStore({
       "agent:main:quietchat:group:demo": {
@@ -166,7 +209,7 @@ describe("sessionsCommand", () => {
 
     const row = logs.find((line) => line.includes("id:xyz")) ?? "";
     expect(row).toContain("group");
-    expect(row).toContain("unknown/32k (?%)");
+    expect(row).toContain("unknown/200k (?%)");
     expect(row).toContain("think:high");
   });
 
@@ -413,6 +456,8 @@ describe("sessionsCommand", () => {
         global: {
           sessionId: "telegram-global",
           updatedAt: Date.now() - 60_000,
+          modelProvider: "claude-cli",
+          model: "opus",
           delivery: normalizeSessionDeliveryState({
             origin: {
               provider: "telegram",
@@ -431,21 +476,29 @@ describe("sessionsCommand", () => {
       agents: {
         ownership: "explicit",
         defaults: {
-          model: { primary: "test:opus" },
-          models: { "test:opus": {} },
-          contextTokens: 32000,
+          model: { primary: "anthropic/opus" },
+          models: { "anthropic/opus": {} },
           sessionStore: { agentId: "ops" },
         },
-        entries: { ops: {}, research: {} },
+        entries: {
+          ops: { models: { "custom/opus": {} } },
+          research: {},
+        },
       },
     }));
 
     const payload = await runSessionsJson<{
-      sessions?: Array<{ agentId?: string; key: string; runtimePolicySessionKey?: string }>;
+      sessions?: Array<{
+        agentId?: string;
+        key: string;
+        modelProvider?: string;
+        runtimePolicySessionKey?: string;
+      }>;
     }>(sessionsCommand, store, { active: "10" });
 
     expect(payload.sessions?.find((row) => row.key === "global")).toMatchObject({
       agentId: "ops",
+      modelProvider: "custom",
       runtimePolicySessionKey: "agent:ops:telegram:default:direct:42",
     });
   });

@@ -16,7 +16,7 @@ P2 实现 DSH adapter 时必须预留 provider 边界：
 platform/adapters/dsh/
 ├── contracts/              # 平台侧 ExecutionRequest/Result/Event 映射校验
 ├── providers/
-│   ├── dsh-0.1.0-rc.5/      # 当前 vendor 快照 provider
+│   ├── dsh-0.1.1-rc.2/      # 当前 vendor 快照 provider
 │   └── README.md            # 后续 provider 接入规则
 ├── provider-registry.*      # provider 选择、版本标识、灰度和回滚入口
 └── index.*                  # 只导出平台 adapter，不导出 DSH 原生对象

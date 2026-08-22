@@ -1,20 +1,21 @@
 openapi: 3.1.0
 info:
-  title: NexusAgent Platform API
+  title: NexusAgent 平台 API
   version: 0.1.0
   description: >-
-    Platform-facing contract placeholder. This document must expose only
-    NexusAgent concepts and must never expose native Hermes, OpenClaw, or
-    DeepSeek Harness APIs.
+    平台对外契约占位。本文档只暴露 NexusAgent 平台概念，禁止暴露任何
+    上游原生 API、URL、错误码、session、文件路径或存储路径。
 servers:
   - url: http://localhost:3050
     description: Development platform API
 tags:
   - name: tasks
   - name: skills
+  - name: capabilities
   - name: memory
   - name: tenants
   - name: approvals
+  - name: plugin-governance
 paths:
   /v1/tasks:
     post:
@@ -107,6 +108,26 @@ paths:
                     type: array
                     items:
                       $ref: '#/components/schemas/Skill'
+  /v1/capabilities:
+    get:
+      tags: [capabilities]
+      operationId: listCapabilities
+      summary: List approved platform capabilities visible to the caller
+      responses:
+        '200':
+          description: Platform capabilities
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/CapabilityDescriptor'
+        '403':
+          $ref: '#/components/responses/PlatformError'
   /v1/memory/search:
     post:
       tags: [memory]
@@ -181,10 +202,83 @@ paths:
                     type: array
                     items:
                       $ref: '#/components/schemas/Approval'
+  /v1/admin/plugins:
+    get:
+      tags: [plugin-governance]
+      operationId: listPluginInventory
+      summary: List plugin inventory entries for platform administrators
+      responses:
+        '200':
+          description: Plugin inventory entries
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/PluginInventoryEntry'
+        '403':
+          $ref: '#/components/responses/PlatformError'
+  /v1/admin/plugins/import:
+    post:
+      tags: [plugin-governance]
+      operationId: importPluginInventoryEntry
+      summary: Import a plugin candidate into the platform inventory
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PluginImportRequest'
+      responses:
+        '202':
+          description: Plugin candidate accepted for scan
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PluginInventoryEntry'
+        '400':
+          $ref: '#/components/responses/PlatformError'
+        '403':
+          $ref: '#/components/responses/PlatformError'
+  /v1/admin/plugins/{plugin_id}/admission:
+    post:
+      tags: [plugin-governance]
+      operationId: decidePluginAdmission
+      summary: Approve, disable, or reject a plugin inventory entry
+      parameters:
+        - $ref: '#/components/parameters/PluginId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PluginAdmissionDecision'
+      responses:
+        '200':
+          description: Updated plugin inventory entry
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PluginInventoryEntry'
+        '403':
+          $ref: '#/components/responses/PlatformError'
+        '404':
+          $ref: '#/components/responses/PlatformError'
 components:
   parameters:
     TaskId:
       name: task_id
+      in: path
+      required: true
+      schema:
+        type: string
+        minLength: 1
+    PluginId:
+      name: plugin_id
       in: path
       required: true
       schema:
@@ -230,6 +324,71 @@ components:
         skill_id: { type: string }
         name: { type: string }
         enabled: { type: boolean }
+    CapabilityDescriptor:
+      type: object
+      required: [capability_id, capability_type, display_name, status, risk_level]
+      properties:
+        capability_id: { type: string }
+        capability_type:
+          type: string
+          enum: [channel, message_transform, skill, mcp_server, tool, planner_hint]
+        display_name: { type: string }
+        status:
+          type: string
+          enum: [approved, enabled, disabled, pending_review]
+        risk_level:
+          type: string
+          enum: [low, medium, high, critical]
+        required_permissions:
+          type: array
+          items: { type: string }
+        required_credentials:
+          type: array
+          items: { type: string }
+    PluginInventoryEntry:
+      type: object
+      required: [plugin_id, display_name, source_kind, version, sha256, license, risk_level, allowlist_status, trace_id]
+      properties:
+        plugin_id: { type: string }
+        display_name: { type: string }
+        source_kind:
+          type: string
+          enum: [marketplace, package_registry, git_repository, local_snapshot, mcp_manifest]
+        version: { type: string }
+        sha256: { type: string }
+        license: { type: string }
+        risk_level:
+          type: string
+          enum: [low, medium, high, critical]
+        allowlist_status:
+          type: string
+          enum: [pending_scan, pending_review, approved, disabled, rejected]
+        capability_ids:
+          type: array
+          items: { type: string }
+        trace_id: { type: string }
+    PluginImportRequest:
+      type: object
+      required: [source_kind, source_ref]
+      properties:
+        source_kind:
+          type: string
+          enum: [marketplace, package_registry, git_repository, local_snapshot, mcp_manifest]
+        source_ref:
+          type: string
+          description: Platform-side import reference. Native URLs must not be exposed to tenants.
+        expected_sha256: { type: string }
+    PluginAdmissionDecision:
+      type: object
+      required: [decision, reason]
+      properties:
+        decision:
+          type: string
+          enum: [approve, disable, reject]
+        reason: { type: string }
+        tenant_scope:
+          type: array
+          items: { type: string }
     Tenant:
       type: object
       required: [tenant_id, name]

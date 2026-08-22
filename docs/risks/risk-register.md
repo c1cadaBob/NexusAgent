@@ -16,7 +16,15 @@
 | R-010 | AI 自动生成排期时遗漏只读目录、上游不可见、防绕过或验收命令等高危约束 | 高 | 未验证 | P0-P8 |
 | R-011 | 任务提示词文档与实施规划任务表不同步 | 中 | 未验证 | P0-P8 |
 | R-012 | 任务实现缺少修改前、修改过程、修改后验证审计记录 | 高 | 未验证 | P0-P8 |
+| R-013 | 第三方插件绕过平台权限或直接调用原生宿主 | 极高 | 未验证 | P3-P8 |
+| R-014 | 第三方插件凭据、artifact 或日志泄漏 | 极高 | 未验证 | P3-P8 |
+| R-015 | 第三方插件许可证、NOTICE 或再分发条款不清 | 高 | 未验证 | P0/P5/P8 |
+| R-016 | 插件更新破坏 OpenClaw/Hermes/DSH provider 兼容性 | 高 | 监控 | P3/P4/P8 |
 
 ## R-001 执行要求
 
 DSH 不作为稳定平台契约，只作为内部 executor provider。P2 必须实现 provider 隔离和新旧 provider contract fixture；P6 必须验证 DSH provider 不可用、超时、破坏性返回结构和回滚路径；P8 必须把 DSH 上游追踪、升级门禁、默认 provider 切换和回滚手册纳入发布流程。详细规则见 [DSH 版本兼容与替换策略](../architecture/dsh-versioning-and-replacement.md)。
+
+## 插件生态执行要求
+
+三大平台社区插件默认不可信，只能通过 Plugin Bridge 白名单复用。P3/P4 必须证明 Hermes/OpenClaw 原生插件不能绕过 planner-only/gateway-only 边界；P5 只能开放管理员插件治理 API 和控制台，不开放租户自助安装；P6 必须模拟恶意插件访问凭据、artifact、memory、底层端口和原生 agent-loop 并验证失败；P8 必须交付插件升级、禁用、兼容矩阵和回滚手册。详细规则见 [上游版本适配与社区插件复用桥接策略](../architecture/upstream-versioning-and-plugin-bridge.md)。

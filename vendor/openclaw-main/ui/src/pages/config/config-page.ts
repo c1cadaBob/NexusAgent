@@ -190,7 +190,6 @@ export function extractQuickSettingsSecurity(config: unknown): SecurityOverview 
     return {
       gatewayAuth: "unknown",
       execPolicy: "unknown",
-      deviceAuth: false,
       browserEnabled: true,
       browserEnabledOverridden: false,
       toolProfile: "full",
@@ -202,7 +201,6 @@ export function extractQuickSettingsSecurity(config: unknown): SecurityOverview 
   const tools = asConfigRecord(root.tools);
   const exec = asConfigRecord(tools?.exec) ?? {};
   const browser = asConfigRecord(root.browser);
-  const controlUi = asConfigRecord(gateway?.controlUi);
   let gatewayAuth = "unknown";
   if (auth) {
     const mode = typeof auth.mode === "string" ? auth.mode.trim() : "";
@@ -221,7 +219,6 @@ export function extractQuickSettingsSecurity(config: unknown): SecurityOverview 
   return {
     gatewayAuth,
     execPolicy: typeof security === "string" && security.trim() ? security.trim() : "allowlist",
-    deviceAuth: controlUi?.dangerouslyDisableDeviceAuth !== true,
     browserEnabled: browser?.enabled !== false,
     browserEnabledOverridden: browser !== null && Object.hasOwn(browser, "enabled"),
     toolProfile: typeof profile === "string" && profile.trim() ? profile.trim() : "full",
@@ -1055,7 +1052,9 @@ export class ConfigPage extends OpenClawLightDomElement {
 
   private isUpdateBusy(): boolean {
     const update = this.context.overlays.snapshot;
-    return update.updateRunning || update.updateReconciliationPending;
+    return (
+      update.updateRunning || update.updateStatusRefreshing || update.updateReconciliationPending
+    );
   }
 
   // The update dialog outlives this page and the connection, so it reads live
@@ -1111,9 +1110,11 @@ export class ConfigPage extends OpenClawLightDomElement {
         heldUpdateCampaignId: overlaySnapshot.heldUpdateCampaignId,
         updateAvailable: overlaySnapshot.updateAvailable,
         statusBanner: overlaySnapshot.updateStatusBanner,
+        recordedAttempt: overlaySnapshot.recordedUpdateAttempt,
         configBusy: this.isCuratedConfigMutationDisabled(),
         canAdmin,
         canUpdate: canCallGatewayMethod(gatewaySnapshot, "update.run", "operator.admin"),
+        canCheckStatus: canCallGatewayMethod(gatewaySnapshot, "update.status", "operator.admin"),
         canHoldUpdate: canCallGatewayMethod(gatewaySnapshot, "update.hold", "operator.admin"),
         updateBusy: this.isUpdateBusy(),
         onChannelChange: (channel) => runtimeConfig.patchForm(["update", "channel"], channel),
@@ -1130,6 +1131,7 @@ export class ConfigPage extends OpenClawLightDomElement {
             viaNativeApp: false,
           }),
         onHoldUpdate: () => this.context.overlays.holdUpdate(),
+        onCheckStatus: () => this.context.overlays.refreshUpdateStatus(),
       });
     }
     const includeSections = this.includeSections();

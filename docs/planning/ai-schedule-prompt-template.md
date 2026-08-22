@@ -44,6 +44,8 @@
 | `{{milestone}}` | `development-schedule.md` | `M2：P2-P4 内部三组件接入` |
 | `{{owner_workstream}}` | `development-schedule.md`、团队分工 | 上游改造、平台内核、测试 |
 | `{{quality_gates}}` | 任务表、测试策略、阶段门禁 | 单元、契约、集成、安全、冒烟、`git diff --check` |
+| `{{plugin_bridge_strategy}}` | `docs/architecture/upstream-versioning-and-plugin-bridge.md` | Plugin Bridge 白名单、能力描述符、宿主侧车和禁止事项 |
+| `{{provider_strategy}}` | `docs/architecture/dsh-versioning-and-replacement.md`、`docs/architecture/upstream-versioning-and-plugin-bridge.md` | OpenClaw/Hermes/DSH provider 并存、升级、禁用和回滚规则 |
 | `{{smoke_script}}` | 阶段脚本约定 | `tests/smoke/P2.sh` |
 | `{{related_requirements}}` | `docs/traceability/requirements-matrix.md` | `REQ-009`、`REQ-012` |
 | `{{related_risks}}` | `docs/risks/risk-register.md`、规划第 12 节 | `R-003`、`R-004` |
@@ -66,6 +68,8 @@
 | 待确认问题 | 未确认事项不得被当作事实；只能输出选项、影响和最晚确认时间 | 排期必须保留“待确认事项”表 |
 | 裁剪/降级 | P7 可裁剪；Hermes 可降级；对外 API 和任务标识不变 | 延期重排必须先保护 P0-P6 MVP 主线 |
 | 安全防绕过 | 负向测试和绕过测试是阶段门禁，不是可选项 | P2-P6 必须排入 security/integration 工作流 |
+| 社区插件复用 | 三大平台社区插件默认不可信，只能通过 Plugin Bridge 白名单、能力描述符和原生宿主侧车复用；不得要求重复改造社区插件主体 | P3-P8 必须安排插件发现、准入、禁用、防泄漏、升级和回滚验证 |
+| Provider 兼容 | OpenClaw/Hermes/DSH 必须按 provider/adapter 模式并存、灰度和回滚；平台 API、任务状态、凭据、artifact、审计和错误码不随上游变化 | P3/P4/P8 必须安排 provider 兼容矩阵和回滚演练 |
 | 验收命令 | 每个阶段/任务必须提供可重复验收命令 | 提示词输出必须包含“验收命令表” |
 | 审计记录 | 开始实现任务前、修改过程中、完成验证后，必须填写对应任务 ID 文档中的“修改记录包” | 阶段门禁必须抽查任务文档的修改前分析、过程记录和修改后验证 |
 
@@ -76,12 +80,12 @@
 | P0 | 先证据后结论；三种剥离实验、上游入口摸底、服务蓝图、排期和提示词治理 | 写生产业务代码；根据猜测锁定上游行为；忽略待确认问题 |
 | P1 | contracts、状态机、Coordinator、Policy-Gate、Event Bus、Clock、Artifact/Memory/Credential 最小实现和开发 Compose | 先接真实上游；底层组件直接通信；跳过 mock adapter 生命周期 |
 | P2 | DSH executor-only、沙箱策略、artifact、执行事件、防绕过 | 对外暴露 DSH 原生 API；跳过沙箱负向测试；把 stdout/stderr 明文透传 |
-| P3 | Hermes planner-only、ExecutionPlan、Memory Gateway 接入、原生记忆隔离 | 让 Hermes 执行工具；把 `MEMORY.md`/`USER.md` 当平台存储；返回最终自然语言答复 |
-| P4 | OpenClaw gateway-only、渠道消息转换、继续/重做/取消语义、防绕过 | 让渠道绕过 Coordinator；保留 OpenClaw 原生 Agent 能力对外可达 |
-| P5 | 平台 API、控制台、渠道管理、SDK、开发者文档；产品层不得出现上游概念 | 在 API/控制台/SDK 泄漏上游名称、原生错误码或 URL |
-| P6 | E2E、安全、防越权、故障注入、降级路线、评测报告 | 加新功能扩大范围；只测正向链路；跳过失败恢复和降级 |
+| P3 | Hermes planner-only、ExecutionPlan、Memory Gateway 接入、原生记忆隔离；Hermes provider 兼容、skills/MCP/Agent Plugins v1 白名单复用和插件记忆防直读 | 让 Hermes 执行工具；把 `MEMORY.md`/`USER.md` 当平台存储；返回最终自然语言答复；让 Hermes 插件绕过 Plugin Bridge |
+| P4 | OpenClaw gateway-only、渠道消息转换、继续/重做/取消语义、防绕过；OpenClaw provider 兼容、ClawHub/npm/manifest 扫描和渠道插件白名单 | 让渠道绕过 Coordinator；保留 OpenClaw 原生 Agent 能力对外可达；渠道插件绕过平台准入 |
+| P5 | 平台 API、控制台、渠道管理、SDK、开发者文档；管理员插件治理入口；产品层不得出现上游概念 | 在 API/控制台/SDK 泄漏上游名称、原生错误码或 URL；开放租户自助安装任意第三方插件 |
+| P6 | E2E、安全、防越权、故障注入、降级路线、评测报告；三平台插件防绕过、禁用、凭据泄漏和宿主回滚验证 | 加新功能扩大范围；只测正向链路；跳过失败恢复、降级和恶意插件测试 |
 | P7 | 可选高级能力，必须有开关、指标、回退路径和资源预算 | 阻塞 MVP；重新引入 Hermes 原生能力；无开关上线 |
-| P8 | 生产 Compose/Kubernetes、CI/CD、告警、备份恢复、运维/交付手册 | 生产配置复用热更新/调试端口；内部 adapter 直接对外暴露 |
+| P8 | 生产 Compose/Kubernetes、CI/CD、告警、备份恢复、运维/交付手册；三平台 provider 兼容矩阵、插件升级门禁和回滚手册 | 生产配置复用热更新/调试端口；内部 adapter 直接对外暴露；无兼容矩阵切换 provider 或插件版本 |
 
 ## 5. 通用输出格式要求
 
@@ -95,7 +99,8 @@ AI 生成排期时必须输出以下结构，缺一不可：
 6. 门禁清单：列出必须通过的测试、脚本、文档更新和安全验证。
 7. 自动填充差异：说明本次排期相对 `development-schedule.md` 的变化。
 8. 待确认问题：保留未确认事项，不得擅自下结论。
-9. 审计要求：列出对应任务 ID 文档路径，并要求执行前后填写“修改记录包”。
+9. 插件与 provider 治理：列出是否涉及 Plugin Bridge、社区插件复用、provider 兼容、禁用和回滚。
+10. 审计要求：列出对应任务 ID 文档路径，并要求执行前后填写“修改记录包”。
 
 ## 6. 任务修改记录包规则
 
@@ -152,6 +157,7 @@ AI 生成排期时必须输出以下结构，缺一不可：
 - 当前排期基线：`docs/planning/development-schedule.md`
 - 当前实施规划：`docs/planning/integrated-platform-plan.md`
 - 当前服务蓝图：`docs/architecture/service-blueprint.md`
+- 当前上游版本与插件桥策略：`docs/architecture/upstream-versioning-and-plugin-bridge.md`
 - 当前风险登记册：`docs/risks/risk-register.md`
 - 当前需求追踪矩阵：`docs/traceability/requirements-matrix.md`
 
@@ -161,7 +167,9 @@ AI 生成排期时必须输出以下结构，缺一不可：
 3. OpenClaw/Hermes/DSH 只作为内部依赖，不得出现在公共 API、SDK、控制台、公共错误码或对外日志中。
 4. 所有底层调用必须经过 `platform/adapters/`、Coordinator、Policy-Gate。
 5. 所有阶段必须保留统一 ID、UTC 时间、单调时钟、trace_id、质量门禁、冒烟脚本和防绕过验证。
-6. 未确认事项必须标记为【待确认问题】，不得擅自假设。
+6. 三大平台社区插件只能通过 Plugin Bridge 白名单和原生宿主侧车复用；不得开放租户任意安装或绕过平台凭据、审计和 artifact 管理。
+7. OpenClaw/Hermes/DSH provider 可以并存、禁用、灰度和回滚；平台契约不得随上游版本变化。
+8. 未确认事项必须标记为【待确认问题】，不得擅自假设。
 
 # 当前排期输入
 - 排期模式：{{prompt_mode}}
@@ -207,6 +215,7 @@ AI 生成排期时必须输出以下结构，缺一不可：
 - 上游行为必须基于源码证据和实测，涉及 P0/P2/P3/P4 时必须输出源码路径、行号或实验命令。
 - 产品层和对外契约不得暴露 OpenClaw/Hermes/DSH 原生概念。
 - 所有底层调用必须经过 `platform/adapters/`、Coordinator、Policy-Gate。
+- 涉及社区插件时，只能通过 Plugin Bridge 白名单、平台能力描述符和原生宿主侧车复用；不得直接暴露原生插件 API、URL、错误码、session 或存储路径。
 - 每个阶段必须有 smoke 脚本，且输出明确 PASS/FAIL。
 
 # 阶段特化规则
@@ -252,6 +261,7 @@ Markdown，包含阶段目标、任务排期表、关键路径、并行安排、
 3. 不得扩大任务范围；不得引入规划外依赖；不得把待确认问题当作事实。
 4. 涉及上游源码时，所有结论必须附源码路径/行号或可复现实验命令。
 5. 涉及 API/控制台/SDK 时，禁止暴露 OpenClaw/Hermes/DSH 原生命名、URL、错误码或存储路径。
+6. 涉及 provider 或社区插件时，必须引用 Plugin Bridge 策略，说明白名单、能力描述、凭据引用、artifact 输出、禁用和回滚验证。
 
 # 任务
 请生成 `{{target_task_id}}` 的执行排期，必须包括：
@@ -322,6 +332,7 @@ Markdown，包含每日计划表、阻塞表、验收清单、风险和下周输
 - 统一 ID、trace_id、UTC/单调时钟。
 - 明文凭据禁止、租户/RBAC 隔离、artifact/memory 越权测试。
 - P8 生产关闭热更新和调试端口。
+- Plugin Bridge 白名单、插件凭据防泄漏、provider 兼容矩阵和回滚演练。
 
 # 任务
 请输出延期重排方案：
@@ -360,6 +371,7 @@ Markdown，包含影响分析表、三套重排方案、推荐方案、不可降
 - 依赖阶段验收证据缺失，不能通过。
 - 待确认问题没有责任人和截止时间，不能通过。
 - 发现绕过 Policy-Gate、原生能力泄漏、明文凭据泄漏、跨租户越权，必须阻塞。
+- 发现未批准插件启用、插件绕过 Plugin Bridge、provider 无回滚目标或插件许可证状态不明，必须阻塞。
 - 对应任务 ID 文档缺少“修改记录包”或审计字段未填写，必须阻塞。
 
 # 任务
@@ -382,12 +394,13 @@ Markdown，包含结论、证据表、失败项、风险、补救计划和下一
 1. 读取 `docs/planning/integrated-platform-plan.md`，解析阶段任务表。
 2. 读取 `docs/planning/development-schedule.md`，解析日历窗口、周计划、关键路径和资源假设。
 3. 读取 `docs/architecture/service-blueprint.md`，补充服务边界和整合链路。
-4. 读取 `docs/traceability/requirements-matrix.md`，补充需求编号和验收脚本。
-5. 读取 `docs/risks/risk-register.md`，补充风险编号和当前状态。
-6. 读取 Git 状态，填充当前分支和未提交变更风险。
-7. 根据 `prompt_mode` 选择第 6 至 11 节中的模板。
-8. 对所有缺失字段填入 `【待确认问题】`，不得留空或编造。
-9. 生成提示词后，先做一次约束扫描：是否包含只读目录、允许写路径、防暴露、防绕过、验收命令、待确认问题和修改记录包。
+4. 读取 `docs/architecture/upstream-versioning-and-plugin-bridge.md`，补充 provider 兼容、社区插件复用、Plugin Bridge 白名单和回滚约束。
+5. 读取 `docs/traceability/requirements-matrix.md`，补充需求编号和验收脚本。
+6. 读取 `docs/risks/risk-register.md`，补充风险编号和当前状态。
+7. 读取 Git 状态，填充当前分支和未提交变更风险。
+8. 根据 `prompt_mode` 选择第 6 至 11 节中的模板。
+9. 对所有缺失字段填入 `【待确认问题】`，不得留空或编造。
+10. 生成提示词后，先做一次约束扫描：是否包含只读目录、允许写路径、防暴露、防绕过、Plugin Bridge、provider 回滚、验收命令、待确认问题和修改记录包。
 
 ## 14. 示例：P2 阶段排期提示词填充片段
 
@@ -408,6 +421,6 @@ Markdown，包含结论、证据表、失败项、风险、补救计划和下一
 - 任务名称：修复 memory_tool 快照缺陷并代理化
 - 涉及路径：`vendor/hermes-agent-main/tools/memory_tool.py`、`agent/memory_manager.py`、`agent/memory_provider.py`、`platform/adapters/hermes/`、`platform/memory-gateway/`
 - 前置依赖：P1-04、P3-01
-- 关键约束：必须先复现快照/并发写入问题；修复必须保留 drift/read-failure 防护；读写改为平台代理；不能把 `MEMORY.md`/`USER.md` 当平台公共存储
-- 必须验收：读写全部通过平台 API；文件外部直接修改可检测；快照不把未授权内容注入 planner 输入；Hermes memory bypass 测试失败即阻塞
+- 关键约束：必须先复现快照/并发写入问题；修复必须保留 drift/read-failure 防护；读写改为平台代理；不能把 `MEMORY.md`/`USER.md` 当平台公共存储；Hermes skills/MCP/插件不得直接读写记忆
+- 必须验收：读写全部通过平台 API；文件外部直接修改可检测；快照不把未授权内容注入 planner 输入；Hermes memory bypass 和插件直读测试失败即阻塞
 ```
