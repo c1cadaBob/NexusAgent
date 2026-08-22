@@ -16,6 +16,12 @@ https://github.com/c1cadaBob/NexusAgent
 git remote add origin https://github.com/c1cadaBob/NexusAgent.git
 ```
 
+如果当前环境无法使用 HTTPS 凭据，但已通过 GitHub SSH 认证，则保留 HTTPS fetch URL，并设置 SSH push URL：
+
+```bash
+git remote set-url --push origin git@github.com:c1cadaBob/NexusAgent.git
+```
+
 首次推送当前分支时执行：
 
 ```bash
@@ -66,4 +72,3 @@ git push origin HEAD
 - 禁止在测试失败、审计记录缺失或验收条件未核对时声称任务完成。
 - 禁止把推送失败说成已经上传；如果认证、网络或权限失败，必须记录错误和下一步补救。
 - 禁止修改 `/opt/project/hermes-agent-main`、`/opt/project/openclaw-main`、`/opt/project/deepseek-harness-master` 原始上游目录。
-

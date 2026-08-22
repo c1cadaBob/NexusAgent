@@ -16,6 +16,12 @@ https://github.com/c1cadaBob/NexusAgent
 git remote add origin https://github.com/c1cadaBob/NexusAgent.git
 ```
 
+如果 HTTPS 凭据不可用，但当前环境已具备 GitHub SSH 权限，可以保留 HTTPS 作为 fetch URL，并设置 SSH push URL：
+
+```bash
+git remote set-url --push origin git@github.com:c1cadaBob/NexusAgent.git
+```
+
 ## 2. 必须上传的节点
 
 以下情况必须提交并推送当前分支：
@@ -50,4 +56,3 @@ git push origin HEAD
 2. 保留本地 commit。
 3. 在完成报告中记录失败命令、错误摘要和需要用户处理的事项。
 4. 用户修复权限或远端配置后，再执行 `git push -u origin HEAD`。
-
