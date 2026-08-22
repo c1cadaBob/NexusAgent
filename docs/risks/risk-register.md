@@ -5,12 +5,12 @@
 | 风险 ID | 风险 | 当前等级 | 状态 | 责任阶段 |
 |---|---|---|---|---|
 | R-001 | DSH 预览版接口破坏性变更 | 极高 | 监控 | P0/P2/P6/P8 |
-| R-002 | 三种剥离实验失败 | 极高 | OpenClaw gateway-only 已完成 P0 实验；Hermes/DSH 待验证 | P0 |
-| R-003 | 原生 API/记忆/Agent 能力泄漏 | 极高 | 未验证 | P1-P6 |
+| R-002 | 三种剥离实验失败 | 极高 | OpenClaw gateway-only 与 Hermes planner-only 已完成 P0 实验；DSH executor-only 待 P0-04 | P0 |
+| R-003 | 原生 API/记忆/Agent 能力泄漏 | 极高 | P0-03 已验证 Hermes 原生 final response、tool、file memory、loop 实验阻断；生产隔离待 P3/P6 | P1-P6 |
 | R-004 | 防腐适配器绕过平台内核 | 极高 | 未验证 | P1-P6 |
-| R-005 | 记忆快照、并发写入和脏数据 | 高 | 未验证 | P1/P3/P6 |
+| R-005 | 记忆快照、并发写入和脏数据 | 高 | P0-03 已验证实验模式拒绝 `MEMORY.md`/`USER.md` 直读直写；Memory Gateway 并发和冲突策略待 P3/P6 | P1/P3/P6 |
 | R-006 | 跨栈联调、性能或 Token 超标 | 高 | 未验证 | P1-P7 |
-| R-007 | 服务边界不清导致上游原生概念泄漏到产品层 | 极高 | P0-02 已记录 OpenClaw 原生 Agent/tool 阻断证据；P3/P4/P5 仍需持续验证 | P0-P6 |
+| R-007 | 服务边界不清导致上游原生概念泄漏到产品层 | 极高 | P0-02/P0-03 已记录 OpenClaw 与 Hermes 原生入口阻断证据；P3/P4/P5 仍需持续验证 | P0-P6 |
 | R-008 | 外部基础设施选型过早锁死导致 P1/P8 返工 | 高 | 未验证 | P0/P1/P8 |
 | R-009 | 实际团队容量低于排期基线导致关键路径延后 | 高 | 未验证 | P0-P8 |
 | R-010 | AI 自动生成排期时遗漏只读目录、上游不可见、防绕过或验收命令等高危约束 | 高 | 未验证 | P0-P8 |
@@ -34,3 +34,11 @@ DSH 不作为稳定平台契约，只作为内部 executor provider。P2 必须�
 - R-002：OpenClaw 的 P0 gateway-only 实验已通过 opt-in guard 验证 channel/chat 输入可投影为平台 `TaskRequest`，原生 Agent dispatch 和 `tools.invoke` 路径可被拒绝；Hermes planner-only 与 DSH executor-only 仍需 P0-03/P0-04 关闭。
 - R-007：P0-02 决策记录已列出 OpenClaw 原生入口、阻断点和回归测试清单；P4 生产 provider 化前仍不得把实验环境开关视为正式安全边界。
 - 保留【待确认问题】：OpenClaw upstream remote/release commit/fork 分支、首批正式渠道清单，以及 P4 gateway-only 强制模式的配置形态。
+
+## P0-03 Hermes planner-only 更新
+
+- R-002：Hermes 的 P0 planner-only 实验已通过 opt-in guard 验证 `run_conversation` 可返回结构化 `ExecutionPlan` handoff，并阻断原生 final response、tool runtime、file memory 和 recurring loop；DSH executor-only 仍需 P0-04 关闭。
+- R-003：P0-03 决策记录已列出 Hermes 原生入口、阻断点和回归测试清单；P3 生产 provider 化前仍不得把实验环境开关视为正式安全边界。
+- R-005：P0-03 只证明 Hermes 进程内不读写 `MEMORY.md`/`USER.md`，外部进程和容器层面的文件隔离仍需 P3/P6 用 sidecar 挂载、权限和安全测试证明。
+- R-007：P0-03 新增 `platform/contracts/execution-plan.schema.json` 的 P0 experimental schema；P3 仍需正式冻结 ExecutionPlan、错误码、Memory Gateway 边界和插件复用限制。
+- 保留【待确认问题】：Hermes upstream remote/release commit/fork 分支、Hermes 五层记忆正式策略、P3 planner provider 跨进程协议和 Memory Gateway 生产存储选型。

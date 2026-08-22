@@ -53,6 +53,11 @@ import time
 from dataclasses import dataclass, field, asdict
 from typing import Any, Dict, List, Optional, Tuple
 
+from agent.nexus_planner_only_experiment import (
+    blocked_loop_output,
+    is_nexus_hermes_planner_only_enabled,
+)
+
 logger = logging.getLogger(__name__)
 
 
@@ -688,6 +693,11 @@ class LoopManager:
         turn runs; drivers MUST follow up with ``complete_tick`` (or
         ``abandon_tick`` on injection failure).
         """
+        if is_nexus_hermes_planner_only_enabled():
+            if self._state is not None and self._state.status == "active":
+                self.pause(reason="nexus-planner-only-blocked")
+            return None
+
         s = self._state
         if s is None or not self.is_due():
             return None
@@ -875,6 +885,8 @@ def dispatch_loop_command(
         return {"output": f"⏸ Loop paused: {state.prompt}\nUse /loop resume to continue.", "created": False}
 
     if lower == "resume":
+        if is_nexus_hermes_planner_only_enabled():
+            return blocked_loop_output()
         state = mgr.resume()
         if state is None:
             return {"output": "No loop to resume.", "created": False}
@@ -902,6 +914,9 @@ def dispatch_loop_command(
             ),
             "created": False,
         }
+
+    if is_nexus_hermes_planner_only_enabled():
+        return blocked_loop_output()
 
     parsed = parse_loop_args(arg)
     if parsed["error"]:

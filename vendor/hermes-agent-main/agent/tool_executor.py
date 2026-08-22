@@ -41,6 +41,13 @@ from agent.tool_dispatch_helpers import (
     _plan_tool_batch_segments,
     make_tool_result_message,
 )
+from agent.nexus_planner_only_experiment import (
+    build_blocked_tool_result,
+    is_nexus_hermes_planner_only_enabled,
+    tool_call_arguments,
+    tool_call_id,
+    tool_call_name,
+)
 from tools.terminal_tool import (
     get_active_env,
 )
@@ -112,6 +119,26 @@ def _budget_for_agent(agent) -> BudgetConfig:
         return budget_for_context_window(int(ctx) if ctx else None)
     except Exception:
         return DEFAULT_BUDGET
+
+
+def _append_nexus_planner_only_blocked_tool_results(agent, messages: list, tool_calls, *, source: str) -> None:
+    """Append structured blocked results for every native tool call in P0 mode."""
+
+    blocked_intents = []
+    for tool_call in tool_calls or []:
+        function_name = tool_call_name(tool_call)
+        function_args = tool_call_arguments(tool_call)
+        blocked_intents.append({"name": function_name, "arguments": function_args, "source": source})
+        messages.append(make_tool_result_message(
+            function_name,
+            build_blocked_tool_result(function_name, function_args, source=source),
+            tool_call_id(tool_call),
+            effect_disposition="none",
+        ))
+    try:
+        agent._nexus_planner_only_blocked_tool_intents = blocked_intents
+    except Exception:
+        pass
 
 # Maximum number of concurrent worker threads for parallel tool execution.
 # Mirrors the constant in ``run_agent`` for tests/imports that look here.
@@ -1078,6 +1105,14 @@ def execute_tool_calls_concurrent(agent, assistant_message, messages: list, effe
     mixed batch and the segmented dispatcher owns the turn-end work.
     """
     tool_calls = assistant_message.tool_calls
+    if is_nexus_hermes_planner_only_enabled():
+        _append_nexus_planner_only_blocked_tool_results(
+            agent,
+            messages,
+            tool_calls,
+            source="tool_executor.concurrent",
+        )
+        return
     num_tools = len(tool_calls)
 
     # Resolve the context-scaled tool-output budget once per turn (cheap, but
@@ -1921,6 +1956,15 @@ def execute_tool_calls_sequential(agent, assistant_message, messages: list, effe
     and /steer injection — used when this call is one segment of a larger
     mixed batch and the segmented dispatcher owns the turn-end work.
     """
+    if is_nexus_hermes_planner_only_enabled():
+        _append_nexus_planner_only_blocked_tool_results(
+            agent,
+            messages,
+            getattr(assistant_message, "tool_calls", []),
+            source="tool_executor.sequential",
+        )
+        return
+
     # Resolve the context-scaled tool-output budget once per turn.
     _tool_budget = _budget_for_agent(agent)
 

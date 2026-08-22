@@ -38,7 +38,19 @@ sources:
     upstream_remote: "【待确认问题】"
     file_manifest_sha256: "7407f4aa1c4b7058c4df8bad02b07be45e0bc2d321804095a3873550dad46d3a"
     tree_sha256: "7407f4aa1c4b7058c4df8bad02b07be45e0bc2d321804095a3873550dad46d3a"
-    local_patches: []
+    local_patches:
+      - task_id: P0-03
+        description: "NexusAgent opt-in Hermes planner-only experiment guard"
+        decision_record: docs/decisions/P0-hermes-planner-only.md
+        files:
+          - vendor/hermes-agent-main/agent/nexus_planner_only_experiment.py
+          - vendor/hermes-agent-main/agent/conversation_loop.py
+          - vendor/hermes-agent-main/agent/tool_executor.py
+          - vendor/hermes-agent-main/agent/memory_manager.py
+          - vendor/hermes-agent-main/tools/memory_tool.py
+          - vendor/hermes-agent-main/hermes_cli/loops.py
+          - vendor/hermes-agent-main/tests/agent/test_nexus_planner_only_experiment.py
+          - vendor/hermes-agent-main/tests/hermes_cli/test_nexus_planner_only_loop.py
   - upstream_name: OpenClaw
     vendor_name: openclaw-main
     internal_role: gateway-only

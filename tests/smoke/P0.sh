@@ -26,7 +26,9 @@ required_paths=(
   docs/planning/ai-schedule-prompt-template.md
   docs/planning/task-prompts/README.md
   docs/decisions/P0-openclaw-gateway-only.md
+  docs/decisions/P0-hermes-planner-only.md
   docs/contracts/openapi.yaml
+  platform/contracts/execution-plan.schema.json
   docs/traceability/requirements-matrix.md
   scripts/planning/generate-task-prompts.py
 )
@@ -85,6 +87,16 @@ if printf '%s\n' "$p0_02_audit_block" | rg -q '\.\.\.'; then
 fi
 rg -q 'NEXUS_OPENCLAW_GATEWAY_ONLY=1' docs/decisions/P0-openclaw-gateway-only.md || fail 'P0-02 decision record missing gateway-only experiment flag'
 rg -q 'agentCommandFromGatewayIngress' docs/decisions/P0-openclaw-gateway-only.md || fail 'P0-02 decision record missing native Agent dispatch evidence'
+
+p0_03_prompt="docs/planning/task-prompts/P0/P0-03.md"
+p0_03_audit_block="$(sed -n '/^# P0-03 修改记录包$/,/^## 完整提示词$/p' "$p0_03_prompt")"
+[[ -n "$p0_03_audit_block" ]] || fail 'P0-03 audit record package is missing'
+if printf '%s\n' "$p0_03_audit_block" | rg -q '\.\.\.'; then
+  fail 'P0-03 audit record package still contains placeholder ellipses'
+fi
+rg -q 'NEXUS_HERMES_PLANNER_ONLY=1' docs/decisions/P0-hermes-planner-only.md || fail 'P0-03 decision record missing planner-only experiment flag'
+rg -q 'ExecutionPlan' docs/decisions/P0-hermes-planner-only.md || fail 'P0-03 decision record missing ExecutionPlan evidence'
+rg -q 'nexus.execution_plan.p0.v1' platform/contracts/execution-plan.schema.json || fail 'ExecutionPlan schema missing P0 schema version'
 
 for endpoint in '/v1/tasks:' '/v1/skills:' '/v1/memory/search:' '/v1/tenants:' '/v1/approvals:'; do
   rg -q "^  ${endpoint}" docs/contracts/openapi.yaml || fail "OpenAPI endpoint missing: ${endpoint}"

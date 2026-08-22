@@ -89,6 +89,10 @@ from agent.retry_utils import (
 )
 from agent.repetition_guard import is_repetition_dominated
 from agent.trajectory import has_incomplete_scratchpad
+from agent.nexus_planner_only_experiment import (
+    build_planner_only_turn_result,
+    is_nexus_hermes_planner_only_enabled,
+)
 # Bind before the turn starts so a source-tree swap cannot load a skewed
 # finalizer at turn end.
 from agent.turn_finalizer import finalize_turn
@@ -1816,6 +1820,14 @@ def run_conversation(
                     persist_user_message = _decoded_message
         except Exception:
             pass
+
+    if is_nexus_hermes_planner_only_enabled():
+        return build_planner_only_turn_result(
+            agent,
+            user_message,
+            task_id=task_id,
+            conversation_history=conversation_history,
+        )
 
     # The gateway caches agents across user turns.  Compression state is
     # per-turn: carrying a prior in-place boundary forward would make a later

@@ -34,6 +34,10 @@ from concurrent.futures import Future, ThreadPoolExecutor, wait
 from typing import Any, Callable, Dict, List, Optional
 
 from agent.memory_provider import MemoryProvider
+from agent.nexus_planner_only_experiment import (
+    build_blocked_tool_result,
+    is_nexus_hermes_planner_only_enabled,
+)
 from agent.skill_commands import extract_user_instruction_from_skill_message
 from tools.registry import tool_error
 
@@ -839,6 +843,9 @@ class MemoryManager:
         :meth:`add_provider`, so the manager must not advertise a schema it
         will never route. Built-ins always win (#40466).
         """
+        if is_nexus_hermes_planner_only_enabled():
+            return []
+
         from toolsets import _HERMES_CORE_TOOLS
 
         _core_tool_names = set(_HERMES_CORE_TOOLS)
@@ -884,6 +891,13 @@ class MemoryManager:
         Returns JSON string result. Raises ValueError if no provider
         handles the tool.
         """
+        if is_nexus_hermes_planner_only_enabled():
+            return build_blocked_tool_result(
+                tool_name,
+                args,
+                source="memory_manager.provider_tool",
+            )
+
         provider = self._tool_to_provider.get(tool_name)
         if provider is None:
             return tool_error(f"No memory provider handles tool '{tool_name}'")

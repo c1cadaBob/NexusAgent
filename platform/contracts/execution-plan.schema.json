@@ -1,0 +1,85 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://nexusagent.local/contracts/execution-plan.schema.json",
+  "title": "NexusAgent ExecutionPlan",
+  "description": "P0 experimental schema for the Hermes planner-only proof. P3 will harden this into the production platform contract.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "task",
+    "steps",
+    "tool_intents",
+    "memory_context",
+    "risks",
+    "trace"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "nexus.execution_plan.p0.v1"
+    },
+    "task": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["objective"],
+      "properties": {
+        "task_id": {"type": ["string", "null"]},
+        "conversation_id": {"type": ["string", "null"]},
+        "trace_id": {"type": ["string", "null"]},
+        "objective": {"type": "string", "minLength": 1}
+      }
+    },
+    "steps": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["step_id", "title", "intent", "status", "depends_on"],
+        "properties": {
+          "step_id": {"type": "string", "minLength": 1},
+          "title": {"type": "string", "minLength": 1},
+          "intent": {"type": "string", "minLength": 1},
+          "status": {"enum": ["planned", "blocked", "complete"]},
+          "depends_on": {
+            "type": "array",
+            "items": {"type": "string"}
+          }
+        }
+      }
+    },
+    "tool_intents": {
+      "type": "array",
+      "items": {"type": "object"}
+    },
+    "memory_context": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["mode", "direct_file_memory"],
+      "properties": {
+        "mode": {"const": "memory_gateway_required"},
+        "direct_file_memory": {"const": "blocked"},
+        "forbidden_paths": {
+          "type": "array",
+          "items": {"enum": ["MEMORY.md", "USER.md"]}
+        }
+      }
+    },
+    "risks": {
+      "type": "array",
+      "items": {"type": "object"}
+    },
+    "trace": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["source", "planner_only", "native_tool_runtime", "native_loop_runtime", "native_file_memory"],
+      "properties": {
+        "source": {"type": "string"},
+        "planner_only": {"const": true},
+        "native_tool_runtime": {"const": "blocked"},
+        "native_loop_runtime": {"const": "blocked"},
+        "native_file_memory": {"const": "blocked"}
+      }
+    }
+  }
+}

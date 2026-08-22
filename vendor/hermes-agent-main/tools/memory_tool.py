@@ -33,6 +33,10 @@ from pathlib import Path
 from hermes_constants import get_hermes_home
 from typing import Dict, Any, List, Optional, Tuple
 
+from agent.nexus_planner_only_experiment import (
+    build_blocked_memory_result,
+    is_nexus_hermes_planner_only_enabled,
+)
 from utils import atomic_write_text, is_truthy_value
 from tools.registry import no_cache_check_fn
 
@@ -241,6 +245,15 @@ class MemoryStore:
         Scanning is deterministic from disk bytes, so the snapshot remains
         stable for the entire session (prefix-cache invariant holds).
         """
+        if is_nexus_hermes_planner_only_enabled():
+            self.memory_entries = []
+            self.user_entries = []
+            self._system_prompt_snapshot = {
+                "memory": "",
+                "user": "",
+            }
+            return
+
         mem_dir = get_memory_dir()
         mem_dir.mkdir(parents=True, exist_ok=True)
 
@@ -366,6 +379,9 @@ class MemoryStore:
         bypassed.  Used by the ``add`` action which appends without
         rewriting, so existing content is never clobbered.
         """
+        if is_nexus_hermes_planner_only_enabled():
+            return _READ_FAILED
+
         path = self._path_for(target)
         raw, read_ok = self._read_raw_checked(path)
         if not read_ok:
@@ -386,6 +402,9 @@ class MemoryStore:
 
     def save_to_disk(self, target: str):
         """Persist entries to the appropriate file. Called after every mutation."""
+        if is_nexus_hermes_planner_only_enabled():
+            raise RuntimeError(build_blocked_memory_result("write", target)["error"])
+
         get_memory_dir().mkdir(parents=True, exist_ok=True)
         self._write_file(self._path_for(target), self._entries_for(target))
 
@@ -413,6 +432,9 @@ class MemoryStore:
 
     def add(self, target: str, content: str) -> Dict[str, Any]:
         """Append a new entry. Returns error if it would exceed the char limit."""
+        if is_nexus_hermes_planner_only_enabled():
+            return build_blocked_memory_result("add", target)
+
         content = content.strip()
         if not content:
             return {"success": False, "error": "Content cannot be empty."}
@@ -472,6 +494,9 @@ class MemoryStore:
 
     def replace(self, target: str, old_text: str, new_content: str) -> Dict[str, Any]:
         """Find entry containing old_text substring, replace it with new_content."""
+        if is_nexus_hermes_planner_only_enabled():
+            return build_blocked_memory_result("replace", target)
+
         old_text = old_text.strip()
         new_content = new_content.strip()
         if not old_text:
@@ -543,6 +568,9 @@ class MemoryStore:
 
     def remove(self, target: str, old_text: str) -> Dict[str, Any]:
         """Remove the entry containing old_text substring."""
+        if is_nexus_hermes_planner_only_enabled():
+            return build_blocked_memory_result("remove", target)
+
         old_text = old_text.strip()
         if not old_text:
             return {"success": False, "error": "old_text cannot be empty."}
@@ -596,6 +624,9 @@ class MemoryStore:
         the net result would exceed the char limit, NOTHING is written and an
         error is returned describing the first failure plus the live state.
         """
+        if is_nexus_hermes_planner_only_enabled():
+            return build_blocked_memory_result("batch", target)
+
         if not operations:
             return {"success": False, "error": "operations list is empty."}
 
@@ -901,6 +932,9 @@ class MemoryStore:
         concurrent readers see an empty file. Atomic rename avoids this:
         readers always see either the old complete file or the new one.
         """
+        if is_nexus_hermes_planner_only_enabled():
+            raise RuntimeError(build_blocked_memory_result("write", path.name)["error"])
+
         content = ENTRY_DELIMITER.join(entries) if entries else ""
         try:
             atomic_write_text(path, content, tmp_prefix=".mem_")
@@ -1109,6 +1143,12 @@ def memory_tool(
 
     Returns JSON string with results.
     """
+    if is_nexus_hermes_planner_only_enabled():
+        return json.dumps(
+            build_blocked_memory_result(action or "unknown", target or "memory"),
+            ensure_ascii=False,
+        )
+
     if store is None:
         return tool_error("Memory is not available. It may be disabled in config or this environment.", success=False)
 
@@ -1207,6 +1247,10 @@ def get_builtin_memory_store_flags(config: Optional[Dict[str, Any]] = None) -> T
 @no_cache_check_fn
 def check_memory_requirements() -> bool:
     """Snapshot store flags and report whether the built-in tool is available."""
+    if is_nexus_hermes_planner_only_enabled():
+        _memory_surface_flags.set((False, False))
+        return False
+
     _memory_surface_flags.set(None)
     flags = get_builtin_memory_store_flags()
     _memory_surface_flags.set(flags)
@@ -1242,6 +1286,9 @@ def apply_memory_pending(payload: Dict[str, Any], store: "MemoryStore") -> Dict[
     """
     action = payload.get("action")
     target = payload.get("target", "memory")
+    if is_nexus_hermes_planner_only_enabled():
+        return build_blocked_memory_result(action or "unknown", target)
+
     target_error = _memory_target_error(store, target)
     if target_error is not None:
         return target_error
@@ -1388,7 +1435,5 @@ registry.register(
     emoji="🧠",
     dynamic_schema_overrides=_build_memory_schema_overrides,
 )
-
-
 
 
