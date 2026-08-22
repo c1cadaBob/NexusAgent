@@ -26,3 +26,5 @@ NexusAgent 是一个独立交付、面向用户使用的一体化 AI Agent 平�
 当前开发日历、里程碑、并行工作流和资源假设见[开发排期基线](docs/planning/development-schedule.md)。
 
 后续按阶段或任务自动生成 AI 排期提示词时，使用[AI 排期提示词模板](docs/planning/ai-schedule-prompt-template.md)。
+
+每个任务 ID 的完整实施规划提示词已生成到[任务实施规划提示词索引](docs/planning/task-prompts/README.md)。

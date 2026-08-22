@@ -80,6 +80,7 @@ P0 不开发产品业务代码，拥有项目否决权。每项任务都必须�
 | P0-07 | 十个基础服务功能和整合蓝图 | P0 | `docs/architecture/service-blueprint.md`、`docs/README.md`、`docs/traceability/requirements-matrix.md`、`docs/risks/risk-register.md` | 明确平台统一 API、Web 控制台、OpenClaw/DSH/Hermes adapter、Memory Gateway、Artifact Store、Event Bus、Credential Center、Observability 的功能、技术栈、复用边界、参考项目和整合链路 | 用户补充问题、端口规划、P0 上游快照 | 服务蓝图、追踪矩阵和风险补充 | 每个服务都有功能需求、技术栈、设计规划、上游复用结论、借鉴/自研边界和整合方式；不得把外部项目写成已确定生产选型 | 1.5 | P0-01 | 外部基础设施标准和企业技术栈偏好待确认 |
 | P0-08 | 开发排期基线和资源计划 | P0 | `docs/planning/development-schedule.md`、`docs/README.md`、`docs/traceability/requirements-matrix.md`、`docs/risks/risk-register.md` | 将 P0-P8 人天估算转换为日历排期；明确 MVP、生产交付、并行工作流、资源假设、关键路径和压缩/延后规则 | P0-P8 任务估算、团队分工、服务蓝图、当前日期 | 排期基线、每周执行计划、资源容量规则、待确认事项 | 排期必须覆盖 P0-P8；明确 P0-P6 MVP、P7 可裁剪、P8 生产交付；不得把团队容量和节假日假设写成已确认事实 | 1 | P0-07 | 实际团队人数、节假日和发布冻结窗口待确认 |
 | P0-09 | AI 排期提示词模板 | P0 | `docs/planning/ai-schedule-prompt-template.md`、`docs/README.md`、`docs/traceability/requirements-matrix.md`、`docs/risks/risk-register.md` | 基于高危约束、项目现实情况、服务蓝图和开发排期，建立可自动填充的总控、阶段、任务、周计划、延期重排和门禁评审提示词 | 用户补充提示词要求、P0-07 服务蓝图、P0-08 排期基线 | AI 排期提示词模板、自动填充字段字典、阶段差异化规则 | 模板必须重复包含只读目录、上游不可见、防绕过、UTC/单调时钟、统一 ID、源码证据、待确认问题和验收命令要求；不得授权 AI 擅自修改生产业务代码 | 1 | P0-08 | 后续自动填充脚本尚未实现；提示词执行效果需在阶段复盘中校正 |
+| P0-10 | 按任务 ID 生成实施规划提示词文档 | P0 | `scripts/planning/generate-task-prompts.py`、`docs/planning/task-prompts/`、`docs/README.md`、`docs/traceability/requirements-matrix.md` | 参考实施规划和 AI 排期提示词模板，为每个任务 ID 生成一份单独完整的实施规划提示词文档，便于后续开发直接复制使用 | P0-09 提示词模板、当前任务表、排期基线、需求追踪矩阵、风险登记册 | 任务提示词生成脚本、任务提示词文档目录、每个任务 ID 的完整提示词文件和索引 | 每个任务 ID 都有单独文档；每份提示词必须包含任务信息、排期上下文、只读目录、允许写入路径、防暴露、防绕过、UTC/单调时钟、统一 ID、源码证据、待确认问题和验收命令要求；生成过程可重复 | 1 | P0-09 | 任务表结构存在 P7/P8 简化列，需要生成时补齐缺省字段 |
 
 ### P0 阶段待确认问题
 
@@ -91,6 +92,7 @@ P0 不开发产品业务代码，拥有项目否决权。每项任务都必须�
 - Event Bus、Credential Center、Observability、Artifact Store 和 Memory Gateway 的生产底层选型是否已有企业标准？
 - 实际团队人数、角色投入比例、地区节假日和发布冻结窗口是什么？
 - 后续是否需要实现自动填充脚本，将任务表和排期表转换为具体 AI 提示词？
+- 后续是否需要将任务提示词文档生成接入 CI，检查每个任务 ID 是否都有对应提示词？
 
 ## 2. P1 平台内核公共底座开发
 
@@ -223,7 +225,7 @@ P7 为可裁剪阶段，不得阻塞 MVP。任务分别实现元认知、主动�
 
 | 阶段 | 主要工作 | 预估人天 | 前置依赖 | 里程碑交付物 | 风险等级 | 是否可裁剪 |
 |---|---|---:|---|---|---|---|
-| P0 | 快照、三种剥离实验、接口摸底、OpenAPI、服务蓝图、排期基线、AI 排期提示词模板 | 23 | 无 | P0 可行性报告、vendor、OpenAPI 初稿、十个基础服务蓝图、开发排期、AI 排期提示词模板 | 极高 | 否 |
+| P0 | 快照、三种剥离实验、接口摸底、OpenAPI、服务蓝图、排期基线、AI 排期提示词模板、任务提示词文档 | 24 | 无 | P0 可行性报告、vendor、OpenAPI 初稿、十个基础服务蓝图、开发排期、AI 排期提示词模板、任务提示词文档库 | 极高 | 否 |
 | P1 | 平台内核和开发编排 | 32 | P0 | Coordinator、Policy-Gate、Compose、公共契约 | 高 | 否 |
 | P2 | DSH executor-only 和接入 | 19 | P1、P0-04 | DSH adapter、沙箱和拦截测试 | 极高 | 否，失败时触发回退 |
 | P3 | Hermes planner-only 和记忆代理 | 20 | P1、P0-03 | Hermes adapter、Memory Gateway | 极高 | 可降级下线 Hermes |
@@ -232,7 +234,7 @@ P7 为可裁剪阶段，不得阻塞 MVP。任务分别实现元认知、主动�
 | P6 | E2E、安全、故障和降级 | 17 | P5 | 闭环测试报告 | 高 | 否 |
 | P7 | 高级特性 | 20 | P6 | 可选能力包 | 中 | 是 |
 | P8 | 生产交付和运维 | 20 | P6，P7 可选 | 部署包和交付手册 | 高 | Kubernetes 可分批 |
-| **合计** |  | **200** |  |  |  |  |
+| **合计** |  | **201** |  |  |  |  |
 
 ## 11. 团队分工建议
 
@@ -305,4 +307,4 @@ P0 快照/可行性、P1 Coordinator/Policy-Gate/公共契约/审计、P2 DSH ex
 
 主要风险：DSH 预览版接口变化、三种剥离失败、底层能力泄漏、防腐层绕过、记忆脏数据、跨栈联调和 Token/性能超标。
 
-MVP 时间窗口：按 200 人天工程估算，P0-P6 为首个可用平台基线；当前排期从 2026-08-24 启动，MVP 候选在 2026-11-27 冻结，生产交付候选在 2026-12-24 冻结。实际日历时间取决于团队规模、上游变更、渠道凭据和待确认问题关闭时间。若 Hermes 剥离失败，沿轻量化 OpenClaw + DSH 路线保留平台外壳交付。
+MVP 时间窗口：按 201 人天工程估算，P0-P6 为首个可用平台基线；当前排期从 2026-08-24 启动，MVP 候选在 2026-11-27 冻结，生产交付候选在 2026-12-24 冻结。实际日历时间取决于团队规模、上游变更、渠道凭据和待确认问题关闭时间。若 Hermes 剥离失败，沿轻量化 OpenClaw + DSH 路线保留平台外壳交付。

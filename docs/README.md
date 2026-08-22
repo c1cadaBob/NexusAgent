@@ -14,6 +14,7 @@
 - [完整实施规划](planning/integrated-platform-plan.md)
 - [开发排期基线](planning/development-schedule.md)
 - [AI 排期提示词模板](planning/ai-schedule-prompt-template.md)
+- [任务实施规划提示词索引](planning/task-prompts/README.md)
 - [对外 API 契约](contracts/openapi.yaml)
 - [服务功能与整合蓝图](architecture/service-blueprint.md)
 - [需求追踪矩阵](traceability/requirements-matrix.md)
