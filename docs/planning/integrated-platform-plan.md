@@ -48,6 +48,23 @@ NexusAgent 是一个完整独立、可交付的一体化 AI Agent 平台。终�
 3. 统一任务标识、事件信封或 artifact 引用无法跨进程保持一致。
 4. DSH 预览版接口变更导致适配器无法维护且无替代版本。
 
+### 0.4 十个基础服务设计边界
+
+十个基础服务的功能需求、默认技术栈、设计规划、三大上游复用边界、外部可借鉴项目和整体整合方式维护在 [`docs/architecture/service-blueprint.md`](../architecture/service-blueprint.md)。该蓝图是 P1 平台内核、P2-P4 三个 adapter 改造、P5 产品层和 P6 集成测试的共同输入。
+
+| 服务 | 设计结论 |
+|---|---|
+| 平台统一 API | 必须自研为唯一北向入口；可借鉴 OIDC/OPA/Temporal 等成熟能力，但不得代理暴露上游原生 API。 |
+| Web 管理控制台 | 必须自研为平台控制台；只调用平台 API，不显示 Hermes/OpenClaw/DSH 原生命名。 |
+| OpenClaw 网关适配器 | 基于 OpenClaw 改造为 gateway-only，复用渠道接入和出站能力。 |
+| DSH 执行器适配器 | 基于 DeepSeek Harness 改造为 executor-only，复用沙箱执行和 artifact 产生路径。 |
+| Hermes 规划器适配器 | 基于 Hermes 改造为 planner-only，复用规划与记忆推理能力。 |
+| Memory Gateway | 可借鉴 Hermes 记忆模型，但平台存储、租户、版本、权限和审计必须自研。 |
+| Artifact Store | 可消费 DSH 产物，但保存、引用、权限和生命周期必须平台统一实现。 |
+| Event Bus | 不复用上游事件模型；平台事件信封自研，底层消息系统可评估 NATS/Kafka/Temporal。 |
+| Credential Center | 不复用上游凭据机制；平台只传 credential reference，生产密钥托管可对接 Vault/KMS。 |
+| Observability | 不暴露上游原生日志/错误码；平台定义 trace、metrics、logs 和任务时间线。 |
+
 ## 1. P0 预研与可行性验证阶段
 
 P0 不开发产品业务代码，拥有项目否决权。每项任务都必须输出源码证据、实验日志和可复现命令。
@@ -60,6 +77,7 @@ P0 不开发产品业务代码，拥有项目否决权。每项任务都必须�
 | P0-04 | DSH executor-only 剥离实验 | P0 | `/opt/project/NexusAgent/vendor/deepseek-harness-master/packages/core/agent-loop/src/agent.ts`、`constants.ts`、`index.ts`、`runtime-context.ts`、`tool-calls.ts`；`packages/core/agent/src/dispatch.ts`；新增 `docs/decisions/P0-dsh-executor-only.md` | 先确认 agent-loop、tool-call、sandbox 和 session 依赖；实验中禁止内部 Agent Loop，只保留受策略约束的执行入口 | DSH 快照、developer preview 版本 | executor-only patch、执行输入输出样例、兼容性清单 | 请求必须附带平台 execution_id 和策略；不能从外部启动 DSH 原生 agent-loop；执行结果和事件可被平台解析 | 5 | P0-01 | 预览版接口不稳定；Cordis 插件依赖可能阻塞剥离 |
 | P0-05 | 底层接口摸底与兼容性登记 | P0 | `docs/architecture/upstream-interface-inventory.md`、`docs/risks/risk-register.md`、`scripts/upstream-tracking/` | 记录实际入口、协议、启动参数、依赖、许可证和已知泄漏点；未确认内容标记为【待确认问题】 | P0-02 至 P0-04 证据 | 接口清单、风险卡点、上游变更登记模板 | 每个底层入口都能归类为保留、隔离或禁止；没有凭源码猜测的行为描述 | 2 | P0-02/P0-03/P0-04 | 缺少 upstream remote/commit；许可证需确认 |
 | P0-06 | 平台 OpenAPI 初稿 | P0 | `docs/contracts/openapi.yaml`、`platform/contracts/` | 定义平台任务、技能、记忆、租户、审批和健康 API；禁止出现底层原生类型和路径 | 需求原文、P0 接口边界 | OpenAPI 3.1 初稿、平台错误码草案 | `npx @redocly/cli lint docs/contracts/openapi.yaml` 或等价校验通过；所有接口使用平台术语 | 2 | P0-05 | REST/gRPC 是否同期交付待确认 |
+| P0-07 | 十个基础服务功能和整合蓝图 | P0 | `docs/architecture/service-blueprint.md`、`docs/README.md`、`docs/traceability/requirements-matrix.md`、`docs/risks/risk-register.md` | 明确平台统一 API、Web 控制台、OpenClaw/DSH/Hermes adapter、Memory Gateway、Artifact Store、Event Bus、Credential Center、Observability 的功能、技术栈、复用边界、参考项目和整合链路 | 用户补充问题、端口规划、P0 上游快照 | 服务蓝图、追踪矩阵和风险补充 | 每个服务都有功能需求、技术栈、设计规划、上游复用结论、借鉴/自研边界和整合方式；不得把外部项目写成已确定生产选型 | 1.5 | P0-01 | 外部基础设施标准和企业技术栈偏好待确认 |
 
 ### P0 阶段待确认问题
 
@@ -68,6 +86,7 @@ P0 不开发产品业务代码，拥有项目否决权。每项任务都必须�
 - OpenClaw 的首批渠道是否确定为钉钉、飞书、Telegram？
 - Hermes 五层记忆的层级、保留期、冲突处理和存储选型是什么？
 - DSH 预览版是否允许固定到当前 `0.1.0-rc.5` 的本地快照？
+- Event Bus、Credential Center、Observability、Artifact Store 和 Memory Gateway 的生产底层选型是否已有企业标准？
 
 ## 2. P1 平台内核公共底座开发
 
@@ -75,12 +94,12 @@ P0 不开发产品业务代码，拥有项目否决权。每项任务都必须�
 
 | 任务ID | 任务名称 | 所属阶段 | 涉及文件开发路径 | 修改说明 | 输入 | 输出 | 验收条件 | 预估人天 | 前置依赖 | 潜在卡点 |
 |---|---|---|---|---|---|---|---|---:|---|---|
-| P1-01 | 公共标识、事件信封和状态机 | P1 | `platform/contracts/*.schema.json`、`platform/task-state/` | 定义全局 ID、七层任务状态、事件信封、错误码、UTC/单调时钟字段 | P0 OpenAPI | JSON Schema、类型定义、状态转移表 | 非法状态转移和跨租户 ID 被拒绝；schema 校验和单元测试通过 | 4 | P0-06 | 状态语义需和产品审批/重试对齐 |
+| P1-01 | 公共标识、事件信封和状态机 | P1 | `platform/contracts/*.schema.json`、`platform/task-state/` | 定义全局 ID、七层任务状态、事件信封、错误码、UTC/单调时钟字段 | P0 OpenAPI、服务蓝图 | JSON Schema、类型定义、状态转移表 | 非法状态转移和跨租户 ID 被拒绝；schema 校验和单元测试通过 | 4 | P0-06/P0-07 | 状态语义需和产品审批/重试对齐 |
 | P1-02 | Coordinator 与 Policy-Gate | P1 | `platform/coordinator/`、`platform/policy-gate/` | 实现统一调度、租户/RBAC/预算/审批校验和适配器路由；不允许底层直连 | P1-01 | 内核服务接口、拦截中间件、决策日志 | 所有内部调用带 trace_id 和 execution_id；绕过 Policy-Gate 的测试请求均失败 | 7 | P1-01 | 跨进程鉴权和重试语义 |
 | P1-03 | 适配器抽象、事件总线、统一时钟 | P1 | `platform/adapters/`、`platform/event-bus/`、`platform/clock/` | 定义适配器生命周期、请求/响应转换、事件发布订阅和单调时间服务 | P1-01 | 三种空实现适配器、事件总线和时钟 API | mock adapter 可跑通 task 生命周期；事件顺序和重复投递策略有测试 | 5 | P1-01 | 消息总线选型待确认 |
 | P1-04 | Artifact Store、Memory Gateway、凭据中心 | P1 | `platform/artifact-store/`、`platform/memory-gateway/`、`platform/credentials/` | 统一 artifact 引用、五层记忆代理和凭据引用；禁止传递明文密钥 | P1-01 | 服务接口、引用 schema、最小本地实现 | artifact 可上传/读取/过期；memory 读写带租户隔离；日志和事件不含明文凭据 | 7 | P1-01 | 生产存储选型和密钥托管待确认 |
 | P1-05 | 租户、RBAC、审计和 trace 链路 | P1 | `platform/tenancy/`、`platform/rbac/`、`platform/audit/`、`platform/observability/` | 建立租户边界、角色权限、不可抵赖审计和 trace_id 关联 | P1-02 | 权限骨架、审计事件、指标/健康接口 | 跨租户访问、越权操作和无 trace_id 事件均被拒绝；审计记录可查询 | 5 | P1-02 | 组织模型和审计留存策略待确认 |
-| P1-06 | 开发编排、错误码和 P1 冒烟 | P1 | `deploy/docker-compose.dev.yml`、`config/ports.dev.yaml`、`config/services.dev.yaml`、`tests/smoke/P1.sh` | 加入源码卷挂载、热更新、调试端口、健康检查、端口冲突校验和平台错误码 | P1-01 至 P1-05 | 开发 Compose、端口表、健康脚本 | `docker compose -f deploy/docker-compose.dev.yml config` 通过；服务端口从 3050 连续且无冲突；冒烟脚本输出 PASS | 4 | P1-01 至 P1-05 | 本地 Docker/调试器版本差异 |
+| P1-06 | 开发编排、错误码和 P1 冒烟 | P1 | `deploy/docker-compose.dev.yml`、`config/ports.dev.yaml`、`config/services.dev.yaml`、`tests/smoke/P1.sh` | 加入源码卷挂载、热更新、调试端口、健康检查、端口冲突校验和平台错误码 | P1-01 至 P1-05、服务蓝图 | 开发 Compose、端口表、健康脚本 | `docker compose -f deploy/docker-compose.dev.yml config` 通过；服务端口从 3050 连续且无冲突；冒烟脚本输出 PASS | 4 | P1-01 至 P1-05 | 本地 Docker/调试器版本差异；服务边界配置漂移 |
 
 ### P1 阶段待确认问题
 
@@ -200,7 +219,7 @@ P7 为可裁剪阶段，不得阻塞 MVP。任务分别实现元认知、主动�
 
 | 阶段 | 主要工作 | 预估人天 | 前置依赖 | 里程碑交付物 | 风险等级 | 是否可裁剪 |
 |---|---|---:|---|---|---|---|
-| P0 | 快照、三种剥离实验、接口摸底、OpenAPI | 19.5 | 无 | P0 可行性报告、vendor、OpenAPI 初稿 | 极高 | 否 |
+| P0 | 快照、三种剥离实验、接口摸底、OpenAPI、服务蓝图 | 21 | 无 | P0 可行性报告、vendor、OpenAPI 初稿、十个基础服务蓝图 | 极高 | 否 |
 | P1 | 平台内核和开发编排 | 32 | P0 | Coordinator、Policy-Gate、Compose、公共契约 | 高 | 否 |
 | P2 | DSH executor-only 和接入 | 19 | P1、P0-04 | DSH adapter、沙箱和拦截测试 | 极高 | 否，失败时触发回退 |
 | P3 | Hermes planner-only 和记忆代理 | 20 | P1、P0-03 | Hermes adapter、Memory Gateway | 极高 | 可降级下线 Hermes |
@@ -209,7 +228,7 @@ P7 为可裁剪阶段，不得阻塞 MVP。任务分别实现元认知、主动�
 | P6 | E2E、安全、故障和降级 | 17 | P5 | 闭环测试报告 | 高 | 否 |
 | P7 | 高级特性 | 20 | P6 | 可选能力包 | 中 | 是 |
 | P8 | 生产交付和运维 | 20 | P6，P7 可选 | 部署包和交付手册 | 高 | Kubernetes 可分批 |
-| **合计** |  | **196.5** |  |  |  |  |
+| **合计** |  | **198** |  |  |  |  |
 
 ## 11. 团队分工建议
 
@@ -236,6 +255,8 @@ P7 为可裁剪阶段，不得阻塞 MVP。任务分别实现元认知、主动�
 | 性能或 Token 超标 | 高 | p95 延迟、队列长度或 token 预算超阈值 | 预算门、采样、降级、压测和指标 | 关闭高级记忆/元认知，保留基础任务 |
 | 凭据明文泄漏 | 极高 | 日志、事件或 artifact 出现 secret | 只传 credential reference；日志脱敏；安全测试 | 立即轮换凭据并阻断相关渠道 |
 | 上游许可证/NOTICE 不清 | 高 | 再分发或修改条款无法确认 | P0 法务检查和第三方声明清单 | 暂停交付相关组件 |
+| 服务边界不清导致产品层泄漏上游概念 | 极高 | 控制台、API、SDK、日志或错误码出现 Hermes/OpenClaw/DSH 原生类型 | 服务蓝图、契约白名单、adapter 出口扫描、代码评审 | 冻结 P5，对泄漏路径回退到 adapter 层重构 |
+| 外部基础设施选型过早锁死 | 高 | P1/P8 前未确认企业标准却绑定具体消息、密钥、存储或观测产品 | 服务蓝图只给候选项目；P1 保留抽象接口；P8 前完成正式选型 | 回退到接口兼容层，替换底层实现 |
 
 ## 13. 裁剪策略与降级路线
 
@@ -272,10 +293,10 @@ P0 快照/可行性、P1 Coordinator/Policy-Gate/公共契约/审计、P2 DSH ex
 
 ## 一页管理层极简摘要
 
-目标：交付一个对外独立的 AI Agent 平台，统一 API、控制台、渠道、任务、技能、记忆、租户和审计；Hermes、OpenClaw、DSH 仅作为内部实现依赖。
+目标：交付一个对外独立的 AI Agent 平台，统一 API、控制台、渠道、任务、技能、记忆、租户和审计；Hermes、OpenClaw、DSH 仅作为内部实现依赖。十个基础服务的功能和整合边界已在服务蓝图中单独维护。
 
 里程碑：P0 验证三种剥离可行性；P1 建成平台内核；P2-P4 接入内部执行/规划/渠道组件；P5 交付用户产品；P6 完成安全和端到端闭环；P8 完成生产交付。
 
 主要风险：DSH 预览版接口变化、三种剥离失败、底层能力泄漏、防腐层绕过、记忆脏数据、跨栈联调和 Token/性能超标。
 
-MVP 时间窗口：按 196.5 人天工程估算，P0-P6 为首个可用平台基线；实际日历时间取决于团队规模、上游变更、渠道凭据和待确认问题关闭时间。若 Hermes 剥离失败，沿轻量化 OpenClaw + DSH 路线保留平台外壳交付。
+MVP 时间窗口：按 198 人天工程估算，P0-P6 为首个可用平台基线；实际日历时间取决于团队规模、上游变更、渠道凭据和待确认问题关闭时间。若 Hermes 剥离失败，沿轻量化 OpenClaw + DSH 路线保留平台外壳交付。

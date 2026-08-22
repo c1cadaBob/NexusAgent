@@ -12,3 +12,6 @@
 | REQ-008 | Hermes 记忆读写统一经过 Memory Gateway | P1/P3/P6 | P1-04/P3-02/P3-04 | `platform/memory-gateway/` | `tests/security/` | 已规划 |
 | REQ-009 | DSH 执行产出使用平台 artifact 引用 | P1/P2 | P1-04/P2-03 | `platform/artifact-store/` | `tests/integration/` | 已规划 |
 | REQ-010 | P0 失败时可降级到 OpenClaw + DSH | P0/P6 | P0-02/P0-03/P0-04/P6-03 | `docs/planning/`、`tests/fault-injection/` | `tests/smoke/P6.sh` | 已规划 |
+| REQ-011 | 明确十个基础服务的功能需求、技术栈和整合边界 | P0/P1 | P0-07/P1-01/P1-06 | `docs/architecture/service-blueprint.md`、`platform/contracts/`、`config/ports.dev.yaml` | `tests/smoke/P0.sh`、`tests/smoke/P1.sh` | 已规划 |
+| REQ-012 | 明确哪些能力复用 OpenClaw/Hermes/DSH，哪些必须平台自研 | P0-P4 | P0-02/P0-03/P0-04/P0-07/P2-02/P3-03/P4-02 | `docs/architecture/service-blueprint.md`、`platform/adapters/`、`vendor/` | `tests/security/`、`tests/integration/` | 已规划 |
+| REQ-013 | 评估 Event Bus、Credential、Observability、Artifact、Memory 等外部参考项目 | P0-P8 | P0-07/P1-03/P1-04/P1-05/P8-03 | `docs/architecture/service-blueprint.md`、`docs/risks/risk-register.md` | `tests/smoke/P1.sh`、`tests/smoke/P8.sh` | 已规划 |

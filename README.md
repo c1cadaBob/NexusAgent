@@ -20,3 +20,5 @@ NexusAgent 是一个独立交付、面向用户使用的一体化 AI Agent 平�
 平台对外只暴露统一的 REST/gRPC API、Web 管理控制台和平台层任务/技能/记忆/租户/RBAC/审计能力。所有底层调用必须经过 `Coordinator`、`Policy-Gate` 和 `platform/adapters/`，禁止外部直接访问 Hermes、OpenClaw 或 DSH。
 
 详细阶段门禁、任务拆解和验收条件见[完整实施规划](docs/planning/integrated-platform-plan.md)。
+
+十个基础服务的功能需求、技术栈、三大上游复用边界、外部可借鉴项目和整合方式见[服务功能与整合蓝图](docs/architecture/service-blueprint.md)。

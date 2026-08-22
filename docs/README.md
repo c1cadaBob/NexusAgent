@@ -13,6 +13,7 @@
 
 - [完整实施规划](planning/integrated-platform-plan.md)
 - [对外 API 契约](contracts/openapi.yaml)
+- [服务功能与整合蓝图](architecture/service-blueprint.md)
 - [需求追踪矩阵](traceability/requirements-matrix.md)
 - [开发端口规划](architecture/ports.md)
 - [测试策略](testing/strategy.md)
