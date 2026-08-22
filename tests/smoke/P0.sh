@@ -53,6 +53,10 @@ for task_id in "${task_ids[@]}"; do
   rg -q "任务ID：${task_id}" "$prompt_path" || fail "task prompt missing task ID marker: $prompt_path"
   rg -q '原始上游目录只读' "$prompt_path" || fail "task prompt missing readonly upstream constraint: $prompt_path"
   rg -q '最低验收命令' "$prompt_path" || fail "task prompt missing acceptance command section: $prompt_path"
+  rg -q "^# ${task_id} 修改记录包" "$prompt_path" || fail "task prompt missing audit record package: $prompt_path"
+  rg -q '^## 1\. 修改前分析' "$prompt_path" || fail "task prompt missing pre-change audit section: $prompt_path"
+  rg -q '^## 2\. 修改过程记录' "$prompt_path" || fail "task prompt missing change-process audit section: $prompt_path"
+  rg -q '^## 3\. 修改后验证与总结' "$prompt_path" || fail "task prompt missing post-change audit section: $prompt_path"
 done
 
 for endpoint in '/v1/tasks:' '/v1/skills:' '/v1/memory/search:' '/v1/tenants:' '/v1/approvals:'; do
@@ -64,4 +68,4 @@ if find vendor -type d \( -name node_modules -o -name .pnpm-store -o -name __pyc
 fi
 
 git diff --check || fail 'whitespace errors found'
-printf 'PASS: P0 structure, vendor manifest, plan sections, OpenAPI placeholders, task prompts, and exclusions\n'
+printf 'PASS: P0 structure, vendor manifest, plan sections, OpenAPI placeholders, task prompts, audit templates, and exclusions\n'

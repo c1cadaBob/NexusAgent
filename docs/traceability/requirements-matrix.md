@@ -18,3 +18,4 @@
 | REQ-014 | 建立开发日历、阶段门禁、并行工作流和资源排期基线 | P0-P8 | P0-08/P1-06/P6-01/P8-04 | `docs/planning/development-schedule.md`、`docs/planning/integrated-platform-plan.md` | `tests/smoke/P0.sh`、阶段门禁评审 | 已规划 |
 | REQ-015 | 建立可自动填充的 AI 排期提示词模板，覆盖阶段、任务、周计划、延期和门禁评审 | P0-P8 | P0-09/P1-06/P6-01/P8-04 | `docs/planning/ai-schedule-prompt-template.md`、`docs/planning/development-schedule.md` | `tests/smoke/P0.sh`、阶段门禁评审 | 已规划 |
 | REQ-016 | 为每个任务 ID 生成单独完整的实施规划提示词文档 | P0-P8 | P0-10/P1-06/P6-01/P8-04 | `scripts/planning/generate-task-prompts.py`、`docs/planning/task-prompts/` | `tests/smoke/P0.sh`、任务提示词覆盖率检查 | 已规划 |
+| REQ-017 | 每个任务 ID 文档必须包含修改记录包，用于记录修改前分析、过程记录和修改后验证 | P0-P8 | P0-10/P1-06/P6-01/P8-04 | `docs/planning/task-prompts/`、`scripts/planning/generate-task-prompts.py` | `tests/smoke/P0.sh`、阶段门禁评审 | 已规划 |

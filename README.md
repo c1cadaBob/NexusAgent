@@ -28,3 +28,5 @@ NexusAgent 是一个独立交付、面向用户使用的一体化 AI Agent 平�
 后续按阶段或任务自动生成 AI 排期提示词时，使用[AI 排期提示词模板](docs/planning/ai-schedule-prompt-template.md)。
 
 每个任务 ID 的完整实施规划提示词已生成到[任务实施规划提示词索引](docs/planning/task-prompts/README.md)。
+
+执行任一任务前后，必须在对应任务 ID 文档中填写“修改记录包”，记录修改前分析、修改过程和修改后验证，作为阶段门禁审计依据。
