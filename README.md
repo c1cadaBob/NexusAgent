@@ -22,3 +22,5 @@ NexusAgent 是一个独立交付、面向用户使用的一体化 AI Agent 平�
 详细阶段门禁、任务拆解和验收条件见[完整实施规划](docs/planning/integrated-platform-plan.md)。
 
 十个基础服务的功能需求、技术栈、三大上游复用边界、外部可借鉴项目和整合方式见[服务功能与整合蓝图](docs/architecture/service-blueprint.md)。
+
+当前开发日历、里程碑、并行工作流和资源假设见[开发排期基线](docs/planning/development-schedule.md)。
