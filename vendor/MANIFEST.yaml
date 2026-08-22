@@ -74,4 +74,13 @@ sources:
     upstream_remote: "【待确认问题】"
     file_manifest_sha256: "e73c0ee88a4d5522e8d37a8ffc9cc3204d777a829810d302267a10c9c1048b25"
     tree_sha256: "e73c0ee88a4d5522e8d37a8ffc9cc3204d777a829810d302267a10c9c1048b25"
-    local_patches: []
+    local_patches:
+      - task_id: P0-04
+        description: "NexusAgent opt-in DSH executor-only experiment guard"
+        decision_record: docs/decisions/P0-dsh-executor-only.md
+        files:
+          - vendor/deepseek-harness-master/packages/core/agent-loop/src/nexus-executor-only-experiment.ts
+          - vendor/deepseek-harness-master/packages/core/agent-loop/src/agent.ts
+          - vendor/deepseek-harness-master/packages/core/agent-loop/src/index.ts
+          - vendor/deepseek-harness-master/packages/core/agent-loop/src/tool-calls.ts
+          - vendor/deepseek-harness-master/packages/core/agent-loop/tests/nexus-executor-only-experiment.spec.ts

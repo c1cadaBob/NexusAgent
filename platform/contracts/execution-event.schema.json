@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://nexusagent.local/contracts/execution-event.schema.json",
+  "title": "NexusAgent ExecutionEvent",
+  "description": "P0 experimental schema for the DSH executor-only proof. P2 will harden this into the production execution event contract.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "execution_id",
+    "event_type",
+    "status",
+    "payload"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "nexus.execution_event.p0.v1"
+    },
+    "execution_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "trace_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "event_type": {
+      "enum": [
+        "execution.accepted",
+        "execution.blocked",
+        "tool.blocked",
+        "tool.result"
+      ]
+    },
+    "status": {
+      "enum": ["accepted", "blocked", "completed", "failed"]
+    },
+    "payload": {
+      "type": "object"
+    }
+  }
+}

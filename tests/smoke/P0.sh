@@ -27,8 +27,10 @@ required_paths=(
   docs/planning/task-prompts/README.md
   docs/decisions/P0-openclaw-gateway-only.md
   docs/decisions/P0-hermes-planner-only.md
+  docs/decisions/P0-dsh-executor-only.md
   docs/contracts/openapi.yaml
   platform/contracts/execution-plan.schema.json
+  platform/contracts/execution-event.schema.json
   docs/traceability/requirements-matrix.md
   scripts/planning/generate-task-prompts.py
 )
@@ -97,6 +99,16 @@ fi
 rg -q 'NEXUS_HERMES_PLANNER_ONLY=1' docs/decisions/P0-hermes-planner-only.md || fail 'P0-03 decision record missing planner-only experiment flag'
 rg -q 'ExecutionPlan' docs/decisions/P0-hermes-planner-only.md || fail 'P0-03 decision record missing ExecutionPlan evidence'
 rg -q 'nexus.execution_plan.p0.v1' platform/contracts/execution-plan.schema.json || fail 'ExecutionPlan schema missing P0 schema version'
+
+p0_04_prompt="docs/planning/task-prompts/P0/P0-04.md"
+p0_04_audit_block="$(sed -n '/^# P0-04 修改记录包$/,/^## 完整提示词$/p' "$p0_04_prompt")"
+[[ -n "$p0_04_audit_block" ]] || fail 'P0-04 audit record package is missing'
+if printf '%s\n' "$p0_04_audit_block" | rg -q '\.\.\.'; then
+  fail 'P0-04 audit record package still contains placeholder ellipses'
+fi
+rg -q 'NEXUS_DSH_EXECUTOR_ONLY=1' docs/decisions/P0-dsh-executor-only.md || fail 'P0-04 decision record missing executor-only experiment flag'
+rg -q 'execution_id' docs/decisions/P0-dsh-executor-only.md || fail 'P0-04 decision record missing platform execution_id evidence'
+rg -q 'nexus.execution_event.p0.v1' platform/contracts/execution-event.schema.json || fail 'ExecutionEvent schema missing P0 schema version'
 
 for endpoint in '/v1/tasks:' '/v1/skills:' '/v1/memory/search:' '/v1/tenants:' '/v1/approvals:'; do
   rg -q "^  ${endpoint}" docs/contracts/openapi.yaml || fail "OpenAPI endpoint missing: ${endpoint}"

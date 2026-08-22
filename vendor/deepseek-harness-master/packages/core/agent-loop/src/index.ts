@@ -28,6 +28,7 @@ import type {} from '@deepseek-ai/dsh-tools'
 import type { SessionPersistence } from '@deepseek-ai/dsh-session-persistence'
 import { ReactLoopAgent } from './agent.ts'
 import { DEFAULT_MAX_PARALLEL_TOOL_CALLS } from './constants.ts'
+import { assertNexusNativeAgentLoopAllowed, isNexusDshExecutorOnlyEnabled } from './nexus-executor-only-experiment.ts'
 
 /** Fiber states that cannot own or serve a new lifecycle. */
 const INACTIVE_STATES: ReadonlySet<FiberState> = new Set([
@@ -344,6 +345,9 @@ export class AgentLoop extends Service implements AgentFactory {
       onChange: () => {},
     })
     validateConfiguredAgents(this.config.agents)
+    if (isNexusDshExecutorOnlyEnabled() && this.config.agents.length > 0) {
+      assertNexusNativeAgentLoopAllowed('AgentLoop.configuredAgents')
+    }
     this.ownership = new FactoryOwnership(ctx.fiber)
     this.runtime = { ctx }
     ctx.effect(() => () => this.ownership.dispose(), 'agentLoop.transactions()')
@@ -587,6 +591,7 @@ export class AgentLoop extends Service implements AgentFactory {
    * @returns the published running agent.
    */
   create(id: SessionId, options: AgentOptions = {}, meta: Pick<SessionHeader, 'cwd'> = {}): Agent {
+    assertNexusNativeAgentLoopAllowed('AgentLoop.create')
     using preparation = SessionPreparation.create(this.runtime.ctx.sessions.prepare(id, { meta }))
     const prepared = this.prepare(this.ctx, id, options, preparation.session)
     try {
@@ -604,6 +609,7 @@ export class AgentLoop extends Service implements AgentFactory {
    * @returns the published handle.
    */
   async createAgent(ownerCtx: Context, options: CreateAgentOptions): Promise<AgentHandle> {
+    assertNexusNativeAgentLoopAllowed('AgentLoop.createAgent')
     const preparation = SessionPreparation.create(this.runtime.ctx.sessions.prepare(options.sessionId, {
       ...options.seed === undefined ? {} : { seed: options.seed },
       ...options.meta === undefined ? {} : { meta: options.meta },
@@ -651,6 +657,7 @@ export class AgentLoop extends Service implements AgentFactory {
    * @returns the published handle.
    */
   async resume(ownerCtx: Context, options: ResumeAgentOptions): Promise<AgentHandle> {
+    assertNexusNativeAgentLoopAllowed('AgentLoop.resume')
     const persistence = this.runtime.ctx.get('sessionPersistence')
     if (persistence === undefined) {
       throw new Error('cannot resume: session persistence is not configured (load a dsh-session-persistence backend)')

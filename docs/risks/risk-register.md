@@ -4,13 +4,13 @@
 
 | 风险 ID | 风险 | 当前等级 | 状态 | 责任阶段 |
 |---|---|---|---|---|
-| R-001 | DSH 预览版接口破坏性变更 | 极高 | 监控 | P0/P2/P6/P8 |
-| R-002 | 三种剥离实验失败 | 极高 | OpenClaw gateway-only 与 Hermes planner-only 已完成 P0 实验；DSH executor-only 待 P0-04 | P0 |
-| R-003 | 原生 API/记忆/Agent 能力泄漏 | 极高 | P0-03 已验证 Hermes 原生 final response、tool、file memory、loop 实验阻断；生产隔离待 P3/P6 | P1-P6 |
-| R-004 | 防腐适配器绕过平台内核 | 极高 | 未验证 | P1-P6 |
+| R-001 | DSH 预览版接口破坏性变更 | 极高 | P0-04 已记录 executor-only opt-in guard 和 `ExecutionEvent` P0 schema；正式 provider 兼容、回滚和替换仍需 P2/P6/P8 验证 | P0/P2/P6/P8 |
+| R-002 | 三种剥离实验失败 | 极高 | OpenClaw gateway-only、Hermes planner-only、DSH executor-only 均已完成 P0 opt-in 实验；生产强制隔离仍待 P2-P4/P6 | P0 |
+| R-003 | 原生 API/记忆/Agent 能力泄漏 | 极高 | P0-03 已验证 Hermes 原生 final response、tool、file memory、loop 实验阻断；P0-04 已验证 DSH native agent-loop 和无策略 tool-call 阻断；生产隔离待 P2/P3/P6 | P1-P6 |
+| R-004 | 防腐适配器绕过平台内核 | 极高 | P0-04 已证明 DSH 进程内 guard 可阻断 native loop 和缺少平台策略的工具调度；正式 adapter、防端口绕过和 sidecar 隔离待 P1/P2/P6 | P1-P6 |
 | R-005 | 记忆快照、并发写入和脏数据 | 高 | P0-03 已验证实验模式拒绝 `MEMORY.md`/`USER.md` 直读直写；Memory Gateway 并发和冲突策略待 P3/P6 | P1/P3/P6 |
 | R-006 | 跨栈联调、性能或 Token 超标 | 高 | 未验证 | P1-P7 |
-| R-007 | 服务边界不清导致上游原生概念泄漏到产品层 | 极高 | P0-02/P0-03 已记录 OpenClaw 与 Hermes 原生入口阻断证据；P3/P4/P5 仍需持续验证 | P0-P6 |
+| R-007 | 服务边界不清导致上游原生概念泄漏到产品层 | 极高 | P0-02/P0-03/P0-04 已记录 OpenClaw、Hermes、DSH 原生入口阻断证据；P2-P5 仍需持续验证公共 API、SDK 和控制台不泄漏原生概念 | P0-P6 |
 | R-008 | 外部基础设施选型过早锁死导致 P1/P8 返工 | 高 | 未验证 | P0/P1/P8 |
 | R-009 | 实际团队容量低于排期基线导致关键路径延后 | 高 | 未验证 | P0-P8 |
 | R-010 | AI 自动生成排期时遗漏只读目录、上游不可见、防绕过或验收命令等高危约束 | 高 | 未验证 | P0-P8 |
@@ -42,3 +42,12 @@ DSH 不作为稳定平台契约，只作为内部 executor provider。P2 必须�
 - R-005：P0-03 只证明 Hermes 进程内不读写 `MEMORY.md`/`USER.md`，外部进程和容器层面的文件隔离仍需 P3/P6 用 sidecar 挂载、权限和安全测试证明。
 - R-007：P0-03 新增 `platform/contracts/execution-plan.schema.json` 的 P0 experimental schema；P3 仍需正式冻结 ExecutionPlan、错误码、Memory Gateway 边界和插件复用限制。
 - 保留【待确认问题】：Hermes upstream remote/release commit/fork 分支、Hermes 五层记忆正式策略、P3 planner provider 跨进程协议和 Memory Gateway 生产存储选型。
+
+## P0-04 DSH executor-only 更新
+
+- R-001：P0-04 已证明当前 DSH `0.1.1-rc.2` 快照可以用 `NEXUS_DSH_EXECUTOR_ONLY=1` opt-in guard 阻断 native agent-loop，并用平台 `ExecutionEvent` P0 schema 固定最小解析面；由于 DSH 仍为预览版，P2 必须把 provider registry、contract fixtures 和回滚流程作为强制门禁。
+- R-002：三种剥离实验在 P0 均已完成最小 opt-in 证据；任一生产化阶段若无法把实验 guard 迁移到 adapter/sidecar/Policy-Gate 强制边界，仍触发轻量化路线评审。
+- R-003：P0-04 已验证 `AgentLoop.create`、`createAgent`、`resume`、配置启动 agent、`ReactLoopAgent.send`、`runMaintenance`、`wakeDriver` 以及缺少平台 execution context 的 `executeToolCalls` 可被阻断。
+- R-004：P0-04 只证明进程内 TypeScript guard，不证明端口、容器网络、插件宿主或 OS 文件权限层面的不可绕过；P1/P2/P6 必须继续补防绕过、安全和故障注入测试。
+- R-007：P0-04 新增 `platform/contracts/execution-event.schema.json` 的 P0 experimental schema；P2 仍需正式冻结 `ExecutionRequest`、`ExecutionResult`、`ExecutionEvent`、`ArtifactReference`、错误码和取消/超时语义。
+- 保留【待确认问题】：DSH upstream remote/release commit/fork 分支、P2 provider 固定版本、正式沙箱后端、文件/网络策略、取消语义和 artifact 归档策略。
