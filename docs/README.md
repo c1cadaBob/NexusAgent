@@ -17,6 +17,7 @@
 - [任务实施规划提示词索引](planning/task-prompts/README.md)
 - [对外 API 契约](contracts/openapi.yaml)
 - [服务功能与整合蓝图](architecture/service-blueprint.md)
+- [DSH 版本兼容与替换策略](architecture/dsh-versioning-and-replacement.md)
 - [需求追踪矩阵](traceability/requirements-matrix.md)
 - [开发端口规划](architecture/ports.md)
 - [测试策略](testing/strategy.md)

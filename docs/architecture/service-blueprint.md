@@ -42,6 +42,16 @@
 | Credential Center | 无 | 不复用 | 凭据不能继承上游分散机制，必须平台代理。 |
 | Observability | 无 | 不复用 | 统一 trace/metrics/logs 由平台定义，上游日志只作为内部诊断输入。 |
 
+### 3.1 DSH 版本隔离与可替换边界
+
+DSH 当前处于快速迭代阶段，不假设后续版本与当前 `0.1.0-rc.5` 快照兼容。P2 接入时必须把 DSH 视为可替换 executor provider，而不是平台核心依赖；详细升级、回滚和替换规则维护在 [DSH 版本兼容与替换策略](dsh-versioning-and-replacement.md)。
+
+- 平台稳定面只包括 `ExecutionRequest`、`ExecutionResult`、`ExecutionEvent`、`ArtifactReference`、`CredentialReference`、`SandboxPolicy`、取消/超时/重试语义、平台错误码和统一 ID。
+- `platform/adapters/dsh/` 必须预留 provider registry 和版本目录；DSH 原生对象只能存在于具体 provider 内部。
+- Coordinator、Policy-Gate、product API、SDK 和控制台不得 import DSH vendor 或 provider 代码。
+- 新 DSH 版本或替代 executor 上线前必须通过同一组 adapter contract、sandbox、artifact、credential leak、防绕过和故障注入测试。
+- 生产切换默认 executor provider 前必须保留上一版 provider 回滚路径，并更新 `vendor/MANIFEST.yaml`、风险登记册和对应任务修改记录包。
+
 ## 4. 其他服务可借鉴项目与是否需要从零开发
 
 | 平台能力 | 可借鉴/可采用项目 | 建议采用方式 | 是否从零开发 |

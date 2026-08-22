@@ -116,19 +116,21 @@ P0 不开发产品业务代码，拥有项目否决权。每项任务都必须�
 
 ## 3. P2 内部底层执行底座改造接入
 
-DSH 只作为平台内部执行沙箱，DSH 原生 API 绝不暴露到平台外部。
+DSH 只作为平台内部执行沙箱，DSH 原生 API 绝不暴露到平台外部。由于 DSH 仍在快速迭代，P2 必须把 DSH 接入实现为可替换 executor provider；平台对外契约不得随 DSH 版本变化，详细规则见 [`docs/architecture/dsh-versioning-and-replacement.md`](../architecture/dsh-versioning-and-replacement.md)。
 
 | 任务ID | 任务名称 | 所属阶段 | 涉及文件开发路径 | 修改说明 | 输入 | 输出 | 验收条件 | 预估人天 | 前置依赖 | 潜在卡点 |
 |---|---|---|---|---|---|---|---|---:|---|---|
-| P2-01 | DSH executor-only 改造 | P2 | `/opt/project/NexusAgent/vendor/deepseek-harness-master/packages/core/agent-loop/src/agent.ts`、`constants.ts`、`index.ts`、`runtime-context.ts`、`tool-calls.ts`、`packages/core/agent/src/dispatch.ts` | 按 P0 调用图关闭 agent-loop 入口，保留最小 executor 能力；所有改动登记在 `vendor/MANIFEST.yaml` | P0-04 patch 和测试 | DSH 本地补丁、变更说明、回归测试 | agent-loop 直接调用失败；平台 executor 请求可执行且可取消；原有必要单元测试不回归 | 6 | P0-04、P1 | 预览版内部 API 变化 |
-| P2-02 | DSH 防腐适配器 | P2 | `platform/adapters/dsh/` | 把平台 `ExecutionRequest` 转成 DSH 内部请求，把结果和错误转成平台事件；不导出 DSH 类型 | P1-03、P2-01 | DSH adapter、契约测试 | adapter 只接受平台 schema；所有请求经过 Policy-Gate；原生 DSH URL/错误码不出现在响应 | 5 | P1-03、P2-01 | 跨进程协议和取消语义 |
+| P2-01 | DSH executor-only 改造 | P2 | `/opt/project/NexusAgent/vendor/deepseek-harness-master/packages/core/agent-loop/src/agent.ts`、`constants.ts`、`index.ts`、`runtime-context.ts`、`tool-calls.ts`、`packages/core/agent/src/dispatch.ts` | 按 P0 调用图关闭 agent-loop 入口，保留最小 executor 能力；所有改动登记在 `vendor/MANIFEST.yaml`；形成当前 DSH provider 的源码证据和补丁边界 | P0-04 patch 和测试 | DSH 本地补丁、provider 兼容性说明、变更说明、回归测试 | agent-loop 直接调用失败；平台 executor 请求可执行且可取消；原有必要单元测试不回归；当前 provider 可被配置禁用或回滚 | 6 | P0-04、P1 | 预览版内部 API 变化；provider 边界不清导致后续版本难替换 |
+| P2-02 | DSH 防腐适配器 | P2 | `platform/adapters/dsh/` | 把平台 `ExecutionRequest` 转成 DSH 内部请求，把结果和错误转成平台事件；不导出 DSH 类型；预留 provider registry 和版本目录 | P1-03、P2-01 | DSH adapter、provider registry、契约测试 | adapter 只接受平台 schema；所有请求经过 Policy-Gate；原生 DSH URL/错误码不出现在响应；新旧 provider contract fixture 可复用 | 5 | P1-03、P2-01 | 跨进程协议、取消语义和 provider 切换语义 |
 | P2-03 | 沙箱策略、artifact 和执行事件 | P2 | `platform/adapters/dsh/`、`platform/artifact-store/`、`platform/event-bus/` | 强制 sandbox policy、资源预算、artifact 引用和标准化 execution events | P2-02 | 执行策略、artifact 事件、失败分类 | 越权文件/网络访问被拒绝；stdout/stderr 不泄漏凭据；artifact 引用可追踪 | 5 | P1-04、P2-02 | 沙箱能力和运行环境差异 |
-| P2-04 | 集成与防绕过验证 | P2 | `tests/integration/dsh-adapter.*`、`tests/security/dsh-bypass.*`、`tests/smoke/P2.sh` | 验证外部 API 无法直接访问 DSH；注入非法 execution_id、凭据和策略 | P2-01 至 P2-03 | 集成测试、拦截测试、冒烟脚本 | 直接端口、原生请求、伪造内部 header 均失败；正常平台请求 PASS | 3 | P2-03 | 网络隔离配置错误 |
+| P2-04 | 集成与防绕过验证 | P2 | `tests/integration/dsh-adapter.*`、`tests/security/dsh-bypass.*`、`tests/smoke/P2.sh` | 验证外部 API 无法直接访问 DSH；注入非法 execution_id、凭据和策略；覆盖 provider 切换、禁用和回滚路径 | P2-01 至 P2-03 | 集成测试、拦截测试、provider 兼容测试、冒烟脚本 | 直接端口、原生请求、伪造内部 header 均失败；正常平台请求 PASS；默认 provider 切换失败时可回滚上一版 provider | 3 | P2-03 | 网络隔离配置错误；新旧 provider fixture 不一致 |
 
 ### P2 阶段待确认问题
 
 - DSH 的正式沙箱后端和允许的文件/网络策略集合是什么？
 - 是否需要保留 DSH session 查询能力，还是只保留单次 executor 生命周期？
+- DSH 后续版本接入是否允许 vendor 快照并存，还是通过单一 vendor 加 provider patch 管理？
+- 生产默认 executor provider 是否必须是 DSH，还是允许替换为经门禁验证的其他沙箱执行后端？
 
 ## 4. P3 内部决策记忆引擎改造接入
 
@@ -184,7 +186,7 @@ P5 只有在 P1-P4 全部验收通过后才能开始；产品层不得依赖任�
 |---|---|---|---|---|---|---|---|---:|---|---|
 | P6-01 | 内部组件集成和基础业务闭环 | P6 | `tests/integration/`、`tests/smoke/P6.sh` | 覆盖渠道入站、任务、规划、执行、artifact、结果出站和审计 | P1-P5 | E2E 场景集、冒烟脚本 | 最小业务闭环可重复运行；所有 ID 和事件可关联 | 6 | P5-01 | 多服务时序和异步重试 |
 | P6-02 | 防腐层、防绕过和越权测试 | P6 | `tests/security/` | 尝试直接访问底层端口、伪造身份、跨租户读取 artifact/记忆、跳过审批 | P1-P5 | 安全测试集、失败样例 | 所有绕过请求失败；审计记录包含 trace_id 和拒绝原因 | 5 | P6-01 | 容器网络和测试身份配置 |
-| P6-03 | 故障注入和降级路径 | P6 | `tests/fault-injection/`、`tests/evaluation/` | 注入 Hermes/DSH/OpenClaw 不可用、超时、重复事件、记忆损坏和预算耗尽 | P6-01 | 故障矩阵、恢复和降级报告 | 关闭 Hermes 后轻量化路线仍能完成基础任务；重试/退出符合策略 | 6 | P6-01 | 故障注入工具和数据清理 |
+| P6-03 | 故障注入和降级路径 | P6 | `tests/fault-injection/`、`tests/evaluation/` | 注入 Hermes/DSH/OpenClaw 不可用、超时、重复事件、记忆损坏、预算耗尽和 DSH provider 破坏性返回结构 | P6-01 | 故障矩阵、provider 回滚验证、恢复和降级报告 | 关闭 Hermes 后轻量化路线仍能完成基础任务；DSH provider 不可用时可按策略失败、重试或回滚；重试/退出符合策略 | 6 | P6-01 | 故障注入工具、数据清理和 provider 回滚状态一致性 |
 
 ### P6 阶段待确认问题
 
@@ -213,9 +215,9 @@ P7 为可裁剪阶段，不得阻塞 MVP。任务分别实现元认知、主动�
 | 任务ID | 任务名称 | 主要路径 | 产出 | 验收重点 |
 |---|---|---|---|---|
 | P8-01 | 生产 Compose/Kubernetes 编排 | `deploy/docker-compose.prod.yml`、`deploy/k8s/` | 一键部署包和配置模板 | 无热更新、无调试端口、内部组件不直接暴露 |
-| P8-02 | CI/CD、发布和上游追踪 | `.github/workflows/`、`scripts/upstream-tracking/` | 质量门禁、版本策略、每周上游检查报告 | 未通过门禁不可发布；上游破坏性变更可暂停阶段 |
+| P8-02 | CI/CD、发布和上游追踪 | `.github/workflows/`、`scripts/upstream-tracking/` | 质量门禁、版本策略、每周上游检查报告、DSH provider 兼容矩阵 | 未通过门禁不可发布；上游破坏性变更可暂停阶段；默认 executor provider 切换必须可回滚 |
 | P8-03 | 告警、备份和恢复 | `platform/observability/`、`docs/operations/` | SLO、告警、备份、恢复演练 | 数据恢复、artifact 完整性和审计连续性可验证 |
-| P8-04 | 交付文档 | `docs/operations/`、`docs/contracts/`、`product/docs-site/` | 管理员手册、开发者 API、运维手册、升级迁移说明 | 新环境按文档可部署、升级和回滚 |
+| P8-04 | 交付文档 | `docs/operations/`、`docs/contracts/`、`product/docs-site/` | 管理员手册、开发者 API、运维手册、升级迁移说明、DSH provider 升级/回滚手册 | 新环境按文档可部署、升级和回滚；executor provider 替换不改变平台 API |
 
 ### P8 阶段待确认问题
 
@@ -228,13 +230,13 @@ P7 为可裁剪阶段，不得阻塞 MVP。任务分别实现元认知、主动�
 |---|---|---:|---|---|---|---|
 | P0 | 快照、三种剥离实验、接口摸底、OpenAPI、服务蓝图、排期基线、AI 排期提示词模板、任务提示词文档 | 24 | 无 | P0 可行性报告、vendor、OpenAPI 初稿、十个基础服务蓝图、开发排期、AI 排期提示词模板、任务提示词文档库 | 极高 | 否 |
 | P1 | 平台内核和开发编排 | 32 | P0 | Coordinator、Policy-Gate、Compose、公共契约 | 高 | 否 |
-| P2 | DSH executor-only 和接入 | 19 | P1、P0-04 | DSH adapter、沙箱和拦截测试 | 极高 | 否，失败时触发回退 |
+| P2 | DSH executor-only 和接入 | 19 | P1、P0-04 | DSH adapter、provider registry、沙箱和拦截测试 | 极高 | 否，失败时触发回退 |
 | P3 | Hermes planner-only 和记忆代理 | 20 | P1、P0-03 | Hermes adapter、Memory Gateway | 极高 | 可降级下线 Hermes |
 | P4 | OpenClaw gateway-only 和渠道接入 | 17 | P1、P0-02 | OpenClaw adapter、渠道测试 | 高 | MVP 可先保留一个渠道 |
 | P5 | API、控制台、SDK | 32 | P1-P4 | 对外平台产品 | 中 | 控制台高级页可延后 |
-| P6 | E2E、安全、故障和降级 | 17 | P5 | 闭环测试报告 | 高 | 否 |
+| P6 | E2E、安全、故障和降级 | 17 | P5 | 闭环测试报告、provider 回滚验证 | 高 | 否 |
 | P7 | 高级特性 | 20 | P6 | 可选能力包 | 中 | 是 |
-| P8 | 生产交付和运维 | 20 | P6，P7 可选 | 部署包和交付手册 | 高 | Kubernetes 可分批 |
+| P8 | 生产交付和运维 | 20 | P6，P7 可选 | 部署包、交付手册和 provider 兼容矩阵 | 高 | Kubernetes 可分批 |
 | **合计** |  | **201** |  |  |  |  |
 
 ## 11. 团队分工建议
@@ -253,7 +255,7 @@ P7 为可裁剪阶段，不得阻塞 MVP。任务分别实现元认知、主动�
 
 | 风险描述 | 影响等级 | 触发条件 | 缓解措施 | 止损回退方案 |
 |---|---|---|---|---|
-| DSH 预览版接口变动 | 极高 | package、插件或 session 接口破坏性变更 | 固定 vendor 快照；每周检查 release；adapter 隔离类型 | 暂停 P2，切换已验证执行后端或保留平台外壳 |
+| DSH 预览版接口变动 | 极高 | package、插件、session、sandbox、artifact 或 tool-call 接口破坏性变更 | 固定 vendor 快照；每周检查 release；adapter 隔离类型；P2 实现 provider registry；P6 验证回滚；P8 建立兼容矩阵 | 暂停默认 provider 切换，回滚上一版 provider；必要时切换已验证执行后端或保留平台外壳 |
 | 任一剥离实验失败 | 极高 | Agent Loop/网关/工具无法隔离 | P0 独立实验和否决门 | 下线 Hermes，使用 OpenClaw + DSH 轻量化平台 |
 | 原生能力泄漏 | 极高 | 外部响应出现上游类型、URL、错误码或记忆路径 | schema 白名单、出口扫描、端口隔离和防绕过测试 | 关闭暴露服务，回滚到最近通过门禁的适配器 |
 | 防腐适配器被绕过 | 极高 | 直接端口/内部 header/伪造身份可调用底层 | 网络 deny-by-default、Policy-Gate、负向测试 | 隔离底层容器，阻断发布 |
@@ -289,6 +291,8 @@ P0 快照/可行性、P1 Coordinator/Policy-Gate/公共契约/审计、P2 DSH ex
 
 回退必须保留同一平台 API 和任务标识，不能让终端用户感知底层实现切换。
 
+若 DSH 当前 provider 因上游破坏性更新、沙箱缺陷或防绕过失败无法继续作为 executor，则不得把 DSH 原生接口临时暴露给产品层。处理顺序为：先回滚到上一版已验证 provider；回滚失败时切换到经 P2/P6 门禁验证的替代 executor provider；仍不可用时暂停执行型任务，仅保留任务接收、审批、审计、artifact 查询和人工处理路径。
+
 ## 14. 阶段完成与阻塞判定
 
 ### 完成条件
@@ -307,6 +311,6 @@ P0 快照/可行性、P1 Coordinator/Policy-Gate/公共契约/审计、P2 DSH ex
 
 里程碑：P0 验证三种剥离可行性；P1 建成平台内核；P2-P4 接入内部执行/规划/渠道组件；P5 交付用户产品；P6 完成安全和端到端闭环；P8 完成生产交付。
 
-主要风险：DSH 预览版接口变化、三种剥离失败、底层能力泄漏、防腐层绕过、记忆脏数据、跨栈联调和 Token/性能超标。
+主要风险：DSH 预览版接口变化、三种剥离失败、底层能力泄漏、防腐层绕过、记忆脏数据、跨栈联调和 Token/性能超标。DSH 风险按可替换 executor provider 管理，平台 API 不随 DSH 版本变化。
 
 MVP 时间窗口：按 201 人天工程估算，P0-P6 为首个可用平台基线；当前排期从 2026-08-24 启动，MVP 候选在 2026-11-27 冻结，生产交付候选在 2026-12-24 冻结。实际日历时间取决于团队规模、上游变更、渠道凭据和待确认问题关闭时间。若 Hermes 剥离失败，沿轻量化 OpenClaw + DSH 路线保留平台外壳交付。
