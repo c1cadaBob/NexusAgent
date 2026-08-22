@@ -32,6 +32,10 @@ import { prepareAgentRequestRouting } from "./agent-request-routing.js";
 import { prepareAgentRunDispatch } from "./agent-run-admission-phase.js";
 import { startAgentRunExecution } from "./agent-run-execution-phase.js";
 import { persistAgentSessionPhase } from "./agent-session-persist.js";
+import {
+  emitNexusGatewayOnlyTaskRequestHandoff,
+  isNexusOpenClawGatewayOnlyExperimentEnabled,
+} from "./nexus-gateway-only-experiment.js";
 import type { AgentTurnIo, AgentTurnPrincipal } from "./types.js";
 
 type AgentTurnStartRequest = {
@@ -226,6 +230,18 @@ export function createAgentTurnService({
       // would let a non-member drive a restricted default session.
       let effectiveTranscriptInputText = content.effectiveTranscriptInputText;
       let message = content.message;
+      if (isNexusOpenClawGatewayOnlyExperimentEnabled()) {
+        emitNexusGatewayOnlyTaskRequestHandoff({
+          io,
+          request,
+          runId,
+          resolvedSessionKey: requestedSessionKey,
+          resolvedSessionId: requestedSessionId,
+          message,
+          effectiveTranscriptInputText,
+        });
+        return;
+      }
       const {
         images,
         imageOrder,

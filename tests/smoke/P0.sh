@@ -25,6 +25,7 @@ required_paths=(
   docs/planning/integrated-platform-plan.md
   docs/planning/ai-schedule-prompt-template.md
   docs/planning/task-prompts/README.md
+  docs/decisions/P0-openclaw-gateway-only.md
   docs/contracts/openapi.yaml
   docs/traceability/requirements-matrix.md
   scripts/planning/generate-task-prompts.py
@@ -75,6 +76,15 @@ for task_id in "${task_ids[@]}"; do
   rg -q '^## 2\. 修改过程记录' "$prompt_path" || fail "task prompt missing change-process audit section: $prompt_path"
   rg -q '^## 3\. 修改后验证与总结' "$prompt_path" || fail "task prompt missing post-change audit section: $prompt_path"
 done
+
+p0_02_prompt="docs/planning/task-prompts/P0/P0-02.md"
+p0_02_audit_block="$(sed -n '/^# P0-02 修改记录包$/,/^## 完整提示词$/p' "$p0_02_prompt")"
+[[ -n "$p0_02_audit_block" ]] || fail 'P0-02 audit record package is missing'
+if printf '%s\n' "$p0_02_audit_block" | rg -q '\.\.\.'; then
+  fail 'P0-02 audit record package still contains placeholder ellipses'
+fi
+rg -q 'NEXUS_OPENCLAW_GATEWAY_ONLY=1' docs/decisions/P0-openclaw-gateway-only.md || fail 'P0-02 decision record missing gateway-only experiment flag'
+rg -q 'agentCommandFromGatewayIngress' docs/decisions/P0-openclaw-gateway-only.md || fail 'P0-02 decision record missing native Agent dispatch evidence'
 
 for endpoint in '/v1/tasks:' '/v1/skills:' '/v1/memory/search:' '/v1/tenants:' '/v1/approvals:'; do
   rg -q "^  ${endpoint}" docs/contracts/openapi.yaml || fail "OpenAPI endpoint missing: ${endpoint}"

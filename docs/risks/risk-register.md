@@ -5,12 +5,12 @@
 | 风险 ID | 风险 | 当前等级 | 状态 | 责任阶段 |
 |---|---|---|---|---|
 | R-001 | DSH 预览版接口破坏性变更 | 极高 | 监控 | P0/P2/P6/P8 |
-| R-002 | 三种剥离实验失败 | 极高 | 未验证 | P0 |
+| R-002 | 三种剥离实验失败 | 极高 | OpenClaw gateway-only 已完成 P0 实验；Hermes/DSH 待验证 | P0 |
 | R-003 | 原生 API/记忆/Agent 能力泄漏 | 极高 | 未验证 | P1-P6 |
 | R-004 | 防腐适配器绕过平台内核 | 极高 | 未验证 | P1-P6 |
 | R-005 | 记忆快照、并发写入和脏数据 | 高 | 未验证 | P1/P3/P6 |
 | R-006 | 跨栈联调、性能或 Token 超标 | 高 | 未验证 | P1-P7 |
-| R-007 | 服务边界不清导致上游原生概念泄漏到产品层 | 极高 | 未验证 | P0-P6 |
+| R-007 | 服务边界不清导致上游原生概念泄漏到产品层 | 极高 | P0-02 已记录 OpenClaw 原生 Agent/tool 阻断证据；P3/P4/P5 仍需持续验证 | P0-P6 |
 | R-008 | 外部基础设施选型过早锁死导致 P1/P8 返工 | 高 | 未验证 | P0/P1/P8 |
 | R-009 | 实际团队容量低于排期基线导致关键路径延后 | 高 | 未验证 | P0-P8 |
 | R-010 | AI 自动生成排期时遗漏只读目录、上游不可见、防绕过或验收命令等高危约束 | 高 | 未验证 | P0-P8 |
@@ -28,3 +28,9 @@ DSH 不作为稳定平台契约，只作为内部 executor provider。P2 必须�
 ## 插件生态执行要求
 
 三大平台社区插件默认不可信，只能通过 Plugin Bridge 白名单复用。P3/P4 必须证明 Hermes/OpenClaw 原生插件不能绕过 planner-only/gateway-only 边界；P5 只能开放管理员插件治理 API 和控制台，不开放租户自助安装；P6 必须模拟恶意插件访问凭据、artifact、memory、底层端口和原生 agent-loop 并验证失败；P8 必须交付插件升级、禁用、兼容矩阵和回滚手册。详细规则见 [上游版本适配与社区插件复用桥接策略](../architecture/upstream-versioning-and-plugin-bridge.md)。
+
+## P0-02 OpenClaw gateway-only 更新
+
+- R-002：OpenClaw 的 P0 gateway-only 实验已通过 opt-in guard 验证 channel/chat 输入可投影为平台 `TaskRequest`，原生 Agent dispatch 和 `tools.invoke` 路径可被拒绝；Hermes planner-only 与 DSH executor-only 仍需 P0-03/P0-04 关闭。
+- R-007：P0-02 决策记录已列出 OpenClaw 原生入口、阻断点和回归测试清单；P4 生产 provider 化前仍不得把实验环境开关视为正式安全边界。
+- 保留【待确认问题】：OpenClaw upstream remote/release commit/fork 分支、首批正式渠道清单，以及 P4 gateway-only 强制模式的配置形态。

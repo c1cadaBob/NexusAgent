@@ -33,6 +33,10 @@ import type { GatewayCronCreatorAuthorityAdmission } from "../server-methods/cro
 import { formatForLog } from "../ws-log.js";
 import { setGatewayDedupeEntries } from "./agent-dedupe.js";
 import { readAgentRunDispatchExecutionIdentity } from "./agent-run-dispatch-execution-identity.js";
+import {
+  isNexusOpenClawGatewayOnlyExperimentEnabled,
+  NEXUS_GATEWAY_ONLY_NATIVE_AGENT_BLOCKED_MESSAGE,
+} from "./nexus-gateway-only-experiment.js";
 import type { AgentTurnContext, AgentTurnIo } from "./types.js";
 
 function resolveResolvedAgentTimeoutStopReason(
@@ -134,6 +138,25 @@ export function dispatchAgentRunFromGateway(params: {
     onRecovered?: () => void;
   }) => Promise<boolean> | boolean;
 }) {
+  if (isNexusOpenClawGatewayOnlyExperimentEnabled()) {
+    const error = errorShape(
+      ErrorCodes.UNAVAILABLE,
+      NEXUS_GATEWAY_ONLY_NATIVE_AGENT_BLOCKED_MESSAGE,
+    );
+    const payload = {
+      runId: params.runId,
+      status: "error" as const,
+      summary: NEXUS_GATEWAY_ONLY_NATIVE_AGENT_BLOCKED_MESSAGE,
+    };
+    params.io.emitFinal([false, payload, error], {
+      runId: params.runId,
+      error: NEXUS_GATEWAY_ONLY_NATIVE_AGENT_BLOCKED_MESSAGE,
+      nexusGatewayOnly: true,
+    });
+    clearAgentRunContext(params.runId, params.ingressOpts.lifecycleGeneration);
+    params.cleanupAbortController();
+    return;
+  }
   const shouldTrackTask = params.taskTrackingMode === "cli";
   let taskTracked = false;
   if (shouldTrackTask) {

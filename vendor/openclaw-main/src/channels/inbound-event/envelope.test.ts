@@ -83,4 +83,27 @@ describe("channel inbound envelope", () => {
     ).toBe("[Telegram Alice Thu 1970-01-01T00:00:30Z] older");
     expect(readSessionUpdatedAtCore).not.toHaveBeenCalled();
   });
+
+  it("continues building channel envelopes while the Nexus gateway-only experiment is enabled", () => {
+    const previous = process.env.NEXUS_OPENCLAW_GATEWAY_ONLY;
+    process.env.NEXUS_OPENCLAW_GATEWAY_ONLY = "1";
+    try {
+      const resolved = resolveChannelInboundRouteEnvelope({
+        cfg,
+        channel: "telegram",
+        accountId: "default",
+        peer: { kind: "direct" as const, id: "peer" },
+      });
+
+      expect(resolved.buildEnvelope({ channel: "Telegram", from: "Alice", body: "hello" })).toBe(
+        "[Telegram Alice] hello",
+      );
+    } finally {
+      if (previous === undefined) {
+        delete process.env.NEXUS_OPENCLAW_GATEWAY_ONLY;
+      } else {
+        process.env.NEXUS_OPENCLAW_GATEWAY_ONLY = previous;
+      }
+    }
+  });
 });

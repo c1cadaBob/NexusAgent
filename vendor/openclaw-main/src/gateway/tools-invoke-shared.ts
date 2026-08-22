@@ -32,6 +32,10 @@ import { resolveRequestedSessionAgentId } from "./session-request-agent.js";
 import { resolveStoredSessionKeyForAgentStore } from "./session-store-key.js";
 import { loadGatewaySessionEntryReadOnly } from "./session-utils.js";
 import { resolveGatewayScopedTools } from "./tool-resolution.js";
+import {
+  isNexusOpenClawGatewayOnlyExperimentEnabled,
+  NEXUS_GATEWAY_ONLY_NATIVE_TOOL_BLOCKED_MESSAGE,
+} from "./agent-turn/nexus-gateway-only-experiment.js";
 
 const MEMORY_TOOL_NAMES = new Set(["memory_search", "memory_get"]);
 
@@ -191,6 +195,18 @@ export async function invokeGatewayTool(params: {
       status: 400,
       toolName: "",
       error: { type: "invalid_request", message: "tools.invoke requires name" },
+    };
+  }
+
+  if (isNexusOpenClawGatewayOnlyExperimentEnabled()) {
+    return {
+      ok: false,
+      status: 403,
+      toolName,
+      error: {
+        type: "tool_call_blocked",
+        message: NEXUS_GATEWAY_ONLY_NATIVE_TOOL_BLOCKED_MESSAGE,
+      },
     };
   }
 
