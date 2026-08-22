@@ -31,6 +31,7 @@ required_paths=(
   docs/contracts/openapi.yaml
   platform/contracts/execution-plan.schema.json
   platform/contracts/execution-event.schema.json
+  platform/contracts/platform-error.schema.json
   docs/architecture/upstream-interface-inventory.md
   docs/traceability/requirements-matrix.md
   scripts/planning/generate-task-prompts.py
@@ -132,7 +133,27 @@ for inventory_marker in \
 done
 rg -q '上游变更登记记录模板' scripts/upstream-tracking/upstream-change-record.template.md || fail 'P0-05 upstream change template missing title'
 
-for endpoint in '/v1/tasks:' '/v1/skills:' '/v1/memory/search:' '/v1/tenants:' '/v1/approvals:'; do
+p0_06_prompt="docs/planning/task-prompts/P0/P0-06.md"
+p0_06_audit_block="$(sed -n '/^# P0-06 修改记录包$/,/^## 完整提示词$/p' "$p0_06_prompt")"
+[[ -n "$p0_06_audit_block" ]] || fail 'P0-06 audit record package is missing'
+if printf '%s\n' "$p0_06_audit_block" | rg -q '\.\.\.'; then
+  fail 'P0-06 audit record package still contains placeholder ellipses'
+fi
+for openapi_marker in \
+  'openapi: 3.1.0' \
+  '/v1/health:' \
+  'bearerAuth:' \
+  'PlatformErrorCode:' \
+  'PLATFORM_POLICY_DENIED' \
+  'TaskRequest:'; do
+  rg -q "$openapi_marker" docs/contracts/openapi.yaml || fail "P0-06 OpenAPI marker missing: $openapi_marker"
+done
+if rg -qi 'Hermes|OpenClaw|DeepSeek|DSH|MEMORY\.md|USER\.md|原生|native' docs/contracts/openapi.yaml; then
+  fail 'P0-06 OpenAPI exposes an upstream/native term'
+fi
+rg -q 'PLATFORM_INTERNAL_ERROR' platform/contracts/platform-error.schema.json || fail 'P0-06 platform error schema missing error code draft'
+
+for endpoint in '/v1/health:' '/v1/tasks:' '/v1/skills:' '/v1/memory/search:' '/v1/tenants:' '/v1/approvals:'; do
   rg -q "^  ${endpoint}" docs/contracts/openapi.yaml || fail "OpenAPI endpoint missing: ${endpoint}"
 done
 

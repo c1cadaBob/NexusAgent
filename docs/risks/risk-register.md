@@ -10,7 +10,7 @@
 | R-004 | 防腐适配器绕过平台内核 | 极高 | P0-04 已证明 DSH 进程内 guard 可阻断 native loop 和缺少平台策略的工具调度；正式 adapter、防端口绕过和 sidecar 隔离待 P1/P2/P6 | P1-P6 |
 | R-005 | 记忆快照、并发写入和脏数据 | 高 | P0-03 已验证实验模式拒绝 `MEMORY.md`/`USER.md` 直读直写；Memory Gateway 并发和冲突策略待 P3/P6 | P1/P3/P6 |
 | R-006 | 跨栈联调、性能或 Token 超标 | 高 | 未验证 | P1-P7 |
-| R-007 | 服务边界不清导致上游原生概念泄漏到产品层 | 极高 | P0-02/P0-03/P0-04 已记录 OpenClaw、Hermes、DSH 原生入口阻断证据；P0-05 已把已知入口登记为保留/隔离/禁止；P2-P5 仍需持续验证公共 API、SDK 和控制台不泄漏原生概念 | P0-P6 |
+| R-007 | 服务边界不清导致上游原生概念泄漏到产品层 | 极高 | P0-02/P0-03/P0-04 已记录 OpenClaw、Hermes、DSH 原生入口阻断证据；P0-05 已把已知入口登记为保留/隔离/禁止；P0-06 已新增公共 OpenAPI 泄漏检查；P2-P5 仍需持续验证 SDK 和控制台不泄漏原生概念 | P0-P6 |
 | R-008 | 外部基础设施选型过早锁死导致 P1/P8 返工 | 高 | 未验证 | P0/P1/P8 |
 | R-009 | 实际团队容量低于排期基线导致关键路径延后 | 高 | 未验证 | P0-P8 |
 | R-010 | AI 自动生成排期时遗漏只读目录、上游不可见、防绕过或验收命令等高危约束 | 高 | 未验证 | P0-P8 |
@@ -60,3 +60,10 @@ DSH 不作为稳定平台契约，只作为内部 executor provider。P2 必须�
 - R-015：P0-05 只确认三大上游根许可证为 MIT；第三方依赖、插件、extras、native addon、vendored packages、NOTICE 和再分发条款仍是 P5/P8 待确认项。
 - R-016：P0-05 新增上游变更登记模板，后续 provider 或插件升级必须记录旧版本、新版本、入口影响、验证命令、许可证影响和回滚计划。
 - 保留【待确认问题】：三个上游真实 remote/commit/fork 分支、OpenClaw P0-02 manifest 补丁登记、OpenClaw 首批渠道、Hermes Memory Gateway 策略、DSH 沙箱和 artifact 策略、三平台第三方依赖 NOTICE。
+
+## P0-06 平台 OpenAPI 初稿更新
+
+- R-007：`docs/contracts/openapi.yaml` 已重写为平台 REST OpenAPI 3.1 初稿，只暴露 tasks、skills、capabilities、memory、tenants、approvals、plugin governance 和 health；P0 smoke 新增公共契约上游术语泄漏检查。
+- R-012：`docs/planning/task-prompts/P0/P0-06.md` 的修改记录包已补齐修改前、过程和验证字段，P0 smoke 会拒绝 P0-06 审计占位。
+- 新增风险：REST 与 gRPC 是否同期交付仍未确认；若 P5 要求双协议同步交付，需要把 OpenAPI 资源模型同步投影到 Protobuf 并新增契约测试。
+- 保留【待确认问题】：生产鉴权方案、分页游标格式、审批动作全集、记忆层级字段、错误码最终枚举、SSE/gRPC streaming 事件出口。
