@@ -10,7 +10,7 @@
 | R-004 | 防腐适配器绕过平台内核 | 极高 | P0-04 已证明 DSH 进程内 guard 可阻断 native loop 和缺少平台策略的工具调度；正式 adapter、防端口绕过和 sidecar 隔离待 P1/P2/P6 | P1-P6 |
 | R-005 | 记忆快照、并发写入和脏数据 | 高 | P0-03 已验证实验模式拒绝 `MEMORY.md`/`USER.md` 直读直写；Memory Gateway 并发和冲突策略待 P3/P6 | P1/P3/P6 |
 | R-006 | 跨栈联调、性能或 Token 超标 | 高 | 未验证 | P1-P7 |
-| R-007 | 服务边界不清导致上游原生概念泄漏到产品层 | 极高 | P0-02/P0-03/P0-04 已记录 OpenClaw、Hermes、DSH 原生入口阻断证据；P2-P5 仍需持续验证公共 API、SDK 和控制台不泄漏原生概念 | P0-P6 |
+| R-007 | 服务边界不清导致上游原生概念泄漏到产品层 | 极高 | P0-02/P0-03/P0-04 已记录 OpenClaw、Hermes、DSH 原生入口阻断证据；P0-05 已把已知入口登记为保留/隔离/禁止；P2-P5 仍需持续验证公共 API、SDK 和控制台不泄漏原生概念 | P0-P6 |
 | R-008 | 外部基础设施选型过早锁死导致 P1/P8 返工 | 高 | 未验证 | P0/P1/P8 |
 | R-009 | 实际团队容量低于排期基线导致关键路径延后 | 高 | 未验证 | P0-P8 |
 | R-010 | AI 自动生成排期时遗漏只读目录、上游不可见、防绕过或验收命令等高危约束 | 高 | 未验证 | P0-P8 |
@@ -18,7 +18,7 @@
 | R-012 | 任务实现缺少修改前、修改过程、修改后验证审计记录 | 高 | 未验证 | P0-P8 |
 | R-013 | 第三方插件绕过平台权限或直接调用原生宿主 | 极高 | 未验证 | P3-P8 |
 | R-014 | 第三方插件凭据、artifact 或日志泄漏 | 极高 | 未验证 | P3-P8 |
-| R-015 | 第三方插件许可证、NOTICE 或再分发条款不清 | 高 | 未验证 | P0/P5/P8 |
+| R-015 | 第三方插件许可证、NOTICE 或再分发条款不清 | 高 | P0-05 已确认三大上游根许可证为 MIT，但插件、extras、native addon、vendored packages 和 THIRD_PARTY_NOTICE 仍需 P5/P8 或法务确认 | P0/P5/P8 |
 | R-016 | 插件更新破坏 OpenClaw/Hermes/DSH provider 兼容性 | 高 | 监控 | P3/P4/P8 |
 
 ## R-001 执行要求
@@ -51,3 +51,12 @@ DSH 不作为稳定平台契约，只作为内部 executor provider。P2 必须�
 - R-004：P0-04 只证明进程内 TypeScript guard，不证明端口、容器网络、插件宿主或 OS 文件权限层面的不可绕过；P1/P2/P6 必须继续补防绕过、安全和故障注入测试。
 - R-007：P0-04 新增 `platform/contracts/execution-event.schema.json` 的 P0 experimental schema；P2 仍需正式冻结 `ExecutionRequest`、`ExecutionResult`、`ExecutionEvent`、`ArtifactReference`、错误码和取消/超时语义。
 - 保留【待确认问题】：DSH upstream remote/release commit/fork 分支、P2 provider 固定版本、正式沙箱后端、文件/网络策略、取消语义和 artifact 归档策略。
+
+## P0-05 上游接口摸底更新
+
+- R-001：`docs/architecture/upstream-interface-inventory.md` 已把 DSH CLI、AgentLoop、tool execution、Cordis tool plugins、native session events 和 Landlock/native sandbox candidate 分开登记；DSH 版本漂移后必须用 `scripts/upstream-tracking/upstream-change-record.template.md` 新增兼容性记录。
+- R-002：P0-05 汇总了 OpenClaw gateway-only、Hermes planner-only、DSH executor-only 的保留、隔离和禁止入口；P0 剥离证据已可供 P0-06/P0-07/P1 使用，但生产强制边界仍待 P2-P4/P6。
+- R-007：P0-05 明确 OpenClaw CLI/native dispatch/tools、Hermes CLI/final response/tool runtime/file memory/recurring loop、DSH CLI/native agent-loop/native session events 不得进入公共 API、SDK、控制台或跨服务接口。
+- R-015：P0-05 只确认三大上游根许可证为 MIT；第三方依赖、插件、extras、native addon、vendored packages、NOTICE 和再分发条款仍是 P5/P8 待确认项。
+- R-016：P0-05 新增上游变更登记模板，后续 provider 或插件升级必须记录旧版本、新版本、入口影响、验证命令、许可证影响和回滚计划。
+- 保留【待确认问题】：三个上游真实 remote/commit/fork 分支、OpenClaw P0-02 manifest 补丁登记、OpenClaw 首批渠道、Hermes Memory Gateway 策略、DSH 沙箱和 artifact 策略、三平台第三方依赖 NOTICE。

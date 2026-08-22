@@ -31,8 +31,11 @@ required_paths=(
   docs/contracts/openapi.yaml
   platform/contracts/execution-plan.schema.json
   platform/contracts/execution-event.schema.json
+  docs/architecture/upstream-interface-inventory.md
   docs/traceability/requirements-matrix.md
   scripts/planning/generate-task-prompts.py
+  scripts/upstream-tracking/README.md
+  scripts/upstream-tracking/upstream-change-record.template.md
 )
 
 for path in "${required_paths[@]}"; do
@@ -109,6 +112,25 @@ fi
 rg -q 'NEXUS_DSH_EXECUTOR_ONLY=1' docs/decisions/P0-dsh-executor-only.md || fail 'P0-04 decision record missing executor-only experiment flag'
 rg -q 'execution_id' docs/decisions/P0-dsh-executor-only.md || fail 'P0-04 decision record missing platform execution_id evidence'
 rg -q 'nexus.execution_event.p0.v1' platform/contracts/execution-event.schema.json || fail 'ExecutionEvent schema missing P0 schema version'
+
+p0_05_prompt="docs/planning/task-prompts/P0/P0-05.md"
+p0_05_audit_block="$(sed -n '/^# P0-05 修改记录包$/,/^## 完整提示词$/p' "$p0_05_prompt")"
+[[ -n "$p0_05_audit_block" ]] || fail 'P0-05 audit record package is missing'
+if printf '%s\n' "$p0_05_audit_block" | rg -q '\.\.\.'; then
+  fail 'P0-05 audit record package still contains placeholder ellipses'
+fi
+for inventory_marker in \
+  '接口分类总表' \
+  'OpenClaw' \
+  'Hermes' \
+  'DSH' \
+  '保留' \
+  '隔离' \
+  '禁止' \
+  'upstream-change-record.template.md'; do
+  rg -q "$inventory_marker" docs/architecture/upstream-interface-inventory.md || fail "P0-05 inventory marker missing: $inventory_marker"
+done
+rg -q '上游变更登记记录模板' scripts/upstream-tracking/upstream-change-record.template.md || fail 'P0-05 upstream change template missing title'
 
 for endpoint in '/v1/tasks:' '/v1/skills:' '/v1/memory/search:' '/v1/tenants:' '/v1/approvals:'; do
   rg -q "^  ${endpoint}" docs/contracts/openapi.yaml || fail "OpenAPI endpoint missing: ${endpoint}"
