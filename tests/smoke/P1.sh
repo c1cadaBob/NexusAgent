@@ -26,6 +26,10 @@ required_files=(
   platform/artifact-store/index.ts
   platform/memory-gateway/index.ts
   platform/credentials/index.ts
+  platform/tenancy/index.ts
+  platform/rbac/index.ts
+  platform/audit/index.ts
+  platform/observability/index.ts
   tests/unit/task-state.test.mjs
   tests/unit/policy-gate.test.mjs
   tests/unit/clock.test.mjs
@@ -34,13 +38,19 @@ required_files=(
   tests/unit/artifact-store.test.mjs
   tests/unit/memory-gateway.test.mjs
   tests/unit/credentials.test.mjs
+  tests/unit/tenancy.test.mjs
+  tests/unit/rbac.test.mjs
+  tests/unit/audit.test.mjs
+  tests/unit/observability.test.mjs
   tests/contract/p1-contracts.test.mjs
   tests/integration/coordinator-policy-gate.test.mjs
   tests/integration/coordinator-adapter-event-bus.test.mjs
   tests/integration/data-spine-event-bus.test.mjs
+  tests/integration/tenancy-rbac-audit-trace.test.mjs
   tests/security/policy-gate-bypass.test.mjs
   tests/security/adapter-bypass.test.mjs
   tests/security/data-spine-isolation.test.mjs
+  tests/security/tenant-rbac-audit-guards.test.mjs
 )
 
 for file in "${required_files[@]}"; do
@@ -66,8 +76,14 @@ rg -q 'LocalArtifactStore' platform/artifact-store/index.ts tests/unit/artifact-
 rg -q 'LocalMemoryGateway' platform/memory-gateway/index.ts tests/unit/memory-gateway.test.mjs || fail 'memory gateway implementation missing'
 rg -q 'LocalCredentialCenter' platform/credentials/index.ts tests/unit/credentials.test.mjs || fail 'credential center implementation missing'
 rg -q 'secret_scan_required' platform/contracts/credential-reference.schema.json platform/credentials/index.ts || fail 'credential redaction policy missing'
+rg -q 'LocalTenantRegistry' platform/tenancy/index.ts tests/unit/tenancy.test.mjs || fail 'tenant registry implementation missing'
+rg -q 'LocalRbacPolicy' platform/rbac/index.ts tests/unit/rbac.test.mjs || fail 'rbac policy implementation missing'
+rg -q 'LocalAuditLog' platform/audit/index.ts tests/unit/audit.test.mjs || fail 'audit log implementation missing'
+rg -q 'PLATFORM_AUDIT_CHAIN_BROKEN' platform/contracts/platform-error.schema.json platform/audit/index.ts tests/unit/audit.test.mjs || fail 'audit chain error code missing'
+rg -q 'LocalObservability' platform/observability/index.ts tests/unit/observability.test.mjs || fail 'observability implementation missing'
+rg -q 'Tenancy, RBAC, Policy-Gate, Audit, and Observability' tests/integration/tenancy-rbac-audit-trace.test.mjs || fail 'tenancy/rbac/audit/trace integration test missing'
 
-if rg -n 'Date\.now\(|datetime\.now\(' platform/task-state platform/contracts platform/policy-gate platform/coordinator platform/clock platform/event-bus platform/adapters platform/artifact-store platform/memory-gateway platform/credentials; then
+if rg -n 'Date\.now\(|datetime\.now\(' platform/task-state platform/contracts platform/policy-gate platform/coordinator platform/clock platform/event-bus platform/adapters platform/artifact-store platform/memory-gateway platform/credentials platform/tenancy platform/rbac platform/audit platform/observability; then
   fail 'wall-clock duration helper detected in P1 contracts or core service code'
 fi
 
@@ -81,6 +97,10 @@ if rg -n 'Hermes|OpenClaw|DeepSeek|DSH|hermes|openclaw|deepseek' \
   platform/artifact-store \
   platform/memory-gateway \
   platform/credentials \
+  platform/tenancy \
+  platform/rbac \
+  platform/audit \
+  platform/observability \
   platform/contracts/common-identifiers.schema.json \
   platform/contracts/task-request.schema.json \
   platform/contracts/task-state.schema.json \
@@ -99,12 +119,18 @@ node --test \
   tests/unit/artifact-store.test.mjs \
   tests/unit/memory-gateway.test.mjs \
   tests/unit/credentials.test.mjs \
+  tests/unit/tenancy.test.mjs \
+  tests/unit/rbac.test.mjs \
+  tests/unit/audit.test.mjs \
+  tests/unit/observability.test.mjs \
   tests/contract/p1-contracts.test.mjs \
   tests/integration/coordinator-policy-gate.test.mjs \
   tests/integration/coordinator-adapter-event-bus.test.mjs \
   tests/integration/data-spine-event-bus.test.mjs \
+  tests/integration/tenancy-rbac-audit-trace.test.mjs \
   tests/security/policy-gate-bypass.test.mjs \
   tests/security/adapter-bypass.test.mjs \
-  tests/security/data-spine-isolation.test.mjs
+  tests/security/data-spine-isolation.test.mjs \
+  tests/security/tenant-rbac-audit-guards.test.mjs
 
-echo 'PASS: P1 contracts, task-state, Policy-Gate, Coordinator, Clock, Event Bus, adapters, data services, and bypass guards'
+echo 'PASS: P1 contracts, task-state, Policy-Gate, Coordinator, Clock, Event Bus, adapters, data services, tenancy/RBAC/audit/observability, and bypass guards'

@@ -23,6 +23,7 @@
 - [P1 Coordinator 与 Policy-Gate](../platform/coordinator/index.ts)：P1-02 基线，覆盖任务接收、受控 adapter 路由、租户/RBAC/预算/审批校验、决策日志和防绕过测试。
 - [P1 Clock、Event Bus 与 Adapter 抽象](../platform/event-bus/index.ts)：P1-03 基线，覆盖统一单调时钟、内存事件总线、adapter lifecycle、mock lifecycle 和防绕过测试。
 - [P1 Artifact、Memory 与 Credential 数据服务](../platform/artifact-store/index.ts)：P1-04 基线，覆盖本地 artifact 引用、五层 Memory Gateway、Credential Center 引用/脱敏和租户隔离测试。
+- [P1 Tenancy、RBAC、Audit 与 Observability](../platform/tenancy/index.ts)：P1-05 基线，覆盖租户边界、角色权限、hash-chain 审计、trace/health/metrics/logs 本地接口和安全拒绝测试。
 - [服务功能与整合蓝图](architecture/service-blueprint.md)：P0-07 基线，覆盖十个基础服务的功能、技术栈、输入输出、复用边界、参考项目和 P1 工作包。
 - [DSH 版本兼容与替换策略](architecture/dsh-versioning-and-replacement.md)
 - [上游版本适配与社区插件复用桥接策略](architecture/upstream-versioning-and-plugin-bridge.md)
