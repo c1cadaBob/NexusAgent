@@ -206,6 +206,18 @@ p0_09_audit_block="$(sed -n '/^# P0-09 修改记录包$/,/^## 完整提示词$/p
 if printf '%s\n' "$p0_09_audit_block" | rg -q '\.\.\.'; then
   fail 'P0-09 audit record package still contains placeholder ellipses'
 fi
+p0_11_prompt="docs/planning/task-prompts/P0/P0-11.md"
+[[ -f "$p0_11_prompt" ]] || fail 'P0-11 realtime planning prompt is missing'
+for p0_11_marker in \
+  '实时规划提示词' \
+  'P0 已自动确认问题同步修复' \
+  'P0-01 至 P0-08' \
+  '先处理待确认问题，再进入下一步' \
+  '自动确认` 不等于 `已关闭`' \
+  '如果仍有未处理问题，必须创建或更新后续实时规划提示词' \
+  '最低验收命令'; do
+  rg -q "$p0_11_marker" "$p0_11_prompt" || fail "P0-11 realtime planning marker missing: $p0_11_marker"
+done
 for open_question_marker in \
   'NexusAgent 待确认问题集中台账' \
   '状态枚举' \
@@ -262,6 +274,9 @@ for agents_open_question_marker in \
   '所有确认内容、推荐处理方式、三大平台影响分析、默认解决方案和关闭证据' \
   '集中台账状态更新为 `自动确认`' \
   '人工确认` 是可选状态' \
+  '实时规划提示词用于承接' \
+  '开始实现任务前，先填写对应任务文档中的“修改前分析”' \
+  '如果任务结束时仍存在未处理的待确认问题' \
   '如果某个问题的解决需要进入开发排期'; do
   rg -q "$agents_open_question_marker" AGENTS.md || fail "AGENTS open question workflow marker missing: $agents_open_question_marker"
 done
@@ -270,8 +285,12 @@ rg -q '待确认问题确认文件' docs/README.md || fail 'docs README missing 
 rg -q 'open-questions-register.md' docs/planning/ai-schedule-prompt-template.md || fail 'AI schedule prompt template missing open questions register reference'
 rg -q 'docs/planning/open-questions/' docs/planning/ai-schedule-prompt-template.md || fail 'AI schedule prompt template missing phased open questions plan reference'
 rg -q 'OQ-\*' docs/planning/ai-schedule-prompt-template.md || fail 'AI schedule prompt template missing OQ ID requirement'
+rg -q '实时规划提示词执行顺序' docs/planning/ai-schedule-prompt-template.md || fail 'AI schedule prompt template missing realtime prompt workflow'
+rg -q '如果存在 `打开`、缺少确认文件、或已 `自动确认` 但尚未同步修复的问题' docs/planning/ai-schedule-prompt-template.md || fail 'AI schedule prompt template missing pre-analysis OQ handling rule'
 rg -q 'P0-09 已新增待确认问题集中台账' docs/traceability/requirements-matrix.md || fail 'REQ-015 missing P0-09 open questions status'
 rg -q 'P0-09 待确认问题集中台账更新' docs/risks/risk-register.md || fail 'risk register missing P0-09 update'
+rg -q 'P0-11 已新增实时规划提示词' docs/traceability/requirements-matrix.md || fail 'REQ-015 missing P0-11 realtime prompt status'
+rg -q 'P0-11 新增实时规划提示词执行规则' docs/risks/risk-register.md || fail 'risk register missing P0-11 realtime prompt update'
 
 for open_questions_plan in \
   docs/planning/open-questions/README.md \
