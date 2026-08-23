@@ -73,9 +73,11 @@ git push origin HEAD
 2. 集中台账只作为状态索引，记录 `OQ-*` ID、状态、影响、负责人/工作流、最晚确认阶段、确认结论和解决说明文档；不得在集中台账中维护候选方案正文。
 3. 所有确认内容、推荐处理方式、三大平台影响分析、默认解决方案和关闭证据，必须写入 `docs/planning/open-questions/` 下对应阶段或对应问题的确认文件。
 4. 结合 OpenClaw、Hermes、DSH 分析问题时，必须分别说明 gateway-only、planner-only、executor-only 边界影响。
-5. 若没有项目负责人另行确认，`docs/planning/open-questions/` 中的“推荐处理方式”即作为默认解决方案，但集中台账状态仍保持 `Open`，直到确认结论、解决说明文档和关闭任务/commit 补齐。
-6. 如果某个问题的解决需要进入开发排期，必须在 `docs/planning/task-prompts/` 的相应阶段文件夹中添加或更新对应实施规划提示词。
-7. 问题被确认后，必须回写 `docs/planning/open-questions-register.md` 的状态、确认结论、解决说明文档和关闭任务/commit，并同步需求追踪矩阵、风险登记册和相关任务修改记录包。
+5. 系统结合 OpenClaw、Hermes、DSH 生成推荐处理方式后，集中台账状态更新为 `自动确认`；若没有项目负责人另行确认，`docs/planning/open-questions/` 中的“推荐处理方式”即作为默认解决方案。
+6. `人工确认` 是可选状态：只有项目负责人或指定责任人需要覆盖默认解决方案时才使用；接受默认解决方案时，可以从 `自动确认` 直接进入 `已关闭`。
+7. `自动确认` 和 `人工确认` 都不等于关闭；只有确认结论、解决说明文档和关闭任务/commit 全部补齐后，状态才能改为 `已关闭`。
+8. 如果某个问题的解决需要进入开发排期，必须在 `docs/planning/task-prompts/` 的相应阶段文件夹中添加或更新对应实施规划提示词。
+9. 问题关闭后，必须回写 `docs/planning/open-questions-register.md` 的状态、确认结论、解决说明文档和关闭任务/commit，并同步需求追踪矩阵、风险登记册和相关任务修改记录包。
 
 ## 5. 禁止事项
 

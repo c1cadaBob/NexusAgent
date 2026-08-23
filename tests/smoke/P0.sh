@@ -209,20 +209,19 @@ fi
 for open_question_marker in \
   'NexusAgent 待确认问题集中台账' \
   '状态枚举' \
-  'Open' \
-  'Confirmed' \
-  'Deferred' \
-  'Superseded' \
-  'Blocked' \
+  '打开' \
+  '自动确认' \
+  '人工确认' \
+  '已关闭' \
   '解决说明文档' \
   '最后更新UTC' \
   '3. 当前确认状态' \
-  '4. 需要负责人确认的问题' \
-  '4.1 P1 前需要确认' \
-  '4.2 P2 前需要确认' \
-  '4.3 P5 前需要确认' \
-  '4.4 P6/P8 前需要确认' \
-  '5. 后续自动确认的问题' \
+  '4. 人工确认（可省略）的问题' \
+  '4.1 P1 前人工确认（可省略）' \
+  '4.2 P2 前人工确认（可省略）' \
+  '4.3 P5 前人工确认（可省略）' \
+  '4.4 P6/P8 前人工确认（可省略）' \
+  '5. 自动确认的问题' \
   '5.1 P2 前自动确认' \
   '5.2 P3 前自动确认' \
   '5.3 P4 前自动确认' \
@@ -230,7 +229,7 @@ for open_question_marker in \
   '6. 完整问题台账' \
   '7. 当前关闭摘要' \
   '本台账不展示候选方案' \
-  '当前这些问题还没有完成确认' \
+  '当前 23 个问题已完成“自动确认”' \
   'OQ-UPSTREAM-001' \
   'OQ-SCHEDULE-001' \
   'OQ-DSH-001' \
@@ -244,13 +243,16 @@ for open_question_marker in \
 done
 rg -F -q '| 问题ID | 状态 | 分类 | 问题描述 | 最晚确认阶段 | 负责人/工作流 | 解决说明文档 |' docs/planning/open-questions-register.md || fail 'open questions register missing summary table header'
 rg -F -q '| 问题ID | 状态 | 分类 | 来源文档 | 问题描述 | 影响 | 负责人/工作流 | 最晚确认阶段 | 确认结论 | 解决说明文档 | 关联需求/风险 | 关闭任务/commit | 最后更新UTC |' docs/planning/open-questions-register.md || fail 'open questions register missing full table header'
-rg -F -q '| Confirmed | 0 | 当前没有已完成确认的问题 |' docs/planning/open-questions-register.md || fail 'open questions register must show zero confirmed items'
+rg -F -q '| 自动确认 | 23 | 已结合三大平台在确认文件中生成默认解决方案，但尚未关闭 |' docs/planning/open-questions-register.md || fail 'open questions register must show 23 auto-confirmed items'
+rg -F -q '| 已关闭 | 0 | 暂无确认结论、解决说明文档和关闭 commit 全部补齐的问题 |' docs/planning/open-questions-register.md || fail 'open questions register must show zero closed items'
 if rg -q '方案 A|方案 B|方案 C|可另提方案' docs/planning/open-questions-register.md; then
   fail 'open questions register must not include candidate recommendation options'
 fi
 for open_question_workflow_marker in \
   '推荐处理方式、默认解决方案、三大平台影响分析和关闭证据统一写入 `docs/planning/open-questions/`' \
   '新问题产生时，先写入本台账对应分类和阶段位置' \
+  '台账状态可从 `打开` 更新为 `自动确认`' \
+  '自动确认` 和 `人工确认` 都不等于关闭' \
   '推荐处理方式”即作为默认解决方案' \
   '如果问题解决需要进入开发排期，必须同步在 `docs/planning/task-prompts/`'; do
   rg -q "$open_question_workflow_marker" docs/planning/open-questions-register.md || fail "open question workflow marker missing from register: $open_question_workflow_marker"
@@ -258,6 +260,8 @@ done
 for agents_open_question_marker in \
   '所有待确认问题必须按以下流程处理' \
   '所有确认内容、推荐处理方式、三大平台影响分析、默认解决方案和关闭证据' \
+  '集中台账状态更新为 `自动确认`' \
+  '人工确认` 是可选状态' \
   '如果某个问题的解决需要进入开发排期'; do
   rg -q "$agents_open_question_marker" AGENTS.md || fail "AGENTS open question workflow marker missing: $agents_open_question_marker"
 done
@@ -284,6 +288,8 @@ done
 for open_questions_readme_marker in \
   '确认文件与处理计划存放位置' \
   '默认解决方案' \
+  '台账状态可进入 `自动确认`' \
+  '人工确认` 是可选状态' \
   'docs/planning/task-prompts/' \
   '新问题产生后，必须先写入'; do
   rg -q "$open_questions_readme_marker" docs/planning/open-questions/README.md || fail "open questions README workflow marker missing: $open_questions_readme_marker"

@@ -19,7 +19,7 @@
 
 ## 2. 自动填充字段字典
 
-自动生成提示词时，必须优先从当前仓库文档读取字段，不得手工猜测。字段缺失时保留 `【待确认问题】`。所有未关闭问题必须优先读取 `docs/planning/open-questions-register.md` 和 `docs/planning/open-questions/` 分阶段处理计划，并在输出中保留对应 `OQ-*` 问题 ID。
+自动生成提示词时，必须优先从当前仓库文档读取字段，不得手工猜测。字段缺失时保留 `【待确认问题】`。所有未关闭问题必须优先读取 `docs/planning/open-questions-register.md` 和 `docs/planning/open-questions/` 确认文件，并在输出中保留对应 `OQ-*` 问题 ID。
 
 | 占位符 | 来源 | 示例/规则 |
 |---|---|---|
@@ -50,7 +50,7 @@
 | `{{smoke_script}}` | 阶段脚本约定 | `tests/smoke/P2.sh` |
 | `{{related_requirements}}` | `docs/traceability/requirements-matrix.md` | `REQ-009`、`REQ-012` |
 | `{{related_risks}}` | `docs/risks/risk-register.md`、规划第 12 节 | `R-003`、`R-004` |
-| `{{open_questions}}` | `docs/planning/open-questions-register.md`，辅以 `docs/planning/open-questions/`、阶段待确认问题和排期待确认事项 | 保留问题 ID、状态、影响、负责人、关闭证据和最晚确认阶段，不得擅自假设；推荐处理方式、默认解决方案和确认内容从确认文件读取 |
+| `{{open_questions}}` | `docs/planning/open-questions-register.md`，辅以 `docs/planning/open-questions/`、阶段待确认问题和排期待确认事项 | 保留问题 ID、状态、影响、负责人、关闭证据和最晚确认阶段，不得擅自假设；状态使用 `打开`、`自动确认`、`人工确认`、`已关闭`；推荐处理方式、默认解决方案和确认内容从确认文件读取 |
 | `{{allowed_write_paths}}` | 项目约束和任务路径 | `vendor/` 副本、`platform/`、`product/`、`docs/`、`tests/`、`deploy/`、`config/`、`scripts/` |
 | `{{readonly_upstream_paths}}` | 固定值 | `/opt/project/hermes-agent-main`、`/opt/project/openclaw-main`、`/opt/project/deepseek-harness-master` |
 
@@ -99,7 +99,7 @@ AI 生成排期时必须输出以下结构，缺一不可：
 5. 风险与降级：列出触发条件、影响、补救方式和是否影响 MVP。
 6. 门禁清单：列出必须通过的测试、脚本、文档更新和安全验证。
 7. 自动填充差异：说明本次排期相对 `development-schedule.md` 的变化。
-8. 待确认问题：优先引用 `docs/planning/open-questions-register.md` 和 `docs/planning/open-questions/`，保留 `OQ-*` ID、状态、影响、负责人、关闭证据和最晚确认阶段，不得擅自下结论；集中台账不展示候选方案，`docs/planning/open-questions/` 中的推荐处理方式作为默认解决方案。
+8. 待确认问题：优先引用 `docs/planning/open-questions-register.md` 和 `docs/planning/open-questions/`，保留 `OQ-*` ID、状态、影响、负责人、关闭证据和最晚确认阶段，不得擅自下结论；状态使用 `打开`、`自动确认`、`人工确认`、`已关闭`；集中台账不展示候选方案，`docs/planning/open-questions/` 中的推荐处理方式作为默认解决方案。
 9. 插件与 provider 治理：列出是否涉及 Plugin Bridge、社区插件复用、provider 兼容、禁用和回滚。
 10. 审计要求：列出对应任务 ID 文档路径，并要求执行前后填写“修改记录包”。
 
@@ -162,7 +162,7 @@ AI 生成排期时必须输出以下结构，缺一不可：
 - 当前风险登记册：`docs/risks/risk-register.md`
 - 当前需求追踪矩阵：`docs/traceability/requirements-matrix.md`
 - 当前待确认问题集中台账：`docs/planning/open-questions-register.md`
-- 当前待确认问题分阶段处理计划：`docs/planning/open-questions/`
+- 当前待确认问题确认文件：`docs/planning/open-questions/`
 
 # 不可违反约束
 1. 原始上游目录只读：{{readonly_upstream_paths}}。
@@ -382,7 +382,7 @@ Markdown，包含影响分析表、三套重排方案、推荐方案、不可降
 1. `PASS` / `CONDITIONAL PASS` / `FAIL` 判定。
 2. 每个任务的完成状态和证据。
 3. 每个验收命令的输出摘要。
-4. 未关闭风险和待确认问题集中台账中的 `Open`/`Blocked` 项。
+4. 未关闭风险和待确认问题集中台账中的 `打开`、`自动确认`、`人工确认` 项。
 5. 允许进入下一阶段时的限制条件。
 6. 不允许进入下一阶段时的补救排期。
 

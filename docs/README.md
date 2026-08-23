@@ -35,7 +35,7 @@
 - P0-06 的 [对外 API 契约](contracts/openapi.yaml) 定义只包含平台概念的 REST OpenAPI 初稿和平台错误码草案。
 - P0-07 的 [服务功能与整合蓝图](architecture/service-blueprint.md) 把十个基础服务映射到 P1 最小交付、P2-P4 上游接入和 P5 产品化能力。
 - P0-08 的 [开发排期基线](planning/development-schedule.md) 把 P0-P8 转换为日历排期、周计划、关键路径、资源容量和阶段门禁，并保留团队容量、节假日和冻结窗口为【待确认问题】。
-- P0-09 的 [待确认问题集中台账](planning/open-questions-register.md) 是后续 AI 排期、任务提示词和阶段门禁的未关闭问题索引；[待确认问题确认文件目录](planning/open-questions/README.md) 是推荐处理方式、默认解决方案、三平台影响和关闭证据的保存位置。问题关闭后必须回写台账确认结论、解决说明文档和关闭任务/commit；需要加入开发排期的问题必须同步更新 `planning/task-prompts/` 对应阶段提示词。
+- P0-09 的 [待确认问题集中台账](planning/open-questions-register.md) 是后续 AI 排期、任务提示词和阶段门禁的未关闭问题索引；状态流为 `打开`、`自动确认`、`人工确认`、`已关闭`。[待确认问题确认文件目录](planning/open-questions/README.md) 是推荐处理方式、默认解决方案、三平台影响和关闭证据的保存位置。问题关闭后必须回写台账确认结论、解决说明文档和关闭任务/commit；需要加入开发排期的问题必须同步更新 `planning/task-prompts/` 对应阶段提示词。
 
 所有文档使用 UTC 时间、平台统一标识和平台层术语。Hermes、OpenClaw、DSH 只在内部实现、适配器、风险和源码追踪语境中出现。
 
