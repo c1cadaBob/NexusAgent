@@ -56,6 +56,18 @@ for section in {0..14}; do
 done
 
 [[ -x scripts/planning/generate-task-prompts.py ]] || fail 'task prompt generator is not executable'
+scripts/planning/generate-task-prompts.py --check >/dev/null || fail 'task prompt generator check failed'
+for generator_marker in \
+  'Safe default' \
+  '--write' \
+  '--overwrite' \
+  'role_profile' \
+  'open-questions-register.md' \
+  'docs/planning/open-questions/' \
+  '阶段历史问题回扫' \
+  'git diff --check -- .'; do
+  rg -q -- "$generator_marker" scripts/planning/generate-task-prompts.py || fail "task prompt generator marker missing: $generator_marker"
+done
 bash -n scripts/bootstrap/vendor-snapshot.sh || fail 'vendor snapshot script has syntax errors'
 bash -n scripts/source-manifest/create-manifest.sh || fail 'source manifest script has syntax errors'
 rg -q 'upstream version drift' scripts/bootstrap/vendor-snapshot.sh || fail 'vendor snapshot script must guard pinned upstream versions'
@@ -217,6 +229,21 @@ done
 if rg -q '方案 A|方案 B|方案 C|每个问题提供至少 3|从表格改为|卡片形式' "$p0_09_prompt"; then
   fail 'P0-09 prompt must not preserve obsolete card-style candidate option workflow'
 fi
+p0_10_prompt="docs/planning/task-prompts/P0/P0-10.md"
+p0_10_audit_block="$(sed -n '/^# P0-10 修改记录包$/,/^## 完整提示词$/p' "$p0_10_prompt")"
+[[ -n "$p0_10_audit_block" ]] || fail 'P0-10 audit record package is missing'
+if printf '%s\n' "$p0_10_audit_block" | rg -q '\.\.\.'; then
+  fail 'P0-10 audit record package still contains placeholder ellipses'
+fi
+for p0_10_marker in \
+  '默认安全 `--check` 模式' \
+  '显式 `--write` 才创建缺失文档' \
+  '`--write --overwrite` 才覆盖已有文档' \
+  'tasks=45' \
+  '阶段历史问题回扫' \
+  'scripts/planning/generate-task-prompts.py --check'; do
+  rg -q "$p0_10_marker" "$p0_10_prompt" || fail "P0-10 implementation marker missing: $p0_10_marker"
+done
 p0_11_prompt="docs/planning/task-prompts/P0/P0-11.md"
 [[ -f "$p0_11_prompt" ]] || fail 'P0-11 realtime planning prompt is missing'
 for p0_11_marker in \
@@ -368,6 +395,23 @@ if find vendor -type d \( \
   -name .mypy_cache \
 \) -print -quit | grep -q .; then
   fail 'excluded dependency/cache directory found in vendor snapshot'
+fi
+
+if find . -path ./.git -prune -o -path ./vendor -prune -o -type d \( \
+  -name node_modules -o \
+  -name .pnpm-store -o \
+  -name .cache -o \
+  -name .turbo -o \
+  -name .next -o \
+  -name .vite -o \
+  -name .venv -o \
+  -name venv -o \
+  -name __pycache__ -o \
+  -name .pytest_cache -o \
+  -name .ruff_cache -o \
+  -name .mypy_cache \
+\) -print -quit | grep -q .; then
+  fail 'excluded dependency/cache directory found outside vendor snapshot'
 fi
 
 git diff --check -- . ':!vendor/**' || fail 'whitespace errors found outside vendor snapshot'
