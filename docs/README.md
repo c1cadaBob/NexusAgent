@@ -16,6 +16,7 @@
 - [待确认问题集中台账](planning/open-questions-register.md)：P0-09 基线，统一登记仍未关闭的问题、状态、责任工作流、确认结论和解决说明文档位置。
 - [待确认问题确认文件](planning/open-questions/README.md)：按 P0/P1/P2/P3/P4/P5/P6/P8 承接全部 `OQ-*`，保存推荐处理方式、默认解决方案、三平台影响分析和关闭证据。
 - [P0 阶段门禁报告](planning/phase-gates/P0-gate-review.md)：P0 门禁收口，关闭 4 个 P0 到期 `OQ-*`，并列明仍为 `自动确认` 的后续阶段问题。
+- [P1 阶段门禁报告](planning/phase-gates/P1-gate-review.md)：P1 门禁收口，确认 P1-01 至 P1-06 完成，列明仍为 `自动确认` 的 P1/P8 基础设施和 API 问题及后续承接任务。
 - [AI 排期提示词模板](planning/ai-schedule-prompt-template.md)
 - [任务实施规划提示词索引](planning/task-prompts/README.md)
 - [子 Agent 角色记忆](agents/README.md)：P0-01 基线，固化长期协作角色、只读上游边界、交接格式和各角色常读资料，避免上下文压缩或交接后遗忘项目约束。
@@ -48,6 +49,7 @@
 - P0-10 的 [任务提示词生成器](../scripts/planning/generate-task-prompts.py) 默认只执行 `--check` 覆盖率和治理校验；显式 `--write` 才创建缺失文档，`--write --overwrite` 才允许覆盖已有人工优化提示词。生成器校验 45 个任务 ID、差异化角色、审计记录、集中台账、确认文件目录和阶段历史问题回扫规则。
 - P0-11 的 [实时规划提示词](planning/task-prompts/P0/P0-11.md) 已把 P0-01 至 P0-08 已 `自动确认` 但尚未同步的问题回写到对应任务文档，形成 OQ ID、确认文件和未关闭状态的同步矩阵；实时规划任务必须先填写“修改前分析”，先处理待确认问题，再进入后续实现。
 - P0 阶段门禁的 [阶段门禁报告](planning/phase-gates/P0-gate-review.md) 已关闭 `OQ-UPSTREAM-004`、`OQ-SCHEDULE-001`、`OQ-SCHEDULE-002`、`OQ-CHANNEL-001`；其余 19 个问题仍为 `自动确认`，按 P1-P8 后续最晚确认阶段继续关闭。
+- P1 阶段门禁的 [阶段门禁报告](planning/phase-gates/P1-gate-review.md) 已确认 P1-01 至 P1-06 全部完成并通过 P1 smoke；P1 相关 `OQ-INFRA-*`、`OQ-API-001` 和 `OQ-DEPLOY-001` 仍保持 `自动确认`，已映射到 P5/P6/P8 后续任务继续关闭。
 - 每个阶段结束前必须回扫当前阶段及其之前阶段的未处理问题、任务修改记录包、风险登记册和需求追踪矩阵；如果仍有未处理或未同步问题，必须先修复或创建后续实时规划提示词，再判断是否允许进入下一阶段。
 
 所有文档使用 UTC 时间、平台统一标识和平台层术语。Hermes、OpenClaw、DSH 只在内部实现、适配器、风险和源码追踪语境中出现。
