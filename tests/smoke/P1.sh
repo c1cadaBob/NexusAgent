@@ -23,16 +23,24 @@ required_files=(
   platform/clock/index.ts
   platform/event-bus/index.ts
   platform/adapters/index.ts
+  platform/artifact-store/index.ts
+  platform/memory-gateway/index.ts
+  platform/credentials/index.ts
   tests/unit/task-state.test.mjs
   tests/unit/policy-gate.test.mjs
   tests/unit/clock.test.mjs
   tests/unit/event-bus.test.mjs
   tests/unit/adapters.test.mjs
+  tests/unit/artifact-store.test.mjs
+  tests/unit/memory-gateway.test.mjs
+  tests/unit/credentials.test.mjs
   tests/contract/p1-contracts.test.mjs
   tests/integration/coordinator-policy-gate.test.mjs
   tests/integration/coordinator-adapter-event-bus.test.mjs
+  tests/integration/data-spine-event-bus.test.mjs
   tests/security/policy-gate-bypass.test.mjs
   tests/security/adapter-bypass.test.mjs
+  tests/security/data-spine-isolation.test.mjs
 )
 
 for file in "${required_files[@]}"; do
@@ -54,9 +62,13 @@ rg -q 'InMemoryEventBus' platform/event-bus/index.ts tests/unit/event-bus.test.m
 rg -q 'AdapterRegistry' platform/adapters/index.ts tests/unit/adapters.test.mjs || fail 'adapter registry missing'
 rg -q 'MockPlannerAdapter' platform/adapters/index.ts tests/integration/coordinator-adapter-event-bus.test.mjs || fail 'mock planner adapter missing'
 rg -q 'deadLetter' platform/event-bus/index.ts tests/unit/event-bus.test.mjs || fail 'event bus dead-letter behavior missing'
+rg -q 'LocalArtifactStore' platform/artifact-store/index.ts tests/unit/artifact-store.test.mjs || fail 'artifact store implementation missing'
+rg -q 'LocalMemoryGateway' platform/memory-gateway/index.ts tests/unit/memory-gateway.test.mjs || fail 'memory gateway implementation missing'
+rg -q 'LocalCredentialCenter' platform/credentials/index.ts tests/unit/credentials.test.mjs || fail 'credential center implementation missing'
+rg -q 'secret_scan_required' platform/contracts/credential-reference.schema.json platform/credentials/index.ts || fail 'credential redaction policy missing'
 
-if rg -n 'Date\.now\(|datetime\.now\(' platform/task-state platform/contracts platform/policy-gate platform/coordinator platform/clock platform/event-bus platform/adapters; then
-  fail 'wall-clock duration helper detected in P1 contracts or core state/policy/coordinator/clock/event-bus/adapter code'
+if rg -n 'Date\.now\(|datetime\.now\(' platform/task-state platform/contracts platform/policy-gate platform/coordinator platform/clock platform/event-bus platform/adapters platform/artifact-store platform/memory-gateway platform/credentials; then
+  fail 'wall-clock duration helper detected in P1 contracts or core service code'
 fi
 
 if rg -n 'Hermes|OpenClaw|DeepSeek|DSH|hermes|openclaw|deepseek' \
@@ -66,6 +78,9 @@ if rg -n 'Hermes|OpenClaw|DeepSeek|DSH|hermes|openclaw|deepseek' \
   platform/clock \
   platform/event-bus \
   platform/adapters/index.ts \
+  platform/artifact-store \
+  platform/memory-gateway \
+  platform/credentials \
   platform/contracts/common-identifiers.schema.json \
   platform/contracts/task-request.schema.json \
   platform/contracts/task-state.schema.json \
@@ -81,10 +96,15 @@ node --test \
   tests/unit/clock.test.mjs \
   tests/unit/event-bus.test.mjs \
   tests/unit/adapters.test.mjs \
+  tests/unit/artifact-store.test.mjs \
+  tests/unit/memory-gateway.test.mjs \
+  tests/unit/credentials.test.mjs \
   tests/contract/p1-contracts.test.mjs \
   tests/integration/coordinator-policy-gate.test.mjs \
   tests/integration/coordinator-adapter-event-bus.test.mjs \
+  tests/integration/data-spine-event-bus.test.mjs \
   tests/security/policy-gate-bypass.test.mjs \
-  tests/security/adapter-bypass.test.mjs
+  tests/security/adapter-bypass.test.mjs \
+  tests/security/data-spine-isolation.test.mjs
 
-echo 'PASS: P1 contracts, task-state, Policy-Gate, Coordinator, Clock, Event Bus, adapters, and bypass guards'
+echo 'PASS: P1 contracts, task-state, Policy-Gate, Coordinator, Clock, Event Bus, adapters, data services, and bypass guards'
