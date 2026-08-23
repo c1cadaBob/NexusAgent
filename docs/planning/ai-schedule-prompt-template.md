@@ -1,6 +1,6 @@
 # NexusAgent AI 排期提示词模板
 
-> 文档状态：P0-09 初始模板。本文用于把 NexusAgent 当前规划、服务蓝图和开发排期自动填充为 AI 可执行的排期提示词。本文只定义排期和计划生成提示词，不授权 AI 直接修改生产业务代码。
+> 文档状态：P0-09 提示词基线。本文用于把 NexusAgent 当前规划、服务蓝图、开发排期和待确认问题集中台账自动填充为 AI 可执行的排期提示词。本文只定义排期和计划生成提示词，不授权 AI 直接修改生产业务代码。
 >
 > 工时说明：人天仅为工程估算，会受上游开源版本变更影响。
 
@@ -19,7 +19,7 @@
 
 ## 2. 自动填充字段字典
 
-自动生成提示词时，必须优先从当前仓库文档读取字段，不得手工猜测。字段缺失时保留 `【待确认问题】`。
+自动生成提示词时，必须优先从当前仓库文档读取字段，不得手工猜测。字段缺失时保留 `【待确认问题】`。所有未关闭问题必须优先读取 `docs/planning/open-questions-register.md`，并在输出中保留对应 `OQ-*` 问题 ID。
 
 | 占位符 | 来源 | 示例/规则 |
 |---|---|---|
@@ -44,12 +44,13 @@
 | `{{milestone}}` | `development-schedule.md` | `M2：P2-P4 内部三组件接入` |
 | `{{owner_workstream}}` | `development-schedule.md`、团队分工 | 上游改造、平台内核、测试 |
 | `{{quality_gates}}` | 任务表、测试策略、阶段门禁 | 单元、契约、集成、安全、冒烟、`git diff --check` |
+| `{{open_questions_register}}` | `docs/planning/open-questions-register.md` | 集中台账路径、状态枚举、问题 ID、责任工作流、最晚确认阶段和解决说明文档 |
 | `{{plugin_bridge_strategy}}` | `docs/architecture/upstream-versioning-and-plugin-bridge.md` | Plugin Bridge 白名单、能力描述符、宿主侧车和禁止事项 |
 | `{{provider_strategy}}` | `docs/architecture/dsh-versioning-and-replacement.md`、`docs/architecture/upstream-versioning-and-plugin-bridge.md` | OpenClaw/Hermes/DSH provider 并存、升级、禁用和回滚规则 |
 | `{{smoke_script}}` | 阶段脚本约定 | `tests/smoke/P2.sh` |
 | `{{related_requirements}}` | `docs/traceability/requirements-matrix.md` | `REQ-009`、`REQ-012` |
 | `{{related_risks}}` | `docs/risks/risk-register.md`、规划第 12 节 | `R-003`、`R-004` |
-| `{{open_questions}}` | 阶段待确认问题、排期待确认事项 | 保留原文，不得擅自假设 |
+| `{{open_questions}}` | `docs/planning/open-questions-register.md`，辅以阶段待确认问题和排期待确认事项 | 保留问题 ID、状态、影响和最晚确认阶段，不得擅自假设 |
 | `{{allowed_write_paths}}` | 项目约束和任务路径 | `vendor/` 副本、`platform/`、`product/`、`docs/`、`tests/`、`deploy/`、`config/`、`scripts/` |
 | `{{readonly_upstream_paths}}` | 固定值 | `/opt/project/hermes-agent-main`、`/opt/project/openclaw-main`、`/opt/project/deepseek-harness-master` |
 
@@ -65,7 +66,7 @@
 | 时间处理 | 所有时间字段使用 UTC；超时、重试、排序使用平台单调时钟，不用墙上时钟计算持续时间 | P1-03、P2-P6 必须安排 clock/timeout 语义测试 |
 | 标识符统一 | 全局使用 `tenant_id`、`user_id`、`agent_id`、`task_id`、`attempt_id`、`execution_id`、`conversation_id`、`artifact_id`、`trace_id` | 所有阶段验收都检查 trace 和 ID 贯穿 |
 | 上游行为 | 上游行为必须基于源码证据和实测，禁止凭文件名、README 或经验猜测 | P0、P2-P4 必须安排源码行号、调用图和实验日志 |
-| 待确认问题 | 未确认事项不得被当作事实；只能输出选项、影响和最晚确认时间 | 排期必须保留“待确认事项”表 |
+| 待确认问题 | 未确认事项不得被当作事实；只能输出 `OQ-*` ID、选项、影响、责任工作流和最晚确认时间 | 排期必须引用集中台账，并保留“待确认事项”表 |
 | 裁剪/降级 | P7 可裁剪；Hermes 可降级；对外 API 和任务标识不变 | 延期重排必须先保护 P0-P6 MVP 主线 |
 | 安全防绕过 | 负向测试和绕过测试是阶段门禁，不是可选项 | P2-P6 必须排入 security/integration 工作流 |
 | 社区插件复用 | 三大平台社区插件默认不可信，只能通过 Plugin Bridge 白名单、能力描述符和原生宿主侧车复用；不得要求重复改造社区插件主体 | P3-P8 必须安排插件发现、准入、禁用、防泄漏、升级和回滚验证 |
@@ -98,7 +99,7 @@ AI 生成排期时必须输出以下结构，缺一不可：
 5. 风险与降级：列出触发条件、影响、补救方式和是否影响 MVP。
 6. 门禁清单：列出必须通过的测试、脚本、文档更新和安全验证。
 7. 自动填充差异：说明本次排期相对 `development-schedule.md` 的变化。
-8. 待确认问题：保留未确认事项，不得擅自下结论。
+8. 待确认问题：优先引用 `docs/planning/open-questions-register.md`，保留 `OQ-*` ID、状态、影响、负责人和最晚确认阶段，不得擅自下结论。
 9. 插件与 provider 治理：列出是否涉及 Plugin Bridge、社区插件复用、provider 兼容、禁用和回滚。
 10. 审计要求：列出对应任务 ID 文档路径，并要求执行前后填写“修改记录包”。
 
@@ -160,6 +161,7 @@ AI 生成排期时必须输出以下结构，缺一不可：
 - 当前上游版本与插件桥策略：`docs/architecture/upstream-versioning-and-plugin-bridge.md`
 - 当前风险登记册：`docs/risks/risk-register.md`
 - 当前需求追踪矩阵：`docs/traceability/requirements-matrix.md`
+- 当前待确认问题集中台账：`docs/planning/open-questions-register.md`
 
 # 不可违反约束
 1. 原始上游目录只读：{{readonly_upstream_paths}}。
@@ -169,7 +171,7 @@ AI 生成排期时必须输出以下结构，缺一不可：
 5. 所有阶段必须保留统一 ID、UTC 时间、单调时钟、trace_id、质量门禁、冒烟脚本和防绕过验证。
 6. 三大平台社区插件只能通过 Plugin Bridge 白名单和原生宿主侧车复用；不得开放租户任意安装或绕过平台凭据、审计和 artifact 管理。
 7. OpenClaw/Hermes/DSH provider 可以并存、禁用、灰度和回滚；平台契约不得随上游版本变化。
-8. 未确认事项必须标记为【待确认问题】，不得擅自假设。
+8. 未确认事项必须从 `docs/planning/open-questions-register.md` 读取，保留 `OQ-*` ID，并标记为【待确认问题】，不得擅自假设。
 
 # 当前排期输入
 - 排期模式：{{prompt_mode}}
@@ -186,7 +188,7 @@ AI 生成排期时必须输出以下结构，缺一不可：
 3. 若团队容量不足，给出 4-5 人、8-10 人两套方案。
 4. 若某个上游剥离失败，说明是否触发轻量化路线，以及对日期的影响。
 5. 列出每阶段必须通过的 smoke 脚本、契约测试、安全测试和文档更新。
-6. 列出所有待确认问题、最晚确认时间和延迟影响。
+6. 列出所有关联待确认问题的 `OQ-*` ID、状态、最晚确认时间和延迟影响。
 7. 输出“相对当前排期基线的变更摘要”。
 
 # 输出格式
@@ -208,7 +210,7 @@ AI 生成排期时必须输出以下结构，缺一不可：
 - 相关需求：{{related_requirements}}
 - 相关风险：{{related_risks}}
 - 前置依赖：{{dependencies}}
-- 待确认问题：{{open_questions}}
+- 待确认问题：{{open_questions}}（优先来自 `docs/planning/open-questions-register.md`，必须保留 `OQ-*` ID）
 
 # 不可违反约束
 - 原始上游目录只读：{{readonly_upstream_paths}}。
@@ -361,7 +363,7 @@ Markdown，包含影响分析表、三套重排方案、推荐方案、不可降
 - 已运行命令：{{executed_commands}}
 - 测试结果：{{test_results}}
 - 文档更新：{{doc_updates}}
-- 未关闭问题：{{open_questions}}
+- 未关闭问题：{{open_questions}}（优先来自 `docs/planning/open-questions-register.md`，必须保留 `OQ-*` ID）
 - 相关风险：{{related_risks}}
 
 # 判定规则
@@ -369,7 +371,7 @@ Markdown，包含影响分析表、三套重排方案、推荐方案、不可降
 - 代码/文档产物不存在，不能通过。
 - 冒烟脚本、质量门禁或安全负向测试失败，不能通过。
 - 依赖阶段验收证据缺失，不能通过。
-- 待确认问题没有责任人和截止时间，不能通过。
+- 待确认问题没有 `OQ-*` ID、责任工作流和截止阶段，不能通过。
 - 发现绕过 Policy-Gate、原生能力泄漏、明文凭据泄漏、跨租户越权，必须阻塞。
 - 发现未批准插件启用、插件绕过 Plugin Bridge、provider 无回滚目标或插件许可证状态不明，必须阻塞。
 - 对应任务 ID 文档缺少“修改记录包”或审计字段未填写，必须阻塞。
@@ -379,7 +381,7 @@ Markdown，包含影响分析表、三套重排方案、推荐方案、不可降
 1. `PASS` / `CONDITIONAL PASS` / `FAIL` 判定。
 2. 每个任务的完成状态和证据。
 3. 每个验收命令的输出摘要。
-4. 未关闭风险和待确认问题。
+4. 未关闭风险和待确认问题集中台账中的 `Open`/`Blocked` 项。
 5. 允许进入下一阶段时的限制条件。
 6. 不允许进入下一阶段时的补救排期。
 
@@ -400,7 +402,7 @@ Markdown，包含结论、证据表、失败项、风险、补救计划和下一
 7. 读取 Git 状态，填充当前分支和未提交变更风险。
 8. 根据 `prompt_mode` 选择第 6 至 11 节中的模板。
 9. 对所有缺失字段填入 `【待确认问题】`，不得留空或编造。
-10. 生成提示词后，先做一次约束扫描：是否包含只读目录、允许写路径、防暴露、防绕过、Plugin Bridge、provider 回滚、验收命令、待确认问题和修改记录包。
+10. 生成提示词后，先做一次约束扫描：是否包含只读目录、允许写路径、防暴露、防绕过、Plugin Bridge、provider 回滚、验收命令、待确认问题集中台账引用和修改记录包。
 
 ## 14. 示例：P2 阶段排期提示词填充片段
 

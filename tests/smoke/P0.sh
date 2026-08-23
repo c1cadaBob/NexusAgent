@@ -24,6 +24,7 @@ required_paths=(
   deploy/docker-compose.dev.yml
   docs/planning/integrated-platform-plan.md
   docs/planning/development-schedule.md
+  docs/planning/open-questions-register.md
   docs/planning/ai-schedule-prompt-template.md
   docs/planning/task-prompts/README.md
   docs/decisions/P0-openclaw-gateway-only.md
@@ -198,6 +199,38 @@ done
 rg -q 'P0-08 的 \[开发排期基线\]' docs/README.md || fail 'docs README missing P0-08 baseline summary'
 rg -q 'P0-08 已交付 P0-P8 日历排期' docs/traceability/requirements-matrix.md || fail 'REQ-014 missing P0-08 delivery status'
 rg -q 'P0-08 开发排期基线更新' docs/risks/risk-register.md || fail 'risk register missing P0-08 update'
+
+p0_09_prompt="docs/planning/task-prompts/P0/P0-09.md"
+p0_09_audit_block="$(sed -n '/^# P0-09 修改记录包$/,/^## 完整提示词$/p' "$p0_09_prompt")"
+[[ -n "$p0_09_audit_block" ]] || fail 'P0-09 audit record package is missing'
+if printf '%s\n' "$p0_09_audit_block" | rg -q '\.\.\.'; then
+  fail 'P0-09 audit record package still contains placeholder ellipses'
+fi
+for open_question_marker in \
+  'NexusAgent 待确认问题集中台账' \
+  '状态枚举' \
+  'Open' \
+  'Confirmed' \
+  'Deferred' \
+  'Superseded' \
+  'Blocked' \
+  '解决说明文档' \
+  '最后更新UTC' \
+  'OQ-UPSTREAM-001' \
+  'OQ-SCHEDULE-001' \
+  'OQ-INFRA-001' \
+  'OQ-API-001' \
+  'OQ-CHANNEL-001' \
+  'OQ-MEMORY-001' \
+  'OQ-PLUGIN-001' \
+  'OQ-LEGAL-001'; do
+  rg -q "$open_question_marker" docs/planning/open-questions-register.md || fail "open questions register marker missing: $open_question_marker"
+done
+rg -q 'P0-09 的 \[待确认问题集中台账\]' docs/README.md || fail 'docs README missing P0-09 open questions summary'
+rg -q 'open-questions-register.md' docs/planning/ai-schedule-prompt-template.md || fail 'AI schedule prompt template missing open questions register reference'
+rg -q 'OQ-\*' docs/planning/ai-schedule-prompt-template.md || fail 'AI schedule prompt template missing OQ ID requirement'
+rg -q 'P0-09 已新增待确认问题集中台账' docs/traceability/requirements-matrix.md || fail 'REQ-015 missing P0-09 open questions status'
+rg -q 'P0-09 待确认问题集中台账更新' docs/risks/risk-register.md || fail 'risk register missing P0-09 update'
 
 for endpoint in '/v1/health:' '/v1/tasks:' '/v1/skills:' '/v1/memory/search:' '/v1/tenants:' '/v1/approvals:'; do
   rg -q "^  ${endpoint}" docs/contracts/openapi.yaml || fail "OpenAPI endpoint missing: ${endpoint}"
