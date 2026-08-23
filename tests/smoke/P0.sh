@@ -282,6 +282,7 @@ for oq_id in \
   OQ-MEMORY-001 OQ-MEMORY-002 OQ-DSH-001 OQ-DSH-002 \
   OQ-DEPLOY-001 OQ-PRODUCT-001; do
   rg -q "$oq_id" docs/planning/open-questions || fail "open questions phased plans missing OQ coverage: $oq_id"
+  rg -q "^## ${oq_id}" docs/planning/open-questions || fail "open questions phased plans missing OQ section heading: $oq_id"
   rg -q "$oq_id" docs/planning/open-questions-register.md || fail "open questions register missing OQ coverage: $oq_id"
 done
 rg -q 'docs/planning/open-questions/P1-resolution-plan.md' docs/planning/open-questions-register.md || fail 'open questions register missing P1 plan linkage'
