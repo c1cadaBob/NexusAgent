@@ -19,7 +19,7 @@
 ## 2. 关闭规则
 
 - 不直接删除问题；关闭时把状态改为 `Confirmed`、`Deferred` 或 `Superseded`。
-- 每个问题必须保留至少 3 个候选方案，并默认允许项目负责人或指定负责人另提方案；另提方案被采纳后必须写入确认结论。
+- 每个问题必须保留至少 3 个候选方案，并默认允许项目负责人或指定负责人另提方案；每个候选方案必须简述利弊，最推荐方案必须标注“推荐”，另提方案被采纳后必须写入确认结论。
 - 状态为 `Confirmed` 时，`确认结论`、`解决说明文档` 和 `关闭任务/commit` 必须非空。
 - 如果确认结论影响任务范围、架构边界、测试门禁或排期，必须同步更新 `docs/traceability/requirements-matrix.md`、`docs/risks/risk-register.md` 和对应任务 ID 的修改记录包。
 - 如果问题来自上游版本、插件或许可证，关闭前必须补充来源证据、hash/版本、许可证/NOTICE 影响和回滚方式。
@@ -34,37 +34,193 @@
 
 #### 3.1.1 需要在 P1 前确认的
 
-| 问题ID | 分类 | 需要确认的决策 | 推荐方案（至少 3 项，可另提方案） | 最晚确认阶段 |
-|---|---|---|---|---|
-| OQ-UPSTREAM-004 | 上游快照 | 是否允许长期排除构建产物、缓存、日志和依赖目录作为正式交付快照 | 方案 A：继续排除并记录 hash；方案 B：保留完整离线归档但工作树排除；方案 C：按源码、依赖、构建产物分层归档；可另提方案 | P0 门禁前 |
-| OQ-SCHEDULE-001 | 排期资源 | 实际团队人数、角色和可投入比例 | 方案 A：按 8-10 个核心角色维持基线；方案 B：按 4-5 名核心开发启用降级排期；方案 C：P0/P1 小团队、P2-P4 临时补充上游/测试/SRE；可另提方案 | P0 W1 结束前 |
-| OQ-SCHEDULE-002 | 排期资源 | 地区节假日和公司发布冻结窗口 | 方案 A：暂不扣除节假日，保留风险；方案 B：扣除地区节假日并重排 W13-W18；方案 C：加入固定发布冻结缓冲；可另提方案 | P0 W1 结束前 |
-| OQ-CHANNEL-001 | 渠道/插件 | 首批正式渠道清单 | 方案 A：钉钉、飞书、Telegram；方案 B：增加企业微信；方案 C：首版仅平台 API 或单一已验证渠道；可另提方案 | P0 结束前 |
-| OQ-INFRA-001 | 基础设施 | Web/API 框架是否选择 Fastify、NestJS 或企业标准框架 | 方案 A：Fastify 优先轻量实现；方案 B：NestJS 优先模块化治理；方案 C：采用企业标准 Node 框架；可另提方案 | P1 前 |
+**OQ-UPSTREAM-004｜上游快照｜P0 门禁前**
+
+需要确认：是否允许长期排除构建产物、缓存、日志和依赖目录作为正式交付快照。
+
+影响：影响交付审计口径、快照归档范围和 vendor 体积。
+
+推荐方案：
+
+- 方案 A（推荐）：继续排除构建产物、缓存、日志和依赖目录，并记录可复现 hash。利：工作树轻、审计清晰、重复生成简单；弊：若未来需要完整运行时镜像，需要另建归档。
+- 方案 B：保留完整离线归档，但工作树仍排除。利：最完整，便于灾备和法务追溯；弊：归档体积大，维护成本更高。
+- 方案 C：按源码、依赖、构建产物分层归档。利：兼顾审计和运行复原；弊：规则更复杂，需要额外脚本和说明。
+- 可另提方案：如果你有既定交付归档规范，可以直接覆盖以上方案。
+
+**OQ-SCHEDULE-001｜排期资源｜P0 W1 结束前**
+
+需要确认：实际团队人数、角色和可投入比例。
+
+影响：影响 MVP 日期、P2/P3/P4 是否并行、P5 控制台范围和测试/SRE 投入。
+
+推荐方案：
+
+- 方案 A（推荐）：按 8-10 个核心角色维持当前基线。利：能保持 P2/P3/P4 并行和 MVP 冻结目标；弊：需要较完整团队投入。
+- 方案 B：按 4-5 名核心开发启用降级排期。利：更贴近小团队现实；弊：MVP 预计延后，P2/P3/P4 需分批推进。
+- 方案 C：P0/P1 小团队，P2-P4 临时补充上游、测试和 SRE。利：早期成本低，关键阶段补强；弊：临时协作和上下文交接风险更高。
+- 可另提方案：可以给出实际人员名单和投入比例，我再据此重排。
+
+**OQ-SCHEDULE-002｜排期资源｜P0 W1 结束前**
+
+需要确认：地区节假日和公司发布冻结窗口。
+
+影响：影响 W13-W18、MVP 冻结、P8 发布候选和生产发布日历。
+
+推荐方案：
+
+- 方案 A：暂不扣除节假日，只保留风险。利：排期最简单；弊：后期可能集中延期。
+- 方案 B（推荐）：扣除已知地区节假日并重排 W13-W18。利：日期更真实，发布风险更小；弊：需要尽快提供日历规则。
+- 方案 C：加入固定发布冻结缓冲。利：适合生产交付和客户验收；弊：会拉长 P6/P8 时间窗口。
+- 可另提方案：可以提供公司发布日历或冻结规则。
+
+**OQ-CHANNEL-001｜渠道/插件｜P0 结束前**
+
+需要确认：首批正式渠道清单。
+
+影响：影响 P4 OpenClaw gateway adapter、P5 渠道管理、插件白名单和安全测试范围。
+
+推荐方案：
+
+- 方案 A（推荐）：首批支持钉钉、飞书、Telegram。利：覆盖国内协作和轻量国际通道；弊：不覆盖企业微信和 Slack 用户。
+- 方案 B：在方案 A 基础上增加企业微信。利：更贴近国内企业场景；弊：P4/P5 渠道测试和配置工作增加。
+- 方案 C：首版仅平台 API 或单一已验证渠道。利：MVP 风险最低；弊：渠道管理价值延后体现。
+- 可另提方案：可以指定首批客户必须使用的渠道。
+
+**OQ-INFRA-001｜基础设施｜P1 前**
+
+需要确认：Web/API 框架是否选择 Fastify、NestJS 或企业标准框架。
+
+影响：影响 P1 技术栈、middleware、依赖注入、测试结构和 SDK/契约生成方式。
+
+推荐方案：
+
+- 方案 A（推荐）：Fastify 优先轻量实现。利：性能好、上手快、适合 P1 骨架；弊：大型模块治理需要额外约定。
+- 方案 B：NestJS 优先模块化治理。利：结构规范、适合复杂服务；弊：框架较重，早期开发速度可能下降。
+- 方案 C：采用企业标准 Node 框架。利：符合组织治理和运维习惯；弊：如果标准不明确，会阻塞 P1。
+- 可另提方案：如果已有企业框架标准，以企业标准优先。
 
 #### 3.1.2 需要在 P2 前确认的
 
-| 问题ID | 分类 | 需要确认的决策 | 推荐方案（至少 3 项，可另提方案） | 最晚确认阶段 |
-|---|---|---|---|---|
-| OQ-API-001 | API/产品 | REST 与 gRPC 是否同期交付 | 方案 A：REST 先行，gRPC 延后；方案 B：REST/gRPC 同期交付；方案 C：REST MVP + P8/SDK 批次交付 gRPC；可另提方案 | P1 结束前 |
-| OQ-INFRA-002 | 基础设施 | Event Bus 生产底层选型 | 方案 A：NATS JetStream；方案 B：Apache Kafka；方案 C：企业标准消息系统；可另提方案 | P1 结束前，P8 发布前复核 |
-| OQ-INFRA-003 | 基础设施 | Artifact Store 生产对象存储和备份策略 | 方案 A：MinIO/S3 兼容；方案 B：企业对象存储；方案 C：开发 MinIO + 生产企业标准；可另提方案 | P1 结束前，P8 发布前复核 |
-| OQ-INFRA-004 | 基础设施 | Credential Center 生产密钥后端 | 方案 A：HashiCorp Vault；方案 B：云 KMS；方案 C：企业密钥平台；可另提方案 | P1 结束前，P8 发布前复核 |
-| OQ-INFRA-005 | 基础设施 | Observability 生产后端和告警标准 | 方案 A：OpenTelemetry + Prometheus/Grafana/Loki/Tempo；方案 B：企业标准观测栈；方案 C：先统一 OTEL，后端 P8 再锁定；可另提方案 | P1 结束前，P8 发布前复核 |
-| OQ-DEPLOY-001 | 部署交付 | 生产部署目标是 Docker Compose、Kubernetes，还是两者同时交付 | 方案 A：Docker Compose 生产包；方案 B：Kubernetes 正式包；方案 C：两者都交付但分优先级；可另提方案 | P8 前，建议 P1 结束前定方向 |
+**OQ-API-001｜API/产品｜P1 结束前**
+
+需要确认：REST 与 gRPC 是否同期交付。
+
+影响：影响 P5 API/SDK 工期、契约测试和 streaming 设计。
+
+推荐方案：
+
+- 方案 A（推荐）：REST 先行，gRPC 延后。利：MVP 更稳，OpenAPI 可先冻结；弊：强 gRPC 客户端场景延后。
+- 方案 B：REST/gRPC 同期交付。利：协议完整；弊：P5 工期和契约测试复杂度明显上升。
+- 方案 C：REST MVP + P8/SDK 批次交付 gRPC。利：保留生产交付路径；弊：需要后续维护双协议一致性。
+- 可另提方案：可以指定只要 REST、只要 gRPC，或按客户场景拆分。
+
+**OQ-INFRA-002｜基础设施｜P1 结束前，P8 发布前复核**
+
+需要确认：Event Bus 生产底层选型。
+
+影响：影响事件重放、顺序、死信、容量规划和运维成本。
+
+推荐方案：
+
+- 方案 A（推荐）：NATS JetStream。利：轻量、适合内部事件和 P1/P8 渐进；弊：团队若无经验需要补运维手册。
+- 方案 B：Apache Kafka。利：生态成熟、吞吐强；弊：运维更重，早期复杂度高。
+- 方案 C：企业标准消息系统。利：符合现有运维体系；弊：若接口约束强，可能影响平台事件模型。
+- 可另提方案：可指定企业已有 MQ 或事件平台。
+
+**OQ-INFRA-003｜基础设施｜P1 结束前，P8 发布前复核**
+
+需要确认：Artifact Store 生产对象存储和备份策略。
+
+影响：影响 artifact 生命周期、加密、备份恢复和越权测试。
+
+推荐方案：
+
+- 方案 A：MinIO/S3 兼容。利：开发和私有化部署简单；弊：生产高可用与备份要额外设计。
+- 方案 B：企业对象存储。利：合规、备份、权限体系更成熟；弊：本地开发需要兼容层。
+- 方案 C（推荐）：开发 MinIO + 生产企业标准。利：开发快，生产合规可控；弊：需要 P8 做兼容验证。
+- 可另提方案：可以指定对象存储品牌或云服务。
+
+**OQ-INFRA-004｜基础设施｜P1 结束前，P8 发布前复核**
+
+需要确认：Credential Center 生产密钥后端。
+
+影响：影响凭据轮换、动态租约、审计和明文泄漏测试。
+
+推荐方案：
+
+- 方案 A（推荐）：HashiCorp Vault。利：动态凭据、审计和租约能力成熟；弊：需要部署和运维经验。
+- 方案 B：云 KMS。利：托管能力强，云上集成好；弊：私有化和多云可移植性较弱。
+- 方案 C：企业密钥平台。利：符合组织安全标准；弊：需要对接规范和测试环境。
+- 可另提方案：可以指定现有密钥管理系统。
+
+**OQ-INFRA-005｜基础设施｜P1 结束前，P8 发布前复核**
+
+需要确认：Observability 生产后端和告警标准。
+
+影响：影响 trace、日志、指标、告警和控制台监控页。
+
+推荐方案：
+
+- 方案 A：OpenTelemetry + Prometheus/Grafana/Loki/Tempo。利：开源生态完整；弊：需要组合运维。
+- 方案 B：企业标准观测栈。利：接入现有告警和运维流程；弊：可能限制指标和 trace 设计。
+- 方案 C（推荐）：先统一 OTEL，后端 P8 再锁定。利：P1 不被选型阻塞，生产可替换；弊：P8 需做后端适配验证。
+- 可另提方案：可以指定现有 APM、日志或告警平台。
+
+**OQ-DEPLOY-001｜部署交付｜建议 P1 结束前定方向，P8 前最终确认**
+
+需要确认：生产部署目标是 Docker Compose、Kubernetes，还是两者同时交付。
+
+影响：影响 P8 编排、CI/CD、运维手册、备份恢复和发布门禁。
+
+推荐方案：
+
+- 方案 A：Docker Compose 生产包。利：交付简单，适合小规模私有化；弊：扩缩容和生产治理较弱。
+- 方案 B：Kubernetes 正式包。利：生产标准化强，扩缩容和治理好；弊：交付复杂度更高。
+- 方案 C（推荐）：两者都交付但分优先级。利：兼顾小规模和标准生产；弊：P8 文档和测试工作增加。
+- 可另提方案：可以指定只交付一种部署形态。
 
 #### 3.1.3 需要在 P5 前确认的
 
-| 问题ID | 分类 | 需要确认的决策 | 推荐方案（至少 3 项，可另提方案） | 最晚确认阶段 |
-|---|---|---|---|---|
-| OQ-PLUGIN-001 | 插件治理 | 插件市场是否仅管理员白名单，后续是否开放租户自助安装 | 方案 A：首版仅管理员导入和批准；方案 B：租户只能启用已批准能力；方案 C：P7/P8 后评估租户自助市场；可另提方案 | P5 前 |
-| OQ-LEGAL-001 | 许可证/法务 | 上游二次开发、第三方插件和再分发条款是否需要法务确认 | 方案 A：P5/P8 法务检查；方案 B：首版仅启用 MIT 且 NOTICE 明确插件；方案 C：不分发许可证有疑义的插件；可另提方案 | P5 前，P8 发布前复核 |
+**OQ-PLUGIN-001｜插件治理｜P5 前**
+
+需要确认：插件市场是否仅管理员白名单，后续是否开放租户自助安装。
+
+影响：影响产品范围、租户权限、恶意插件测试和许可证审核。
+
+推荐方案：
+
+- 方案 A（推荐）：首版仅管理员导入和批准。利：安全边界最稳；弊：租户自助能力延后。
+- 方案 B：租户只能启用已批准能力。利：兼顾治理和租户灵活性；弊：需要更完整的租户可见性和权限测试。
+- 方案 C：P7/P8 后评估租户自助市场。利：为未来商业化留空间；弊：首版不体现完整市场能力。
+- 可另提方案：可以指定插件治理的产品策略。
+
+**OQ-LEGAL-001｜许可证/法务｜P5 前，P8 发布前复核**
+
+需要确认：上游二次开发、第三方插件和再分发条款是否需要法务确认。
+
+影响：影响生产交付、插件启用、客户分发和补丁维护边界。
+
+推荐方案：
+
+- 方案 A（推荐）：P5/P8 做法务检查。利：生产和客户交付风险最低；弊：需要法务资源。
+- 方案 B：首版仅启用 MIT 且 NOTICE 明确的插件。利：推进快，风险较低；弊：插件范围受限。
+- 方案 C：不分发许可证有疑义的插件。利：合规保守；弊：可能牺牲社区生态复用。
+- 可另提方案：可以指定公司法务审查流程。
 
 #### 3.1.4 需要在 P6/P8 前确认的
 
-| 问题ID | 分类 | 需要确认的决策 | 推荐方案（至少 3 项，可另提方案） | 最晚确认阶段 |
-|---|---|---|---|---|
-| OQ-PRODUCT-001 | 产品范围 | P7 高级能力是否进入首版 | 方案 A：P7 全部延后，不阻塞 MVP；方案 B：只选择单项高级能力进入首版；方案 C：P7 全量进入生产候选并重排冻结窗口；可另提方案 | P6 开始前 |
+**OQ-PRODUCT-001｜产品范围｜P6 开始前**
+
+需要确认：P7 高级能力是否进入首版。
+
+影响：影响资源预算、冻结窗口和 MVP 范围。
+
+推荐方案：
+
+- 方案 A（推荐）：P7 全部延后，不阻塞 MVP。利：MVP 风险最低；弊：高级能力价值延后。
+- 方案 B：只选择单项高级能力进入首版。利：可展示差异化能力；弊：需要额外测试和产品验收。
+- 方案 C：P7 全量进入生产候选并重排冻结窗口。利：首版能力最完整；弊：MVP 和 P8 风险显著上升。
+- 可另提方案：可以指定哪些 P7 能力必须首版上线。
 
 ### 3.2 能在后续过程中自动确认的
 
@@ -74,60 +230,799 @@
 
 #### 3.2.1 需要在 P2 前自动确认的
 
-| 问题ID | 分类 | 自动确认路径 | 推荐方案（至少 3 项，可另提方案） | 关闭所需证据 |
-|---|---|---|---|---|
-| OQ-UPSTREAM-003 | 上游版本 | P2 DSH provider/upstream tracking 过程中确认 | 方案 A：确认官方 remote/tag；方案 B：确认内部 fork；方案 C：继续本地快照但记录来源不完整并升级风险；可另提方案 | remote/tag/fork 证据、版本 hash、executor 兼容记录和回滚方式 |
-| OQ-DSH-001 | DSH 执行器 | P2 provider registry 和兼容 fixture 过程中确认 | 方案 A：固定当前 `0.1.1-rc.2` provider；方案 B：新旧 provider 并存；方案 C：评估替代 executor；可另提方案 | provider 固定版本、禁用/并存/回滚测试和兼容矩阵草案 |
-| OQ-DSH-002 | DSH 执行器 | P2 沙箱策略和 artifact 事件实现过程中确认 | 方案 A：Landlock/native sandbox；方案 B：容器隔离；方案 C：企业沙箱或最小 deny-by-default；可另提方案 | 沙箱策略、文件/网络负向测试、取消语义和 artifact 归档测试 |
+**OQ-UPSTREAM-003｜上游版本｜P2 前**
+
+自动确认路径：P2 DSH provider/upstream tracking 过程中确认。
+
+关闭证据：remote/tag/fork 证据、版本 hash、executor 兼容记录和回滚方式。
+
+推荐方案：
+
+- 方案 A（推荐）：确认官方 remote/tag。利：来源最清晰；弊：如果当前快照来自 fork，还需补 fork 差异。
+- 方案 B：确认内部 fork。利：贴合当前实际代码；弊：需要维护 fork 与上游的差异记录。
+- 方案 C：继续本地快照但记录来源不完整并升级风险。利：不阻塞 P2；弊：长期升级和回滚风险高。
+- 可另提方案：可以指定 DSH 的真实来源仓库或替代执行器来源。
+
+**OQ-DSH-001｜DSH 执行器｜P2 前**
+
+自动确认路径：P2 provider registry 和兼容 fixture 过程中确认。
+
+关闭证据：provider 固定版本、禁用/并存/回滚测试和兼容矩阵草案。
+
+推荐方案：
+
+- 方案 A（推荐）：固定当前 `0.1.1-rc.2` provider。利：P2 变量最少；弊：后续升级需要兼容矩阵。
+- 方案 B：新旧 provider 并存。利：升级和回滚弹性强；弊：P2 实现复杂度更高。
+- 方案 C：评估替代 executor。利：降低 DSH 预览版依赖；弊：会扩大 P2 范围。
+- 可另提方案：可以指定必须接入的 executor provider。
+
+**OQ-DSH-002｜DSH 执行器｜P2 前**
+
+自动确认路径：P2 沙箱策略和 artifact 事件实现过程中确认。
+
+关闭证据：沙箱策略、文件/网络负向测试、取消语义和 artifact 归档测试。
+
+推荐方案：
+
+- 方案 A：Landlock/native sandbox。利：执行隔离强；弊：系统兼容性和实现成本要验证。
+- 方案 B（推荐）：容器隔离。利：边界清晰，适合服务化部署；弊：资源和文件策略需要细化。
+- 方案 C：企业沙箱或最小 deny-by-default。利：可贴合企业安全标准；弊：若企业沙箱未定，P2 会等待。
+- 可另提方案：可以指定现有沙箱或执行隔离技术。
 
 #### 3.2.2 需要在 P3 前自动确认的
 
-| 问题ID | 分类 | 自动确认路径 | 推荐方案（至少 3 项，可另提方案） | 关闭所需证据 |
-|---|---|---|---|---|
-| OQ-UPSTREAM-001 | 上游版本 | P3 Hermes provider/upstream tracking 过程中确认 | 方案 A：确认官方 remote/tag；方案 B：确认内部 fork；方案 C：继续本地快照但记录来源不完整并升级风险；可另提方案 | remote/tag/fork 证据、版本 hash、兼容记录和回滚方式 |
-| OQ-MEMORY-001 | Memory Gateway | P3 Memory Gateway 设计和 Hermes planner 接入过程中确认 | 方案 A：会话/用户/Agent/组织/审计五层；方案 B：先交付三层最小实现；方案 C：按产品策略后置高级层级；可另提方案 | 记忆层级、保留期、冲突策略、租户隔离测试和审计说明 |
-| OQ-MEMORY-002 | Memory Gateway | P3/P8 存储适配和备份恢复过程中确认 | 方案 A：PostgreSQL + pgvector；方案 B：Qdrant；方案 C：企业向量检索标准；可另提方案 | pgvector/Qdrant/企业标准评估、性能/备份/租户隔离验证 |
+**OQ-UPSTREAM-001｜上游版本｜P3 前**
+
+自动确认路径：P3 Hermes provider/upstream tracking 过程中确认。
+
+关闭证据：remote/tag/fork 证据、版本 hash、兼容记录和回滚方式。
+
+推荐方案：
+
+- 方案 A（推荐）：确认官方 remote/tag。利：来源最清晰；弊：如果当前快照来自 fork，还需补差异。
+- 方案 B：确认内部 fork。利：贴合当前实际代码；弊：需要维护 fork 与上游差异。
+- 方案 C：继续本地快照但记录来源不完整并升级风险。利：不阻塞 P3；弊：后续升级和补丁追踪风险高。
+- 可另提方案：可以指定 Hermes 的真实来源仓库或 fork。
+
+**OQ-MEMORY-001｜Memory Gateway｜P3 前**
+
+自动确认路径：P3 Memory Gateway 设计和 Hermes planner 接入过程中确认。
+
+关闭证据：记忆层级、保留期、冲突策略、租户隔离测试和审计说明。
+
+推荐方案：
+
+- 方案 A：会话、用户、Agent、组织、审计五层。利：能力完整；弊：P3 范围和测试复杂度高。
+- 方案 B（推荐）：先交付三层最小实现。利：P3 可控，便于后续扩展；弊：部分高级记忆策略延后。
+- 方案 C：按产品策略后置高级层级。利：避免过早设计；弊：P3 需要保留足够扩展点。
+- 可另提方案：可以指定你希望的平台记忆层级。
+
+**OQ-MEMORY-002｜Memory Gateway｜P3 前，P8 发布前复核**
+
+自动确认路径：P3/P8 存储适配和备份恢复过程中确认。
+
+关闭证据：pgvector/Qdrant/企业标准评估、性能/备份/租户隔离验证。
+
+推荐方案：
+
+- 方案 A（推荐）：PostgreSQL + pgvector。利：一致性和备份简单；弊：超大规模语义检索能力有限。
+- 方案 B：Qdrant。利：向量检索能力强；弊：增加独立存储和运维复杂度。
+- 方案 C：企业向量检索标准。利：符合组织平台化要求；弊：如果标准未定会拖慢 P3。
+- 可另提方案：可以指定现有数据库或向量检索系统。
 
 #### 3.2.3 需要在 P4 前自动确认的
 
-| 问题ID | 分类 | 自动确认路径 | 推荐方案（至少 3 项，可另提方案） | 关闭所需证据 |
-|---|---|---|---|---|
-| OQ-UPSTREAM-002 | 上游版本 | P4 OpenClaw provider/upstream tracking 过程中确认 | 方案 A：确认官方 remote/tag；方案 B：确认内部 fork；方案 C：继续本地快照但记录来源不完整并升级风险；可另提方案 | remote/tag/fork 证据、版本 hash、渠道兼容记录和回滚方式 |
+**OQ-UPSTREAM-002｜上游版本｜P4 前**
+
+自动确认路径：P4 OpenClaw provider/upstream tracking 过程中确认。
+
+关闭证据：remote/tag/fork 证据、版本 hash、渠道兼容记录和回滚方式。
+
+推荐方案：
+
+- 方案 A（推荐）：确认官方 remote/tag。利：来源最清晰；弊：如果当前快照来自 fork，还需补差异。
+- 方案 B：确认内部 fork。利：贴合当前实际代码；弊：需要维护 fork 与上游差异。
+- 方案 C：继续本地快照但记录来源不完整并升级风险。利：不阻塞 P4；弊：渠道插件升级和回滚风险更高。
+- 可另提方案：可以指定 OpenClaw 的真实来源仓库或 fork。
 
 #### 3.2.4 需要在 P5/P6 前自动确认的
 
-| 问题ID | 分类 | 自动确认路径 | 推荐方案（至少 3 项，可另提方案） | 关闭所需证据 |
-|---|---|---|---|---|
-| OQ-API-002 | API/产品 | P5 API 契约冻结和 contract tests 过程中确认 | 方案 A：先固定 REST 最小集；方案 B：P5 扩展完整审批/分页/错误码；方案 C：SSE 先行并保留 gRPC streaming；可另提方案 | OpenAPI/SDK/控制台文档、契约测试和错误码/事件出口说明 |
-| OQ-INFRA-006 | 基础设施 | P6/P8 长任务恢复、重试和补偿评审过程中确认 | 方案 A：P1 自研状态机；方案 B：P6/P8 评估 Temporal/Cadence；方案 C：接入企业已有 workflow 后端；可另提方案 | ADR、状态机/Temporal 评估、故障注入和回滚演练 |
+**OQ-API-002｜API/产品｜P5 前**
+
+自动确认路径：P5 API 契约冻结和 contract tests 过程中确认。
+
+关闭证据：OpenAPI/SDK/控制台文档、契约测试和错误码/事件出口说明。
+
+推荐方案：
+
+- 方案 A（推荐）：先固定 REST 最小集。利：公共契约稳定，MVP 风险低；弊：审批动作和事件出口不够完整。
+- 方案 B：P5 扩展完整审批、分页和错误码。利：产品体验完整；弊：契约和 SDK 测试增加。
+- 方案 C：SSE 先行并保留 gRPC streaming。利：长任务事件出口更实用；弊：后续要维护 streaming 一致性。
+- 可另提方案：可以指定完整 API 动作和事件出口要求。
+
+**OQ-INFRA-006｜基础设施｜P6 前**
+
+自动确认路径：P6/P8 长任务恢复、重试和补偿评审过程中确认。
+
+关闭证据：ADR、状态机/Temporal 评估、故障注入和回滚演练。
+
+推荐方案：
+
+- 方案 A（推荐）：P1 自研状态机。利：早期可控、不引入重依赖；弊：长期恢复和补偿能力有限。
+- 方案 B：P6/P8 评估 Temporal/Cadence。利：长任务能力成熟；弊：引入新平台和运维复杂度。
+- 方案 C：接入企业已有 workflow 后端。利：符合组织标准；弊：需要适配企业接口。
+- 可另提方案：可以指定已有长任务编排平台。
 
 ### 3.3 完整问题台账
 
-| 问题ID | 状态 | 分类 | 来源文档 | 问题描述 | 影响 | 候选选项 | 负责人/工作流 | 最晚确认阶段 | 确认结论 | 解决说明文档 | 关联需求/风险 | 关闭任务/commit | 最后更新UTC |
-|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| OQ-UPSTREAM-001 | Open | 上游版本 | `vendor/MANIFEST.yaml`、`docs/architecture/upstream-interface-inventory.md`、`docs/risks/risk-register.md` | Hermes 真实 Git remote、release commit 和 fork 分支是什么 | 影响 provider 兼容矩阵、补丁回滚、许可证追踪和上游升级判断 | 确认官方 remote/tag；确认内部 fork；继续使用本地快照但标记来源不完整 | 上游改造 | P3 前 | 待确认 | 待确认 | REQ-019/R-016 | 待确认 | 2026-08-23 |
-| OQ-UPSTREAM-002 | Open | 上游版本 | `vendor/MANIFEST.yaml`、`docs/decisions/P0-openclaw-gateway-only.md`、`docs/risks/risk-register.md` | OpenClaw 真实 Git remote、release commit 和 fork 分支是什么 | 影响 gateway provider 升级、渠道插件兼容和 P4 强制模式评审 | 确认官方 remote/tag；确认内部 fork；继续使用本地快照但标记来源不完整 | 上游改造/渠道 | P4 前 | 待确认 | 待确认 | REQ-019/R-016 | 待确认 | 2026-08-23 |
-| OQ-UPSTREAM-003 | Open | 上游版本 | `vendor/MANIFEST.yaml`、`docs/architecture/dsh-versioning-and-replacement.md`、`docs/risks/risk-register.md` | DSH 真实 Git remote、release commit 和 fork 分支是什么 | 影响 executor provider 固定、替换、回滚和预览版变更追踪 | 确认官方 remote/tag；确认内部 fork；继续使用本地快照但标记来源不完整 | 上游改造/执行器 | P2 前 | 待确认 | 待确认 | REQ-018/R-001/R-016 | 待确认 | 2026-08-23 |
-| OQ-UPSTREAM-004 | Open | 上游快照 | `docs/planning/integrated-platform-plan.md`、`scripts/bootstrap/vendor-snapshot.sh`、`scripts/source-manifest/create-manifest.sh` | 是否允许长期排除上游构建产物、缓存、日志和依赖目录后作为正式交付快照 | 影响 vendor 可复现性、审计范围和交付体积 | 继续排除并记录 hash；保留完整镜像归档；按上游类型分层归档 | 架构/上游改造/SRE | P0 门禁前 | 待确认 | 待确认 | REQ-004/R-015 | 待确认 | 2026-08-23 |
-| OQ-SCHEDULE-001 | Open | 排期资源 | `docs/planning/development-schedule.md`、`docs/risks/risk-register.md` | 实际团队人数、角色和可投入比例是什么 | 影响 P2/P3/P4 是否并行、P5 控制台范围和 MVP 冻结日期 | 4-5 人降级排期；8-10 人基线排期；阶段性外援补齐测试/SRE | 架构/产品 | P0 W1 结束前 | 待确认 | 待确认 | REQ-014/R-009 | 待确认 | 2026-08-23 |
-| OQ-SCHEDULE-002 | Open | 排期资源 | `docs/planning/development-schedule.md`、`docs/risks/risk-register.md` | 地区节假日和公司发布冻结窗口是什么 | 影响 W13-W18、MVP 冻结、P8 发布候选和生产发布日历 | 不扣除假期；扣除地区假期；加入冻结窗口缓冲 | 架构/产品/SRE | P0 W1 结束前 | 待确认 | 待确认 | REQ-014/R-009 | 待确认 | 2026-08-23 |
-| OQ-API-001 | Open | API/产品 | `docs/contracts/openapi.yaml`、`docs/planning/integrated-platform-plan.md`、`docs/risks/risk-register.md` | 平台统一 REST 和 gRPC 是否要求同期交付 | 影响 P5 API/SDK 工期、契约测试和 streaming 设计 | REST 先行；REST/gRPC 同期；gRPC 延后到 P8/SDK 批次 | API/SDK/产品 | P1 结束前 | 待确认 | 待确认 | REQ-007/REQ-014 | 待确认 | 2026-08-23 |
-| OQ-API-002 | Open | API/产品 | `docs/risks/risk-register.md`、`docs/contracts/openapi.yaml` | 生产鉴权方案、分页游标格式、审批动作全集、错误码最终枚举和事件出口是什么 | 影响公共契约稳定性、SDK 生成和控制台一致性 | 先固定 REST 最小集；P5 扩展完整动作；SSE 先行并保留 gRPC streaming | API/SDK/安全/产品 | P5 前 | 待确认 | 待确认 | REQ-007/R-007 | 待确认 | 2026-08-23 |
-| OQ-CHANNEL-001 | Open | 渠道/插件 | `docs/planning/integrated-platform-plan.md`、`docs/architecture/upstream-versioning-and-plugin-bridge.md`、`docs/risks/risk-register.md` | 首批正式渠道是否为钉钉、飞书、Telegram，是否需要企业微信、Slack 等 | 影响 P4 OpenClaw gateway adapter、P5 渠道管理和插件白名单测试 | 钉钉/飞书/Telegram；增加企业微信；增加 Slack；首版只保留平台 API | 渠道/产品/安全 | P0 结束前 | 待确认 | 待确认 | REQ-020/R-013/R-014 | 待确认 | 2026-08-23 |
-| OQ-PLUGIN-001 | Open | 插件治理 | `docs/architecture/upstream-versioning-and-plugin-bridge.md`、`docs/architecture/service-blueprint.md` | 插件市场是否仅管理员白名单，P7/P8 后是否开放租户自助安装 | 影响 Plugin Bridge 产品范围、租户权限、恶意插件测试和许可证审核 | 仅管理员导入；租户启用已批准能力；P7/P8 评估自助市场 | 产品/安全/插件治理 | P5 前 | 待确认 | 待确认 | REQ-020/R-013/R-014 | 待确认 | 2026-08-23 |
-| OQ-LEGAL-001 | Open | 许可证/法务 | `docs/risks/risk-register.md`、`docs/architecture/upstream-interface-inventory.md` | 上游二次开发、第三方插件、extras、native addon、vendored packages 的许可证、NOTICE 和再分发条款是否需要法务确认 | 影响生产交付、插件启用、客户分发和补丁维护边界 | P5/P8 法务检查；首版仅启用 MIT 且 NOTICE 明确插件；不分发有疑义插件 | 法务/安全/上游改造 | P5 前，P8 发布前复核 | 待确认 | 待确认 | R-015/R-016/REQ-020 | 待确认 | 2026-08-23 |
-| OQ-INFRA-001 | Open | 基础设施 | `docs/architecture/service-blueprint.md`、`docs/planning/development-schedule.md` | Web/API 框架是否选择 Fastify、NestJS 或企业标准框架 | 影响 P1 middleware、依赖注入、测试结构和 SDK/契约生成方式 | Fastify；NestJS；企业标准 Node 框架 | 平台内核/API/SRE | P1 前 | 待确认 | 待确认 | REQ-011/R-008 | 待确认 | 2026-08-23 |
-| OQ-INFRA-002 | Open | 基础设施 | `docs/architecture/service-blueprint.md`、`docs/planning/development-schedule.md` | Event Bus 生产底层选型是什么 | 影响事件重放、顺序性、死信、容量规划和运维成本 | NATS JetStream；Kafka；企业标准消息系统 | 平台内核/SRE | P1 结束前，P8 发布前复核 | 待确认 | 待确认 | REQ-013/R-008 | 待确认 | 2026-08-23 |
-| OQ-INFRA-003 | Open | 基础设施 | `docs/architecture/service-blueprint.md`、`docs/planning/development-schedule.md` | Artifact Store 生产对象存储和备份策略是什么 | 影响 artifact URL、生命周期、加密、备份恢复和越权测试 | MinIO；S3 兼容对象存储；企业对象存储 | 平台内核/SRE/安全 | P1 结束前，P8 发布前复核 | 待确认 | 待确认 | REQ-009/REQ-013/R-008 | 待确认 | 2026-08-23 |
-| OQ-INFRA-004 | Open | 基础设施 | `docs/architecture/service-blueprint.md`、`docs/planning/development-schedule.md` | Credential Center 生产密钥后端是什么 | 影响凭据轮换、动态租约、审计、最小权限和明文泄漏测试 | Vault；云 KMS；企业密钥平台 | 安全/SRE/平台内核 | P1 结束前，P8 发布前复核 | 待确认 | 待确认 | REQ-013/R-014 | 待确认 | 2026-08-23 |
-| OQ-INFRA-005 | Open | 基础设施 | `docs/architecture/service-blueprint.md`、`docs/planning/development-schedule.md` | Observability 生产后端和告警标准是什么 | 影响 trace 存储、日志保留、指标命名、告警接入和控制台监控页 | OpenTelemetry + Prometheus/Grafana/Loki/Tempo；企业标准观测栈 | SRE/平台内核/安全 | P1 结束前，P8 发布前复核 | 待确认 | 待确认 | REQ-013/R-008 | 待确认 | 2026-08-23 |
-| OQ-INFRA-006 | Open | 基础设施 | `docs/architecture/service-blueprint.md` | 长任务编排是否引入 Temporal/Cadence 或继续自研状态机 | 影响恢复、人工信号、重试、补偿事务和部署复杂度 | P1 自研状态机；P6/P8 评估 Temporal；企业已有 workflow 后端 | 平台内核/SRE/架构 | P6 前 | 待确认 | 待确认 | REQ-011/R-008 | 待确认 | 2026-08-23 |
-| OQ-MEMORY-001 | Open | Memory Gateway | `docs/planning/integrated-platform-plan.md`、`docs/architecture/service-blueprint.md`、`docs/decisions/P0-hermes-planner-only.md` | Hermes Memory Gateway 的五层记忆具体层级、保留期和冲突策略是什么 | 影响 P3 planner context、并发写入、快照、冲突解决和审计 | 按会话/用户/Agent/组织/审计五层；先三层最小实现；产品策略后置 | 平台内核/Hermes/产品 | P3 前 | 待确认 | 待确认 | REQ-008/R-005 | 待确认 | 2026-08-23 |
-| OQ-MEMORY-002 | Open | Memory Gateway | `docs/architecture/service-blueprint.md`、`docs/risks/risk-register.md` | Memory Gateway 生产检索和存储选型是什么 | 影响检索延迟、一致性、租户隔离、备份和运维复杂度 | PostgreSQL + pgvector；Qdrant；企业向量检索标准 | 平台内核/SRE/Hermes | P3 前，P8 发布前复核 | 待确认 | 待确认 | REQ-008/REQ-013/R-005/R-008 | 待确认 | 2026-08-23 |
-| OQ-DSH-001 | Open | DSH 执行器 | `docs/architecture/dsh-versioning-and-replacement.md`、`docs/risks/risk-register.md` | DSH 预览版是否固定为当前 `0.1.1-rc.2` provider，后续如何并存、禁用和回滚 | 影响 P2 provider registry、兼容 fixture、升级门禁和生产默认 executor 切换 | 固定当前版本；并存新旧 provider；评估替代 executor | 上游改造/执行器/SRE | P2 前 | 待确认 | 待确认 | REQ-018/R-001/R-016 | 待确认 | 2026-08-23 |
-| OQ-DSH-002 | Open | DSH 执行器 | `docs/decisions/P0-dsh-executor-only.md`、`docs/risks/risk-register.md` | DSH 正式沙箱后端、文件/网络策略、取消语义和 artifact 归档策略是什么 | 影响 executor-only 改造、安全测试、产物入库、取消/超时和故障注入 | Landlock/native sandbox；容器隔离；企业沙箱；先最小 deny-by-default | 上游改造/安全/SRE | P2 前 | 待确认 | 待确认 | REQ-009/REQ-018/R-001/R-004 | 待确认 | 2026-08-23 |
-| OQ-DEPLOY-001 | Open | 部署交付 | `docs/planning/integrated-platform-plan.md`、`docs/planning/development-schedule.md` | 生产部署目标是单机 Docker Compose、Kubernetes，还是两者同时作为正式交付物 | 影响 P8 编排、CI/CD、运维手册、备份恢复和发布门禁 | Compose 生产包；Kubernetes 正式包；两者都交付但分优先级 | SRE/架构/产品 | P8 前，建议 P1 结束前定方向 | 待确认 | 待确认 | REQ-005/REQ-014/R-008 | 待确认 | 2026-08-23 |
-| OQ-PRODUCT-001 | Open | 产品范围 | `docs/planning/development-schedule.md`、`docs/planning/integrated-platform-plan.md` | P7 高级能力是否进入首版 | 影响 W15-W18 是否需要额外冻结窗口、资源预算和 MVP 范围 | P7 全部延后；选择单项进入首版；P7 全量进入生产候选 | 产品/架构/评测 | P6 开始前 | 待确认 | 待确认 | REQ-014/R-009 | 待确认 | 2026-08-23 |
+> 本节保留完整审计字段，但不使用表格展示问题，避免后续评审时因为横向字段过多而遗漏关键选择。每条记录仍保持 `Open` 状态，关闭时必须补充确认结论、解决说明文档和关闭任务/commit。
+
+**OQ-UPSTREAM-001｜Open｜上游版本**
+
+来源文档：`vendor/MANIFEST.yaml`、`docs/architecture/upstream-interface-inventory.md`、`docs/risks/risk-register.md`。
+
+问题描述：Hermes 真实 Git remote、release commit 和 fork 分支是什么。
+
+影响：影响 provider 兼容矩阵、补丁回滚、许可证追踪和上游升级判断。
+
+推荐方案：
+
+- 方案 A（推荐）：确认官方 remote/tag。利：来源最清晰；弊：如果当前快照来自 fork，还需补 fork 差异。
+- 方案 B：确认内部 fork。利：贴合当前实际代码；弊：需要维护 fork 与上游差异。
+- 方案 C：继续使用本地快照但标记来源不完整。利：不阻塞 P3；弊：后续升级、回滚和许可证追踪风险高。
+- 可另提方案：可以直接提供 Hermes 的真实来源仓库、release commit 或 fork 分支。
+
+负责人/工作流：上游改造。
+
+最晚确认阶段：P3 前。
+
+确认结论：待确认。
+
+解决说明文档：待确认。
+
+关联需求/风险：REQ-019/R-016。
+
+关闭任务/commit：待确认。
+
+最后更新UTC：2026-08-23。
+
+**OQ-UPSTREAM-002｜Open｜上游版本**
+
+来源文档：`vendor/MANIFEST.yaml`、`docs/decisions/P0-openclaw-gateway-only.md`、`docs/risks/risk-register.md`。
+
+问题描述：OpenClaw 真实 Git remote、release commit 和 fork 分支是什么。
+
+影响：影响 gateway provider 升级、渠道插件兼容和 P4 强制模式评审。
+
+推荐方案：
+
+- 方案 A（推荐）：确认官方 remote/tag。利：来源最清晰；弊：如果当前快照来自 fork，还需补差异。
+- 方案 B：确认内部 fork。利：贴合当前实际代码；弊：需要维护 fork 与上游差异。
+- 方案 C：继续使用本地快照但标记来源不完整。利：不阻塞 P4；弊：渠道插件升级和 provider 回滚风险更高。
+- 可另提方案：可以直接提供 OpenClaw 的真实来源仓库、release commit 或 fork 分支。
+
+负责人/工作流：上游改造/渠道。
+
+最晚确认阶段：P4 前。
+
+确认结论：待确认。
+
+解决说明文档：待确认。
+
+关联需求/风险：REQ-019/R-016。
+
+关闭任务/commit：待确认。
+
+最后更新UTC：2026-08-23。
+
+**OQ-UPSTREAM-003｜Open｜上游版本**
+
+来源文档：`vendor/MANIFEST.yaml`、`docs/architecture/dsh-versioning-and-replacement.md`、`docs/risks/risk-register.md`。
+
+问题描述：DSH 真实 Git remote、release commit 和 fork 分支是什么。
+
+影响：影响 executor provider 固定、替换、回滚和预览版变更追踪。
+
+推荐方案：
+
+- 方案 A（推荐）：确认官方 remote/tag。利：来源最清晰；弊：如果当前快照来自 fork，还需补 fork 差异。
+- 方案 B：确认内部 fork。利：贴合当前实际代码；弊：需要维护 fork 与上游的差异记录。
+- 方案 C：继续本地快照但记录来源不完整并升级风险。利：不阻塞 P2；弊：长期升级和回滚风险高。
+- 可另提方案：可以指定 DSH 的真实来源仓库或替代执行器来源。
+
+负责人/工作流：上游改造/执行器。
+
+最晚确认阶段：P2 前。
+
+确认结论：待确认。
+
+解决说明文档：待确认。
+
+关联需求/风险：REQ-018/R-001/R-016。
+
+关闭任务/commit：待确认。
+
+最后更新UTC：2026-08-23。
+
+**OQ-UPSTREAM-004｜Open｜上游快照**
+
+来源文档：`docs/planning/integrated-platform-plan.md`、`scripts/bootstrap/vendor-snapshot.sh`、`scripts/source-manifest/create-manifest.sh`。
+
+问题描述：是否允许长期排除上游构建产物、缓存、日志和依赖目录后作为正式交付快照。
+
+影响：影响 vendor 可复现性、审计范围和交付体积。
+
+推荐方案：
+
+- 方案 A（推荐）：继续排除构建产物、缓存、日志和依赖目录，并记录可复现 hash。利：工作树轻、审计清晰、重复生成简单；弊：若未来需要完整运行时镜像，需要另建归档。
+- 方案 B：保留完整离线归档，但工作树仍排除。利：最完整，便于灾备和法务追溯；弊：归档体积大，维护成本更高。
+- 方案 C：按源码、依赖、构建产物分层归档。利：兼顾审计和运行复原；弊：规则更复杂，需要额外脚本和说明。
+- 可另提方案：如果你有既定交付归档规范，可以直接覆盖以上方案。
+
+负责人/工作流：架构/上游改造/SRE。
+
+最晚确认阶段：P0 门禁前。
+
+确认结论：待确认。
+
+解决说明文档：待确认。
+
+关联需求/风险：REQ-004/R-015。
+
+关闭任务/commit：待确认。
+
+最后更新UTC：2026-08-23。
+
+**OQ-SCHEDULE-001｜Open｜排期资源**
+
+来源文档：`docs/planning/development-schedule.md`、`docs/risks/risk-register.md`。
+
+问题描述：实际团队人数、角色和可投入比例是什么。
+
+影响：影响 P2/P3/P4 是否并行、P5 控制台范围和 MVP 冻结日期。
+
+推荐方案：
+
+- 方案 A（推荐）：按 8-10 个核心角色维持当前基线。利：能保持 P2/P3/P4 并行和 MVP 冻结目标；弊：需要较完整团队投入。
+- 方案 B：按 4-5 名核心开发启用降级排期。利：更贴近小团队现实；弊：MVP 预计延后，P2/P3/P4 需分批推进。
+- 方案 C：P0/P1 小团队，P2-P4 临时补充上游、测试和 SRE。利：早期成本低，关键阶段补强；弊：临时协作和上下文交接风险更高。
+- 可另提方案：可以给出实际人员名单和投入比例，我再据此重排。
+
+负责人/工作流：架构/产品。
+
+最晚确认阶段：P0 W1 结束前。
+
+确认结论：待确认。
+
+解决说明文档：待确认。
+
+关联需求/风险：REQ-014/R-009。
+
+关闭任务/commit：待确认。
+
+最后更新UTC：2026-08-23。
+
+**OQ-SCHEDULE-002｜Open｜排期资源**
+
+来源文档：`docs/planning/development-schedule.md`、`docs/risks/risk-register.md`。
+
+问题描述：地区节假日和公司发布冻结窗口是什么。
+
+影响：影响 W13-W18、MVP 冻结、P8 发布候选和生产发布日历。
+
+推荐方案：
+
+- 方案 A：暂不扣除节假日，只保留风险。利：排期最简单；弊：后期可能集中延期。
+- 方案 B（推荐）：扣除已知地区节假日并重排 W13-W18。利：日期更真实，发布风险更小；弊：需要尽快提供日历规则。
+- 方案 C：加入固定发布冻结缓冲。利：适合生产交付和客户验收；弊：会拉长 P6/P8 时间窗口。
+- 可另提方案：可以提供公司发布日历或冻结规则。
+
+负责人/工作流：架构/产品/SRE。
+
+最晚确认阶段：P0 W1 结束前。
+
+确认结论：待确认。
+
+解决说明文档：待确认。
+
+关联需求/风险：REQ-014/R-009。
+
+关闭任务/commit：待确认。
+
+最后更新UTC：2026-08-23。
+
+**OQ-API-001｜Open｜API/产品**
+
+来源文档：`docs/contracts/openapi.yaml`、`docs/planning/integrated-platform-plan.md`、`docs/risks/risk-register.md`。
+
+问题描述：平台统一 REST 和 gRPC 是否要求同期交付。
+
+影响：影响 P5 API/SDK 工期、契约测试和 streaming 设计。
+
+推荐方案：
+
+- 方案 A（推荐）：REST 先行，gRPC 延后。利：MVP 更稳，OpenAPI 可先冻结；弊：强 gRPC 客户端场景延后。
+- 方案 B：REST/gRPC 同期交付。利：协议完整；弊：P5 工期和契约测试复杂度明显上升。
+- 方案 C：REST MVP + P8/SDK 批次交付 gRPC。利：保留生产交付路径；弊：需要后续维护双协议一致性。
+- 可另提方案：可以指定只要 REST、只要 gRPC，或按客户场景拆分。
+
+负责人/工作流：API/SDK/产品。
+
+最晚确认阶段：P1 结束前。
+
+确认结论：待确认。
+
+解决说明文档：待确认。
+
+关联需求/风险：REQ-007/REQ-014。
+
+关闭任务/commit：待确认。
+
+最后更新UTC：2026-08-23。
+
+**OQ-API-002｜Open｜API/产品**
+
+来源文档：`docs/risks/risk-register.md`、`docs/contracts/openapi.yaml`。
+
+问题描述：生产鉴权方案、分页游标格式、审批动作全集、错误码最终枚举和事件出口是什么。
+
+影响：影响公共契约稳定性、SDK 生成和控制台一致性。
+
+推荐方案：
+
+- 方案 A（推荐）：先固定 REST 最小集。利：公共契约稳定，MVP 风险低；弊：审批动作和事件出口不够完整。
+- 方案 B：P5 扩展完整审批、分页和错误码。利：产品体验完整；弊：契约和 SDK 测试增加。
+- 方案 C：SSE 先行并保留 gRPC streaming。利：长任务事件出口更实用；弊：后续要维护 streaming 一致性。
+- 可另提方案：可以指定完整 API 动作和事件出口要求。
+
+负责人/工作流：API/SDK/安全/产品。
+
+最晚确认阶段：P5 前。
+
+确认结论：待确认。
+
+解决说明文档：待确认。
+
+关联需求/风险：REQ-007/R-007。
+
+关闭任务/commit：待确认。
+
+最后更新UTC：2026-08-23。
+
+**OQ-CHANNEL-001｜Open｜渠道/插件**
+
+来源文档：`docs/planning/integrated-platform-plan.md`、`docs/architecture/upstream-versioning-and-plugin-bridge.md`、`docs/risks/risk-register.md`。
+
+问题描述：首批正式渠道是否为钉钉、飞书、Telegram，是否需要企业微信、Slack 等。
+
+影响：影响 P4 OpenClaw gateway adapter、P5 渠道管理和插件白名单测试。
+
+推荐方案：
+
+- 方案 A（推荐）：首批支持钉钉、飞书、Telegram。利：覆盖国内协作和轻量国际通道；弊：不覆盖企业微信和 Slack 用户。
+- 方案 B：在方案 A 基础上增加企业微信。利：更贴近国内企业场景；弊：P4/P5 渠道测试和配置工作增加。
+- 方案 C：首版仅平台 API 或单一已验证渠道。利：MVP 风险最低；弊：渠道管理价值延后体现。
+- 可另提方案：可以指定首批客户必须使用的渠道，例如 Slack、企业微信或只保留平台 API。
+
+负责人/工作流：渠道/产品/安全。
+
+最晚确认阶段：P0 结束前。
+
+确认结论：待确认。
+
+解决说明文档：待确认。
+
+关联需求/风险：REQ-020/R-013/R-014。
+
+关闭任务/commit：待确认。
+
+最后更新UTC：2026-08-23。
+
+**OQ-PLUGIN-001｜Open｜插件治理**
+
+来源文档：`docs/architecture/upstream-versioning-and-plugin-bridge.md`、`docs/architecture/service-blueprint.md`。
+
+问题描述：插件市场是否仅管理员白名单，P7/P8 后是否开放租户自助安装。
+
+影响：影响 Plugin Bridge 产品范围、租户权限、恶意插件测试和许可证审核。
+
+推荐方案：
+
+- 方案 A（推荐）：首版仅管理员导入和批准。利：安全边界最稳；弊：租户自助能力延后。
+- 方案 B：租户只能启用已批准能力。利：兼顾治理和租户灵活性；弊：需要更完整的租户可见性和权限测试。
+- 方案 C：P7/P8 后评估租户自助市场。利：为未来商业化留空间；弊：首版不体现完整市场能力。
+- 可另提方案：可以指定插件治理的产品策略。
+
+负责人/工作流：产品/安全/插件治理。
+
+最晚确认阶段：P5 前。
+
+确认结论：待确认。
+
+解决说明文档：待确认。
+
+关联需求/风险：REQ-020/R-013/R-014。
+
+关闭任务/commit：待确认。
+
+最后更新UTC：2026-08-23。
+
+**OQ-LEGAL-001｜Open｜许可证/法务**
+
+来源文档：`docs/risks/risk-register.md`、`docs/architecture/upstream-interface-inventory.md`。
+
+问题描述：上游二次开发、第三方插件、extras、native addon、vendored packages 的许可证、NOTICE 和再分发条款是否需要法务确认。
+
+影响：影响生产交付、插件启用、客户分发和补丁维护边界。
+
+推荐方案：
+
+- 方案 A（推荐）：P5/P8 做法务检查。利：生产和客户交付风险最低；弊：需要法务资源。
+- 方案 B：首版仅启用 MIT 且 NOTICE 明确的插件。利：推进快，风险较低；弊：插件范围受限。
+- 方案 C：不分发许可证有疑义的插件。利：合规保守；弊：可能牺牲社区生态复用。
+- 可另提方案：可以指定公司法务审查流程。
+
+负责人/工作流：法务/安全/上游改造。
+
+最晚确认阶段：P5 前，P8 发布前复核。
+
+确认结论：待确认。
+
+解决说明文档：待确认。
+
+关联需求/风险：R-015/R-016/REQ-020。
+
+关闭任务/commit：待确认。
+
+最后更新UTC：2026-08-23。
+
+**OQ-INFRA-001｜Open｜基础设施**
+
+来源文档：`docs/architecture/service-blueprint.md`、`docs/planning/development-schedule.md`。
+
+问题描述：Web/API 框架是否选择 Fastify、NestJS 或企业标准框架。
+
+影响：影响 P1 middleware、依赖注入、测试结构和 SDK/契约生成方式。
+
+推荐方案：
+
+- 方案 A（推荐）：Fastify 优先轻量实现。利：性能好、上手快、适合 P1 骨架；弊：大型模块治理需要额外约定。
+- 方案 B：NestJS 优先模块化治理。利：结构规范、适合复杂服务；弊：框架较重，早期开发速度可能下降。
+- 方案 C：采用企业标准 Node 框架。利：符合组织治理和运维习惯；弊：如果标准不明确，会阻塞 P1。
+- 可另提方案：如果已有企业框架标准，以企业标准优先。
+
+负责人/工作流：平台内核/API/SRE。
+
+最晚确认阶段：P1 前。
+
+确认结论：待确认。
+
+解决说明文档：待确认。
+
+关联需求/风险：REQ-011/R-008。
+
+关闭任务/commit：待确认。
+
+最后更新UTC：2026-08-23。
+
+**OQ-INFRA-002｜Open｜基础设施**
+
+来源文档：`docs/architecture/service-blueprint.md`、`docs/planning/development-schedule.md`。
+
+问题描述：Event Bus 生产底层选型是什么。
+
+影响：影响事件重放、顺序性、死信、容量规划和运维成本。
+
+推荐方案：
+
+- 方案 A（推荐）：NATS JetStream。利：轻量、适合内部事件和 P1/P8 渐进；弊：团队若无经验需要补运维手册。
+- 方案 B：Apache Kafka。利：生态成熟、吞吐强；弊：运维更重，早期复杂度高。
+- 方案 C：企业标准消息系统。利：符合现有运维体系；弊：若接口约束强，可能影响平台事件模型。
+- 可另提方案：可指定企业已有 MQ 或事件平台。
+
+负责人/工作流：平台内核/SRE。
+
+最晚确认阶段：P1 结束前，P8 发布前复核。
+
+确认结论：待确认。
+
+解决说明文档：待确认。
+
+关联需求/风险：REQ-013/R-008。
+
+关闭任务/commit：待确认。
+
+最后更新UTC：2026-08-23。
+
+**OQ-INFRA-003｜Open｜基础设施**
+
+来源文档：`docs/architecture/service-blueprint.md`、`docs/planning/development-schedule.md`。
+
+问题描述：Artifact Store 生产对象存储和备份策略是什么。
+
+影响：影响 artifact URL、生命周期、加密、备份恢复和越权测试。
+
+推荐方案：
+
+- 方案 A：MinIO/S3 兼容。利：开发和私有化部署简单；弊：生产高可用与备份要额外设计。
+- 方案 B：企业对象存储。利：合规、备份、权限体系更成熟；弊：本地开发需要兼容层。
+- 方案 C（推荐）：开发 MinIO + 生产企业标准。利：开发快，生产合规可控；弊：需要 P8 做兼容验证。
+- 可另提方案：可以指定对象存储品牌或云服务。
+
+负责人/工作流：平台内核/SRE/安全。
+
+最晚确认阶段：P1 结束前，P8 发布前复核。
+
+确认结论：待确认。
+
+解决说明文档：待确认。
+
+关联需求/风险：REQ-009/REQ-013/R-008。
+
+关闭任务/commit：待确认。
+
+最后更新UTC：2026-08-23。
+
+**OQ-INFRA-004｜Open｜基础设施**
+
+来源文档：`docs/architecture/service-blueprint.md`、`docs/planning/development-schedule.md`。
+
+问题描述：Credential Center 生产密钥后端是什么。
+
+影响：影响凭据轮换、动态租约、审计、最小权限和明文泄漏测试。
+
+推荐方案：
+
+- 方案 A（推荐）：HashiCorp Vault。利：动态凭据、审计和租约能力成熟；弊：需要部署和运维经验。
+- 方案 B：云 KMS。利：托管能力强，云上集成好；弊：私有化和多云可移植性较弱。
+- 方案 C：企业密钥平台。利：符合组织安全标准；弊：需要对接规范和测试环境。
+- 可另提方案：可以指定现有密钥管理系统。
+
+负责人/工作流：安全/SRE/平台内核。
+
+最晚确认阶段：P1 结束前，P8 发布前复核。
+
+确认结论：待确认。
+
+解决说明文档：待确认。
+
+关联需求/风险：REQ-013/R-014。
+
+关闭任务/commit：待确认。
+
+最后更新UTC：2026-08-23。
+
+**OQ-INFRA-005｜Open｜基础设施**
+
+来源文档：`docs/architecture/service-blueprint.md`、`docs/planning/development-schedule.md`。
+
+问题描述：Observability 生产后端和告警标准是什么。
+
+影响：影响 trace 存储、日志保留、指标命名、告警接入和控制台监控页。
+
+推荐方案：
+
+- 方案 A：OpenTelemetry + Prometheus/Grafana/Loki/Tempo。利：开源生态完整；弊：需要组合运维。
+- 方案 B：企业标准观测栈。利：接入现有告警和运维流程；弊：可能限制指标和 trace 设计。
+- 方案 C（推荐）：先统一 OTEL，后端 P8 再锁定。利：P1 不被选型阻塞，生产可替换；弊：P8 需做后端适配验证。
+- 可另提方案：可以指定现有 APM、日志或告警平台。
+
+负责人/工作流：SRE/平台内核/安全。
+
+最晚确认阶段：P1 结束前，P8 发布前复核。
+
+确认结论：待确认。
+
+解决说明文档：待确认。
+
+关联需求/风险：REQ-013/R-008。
+
+关闭任务/commit：待确认。
+
+最后更新UTC：2026-08-23。
+
+**OQ-INFRA-006｜Open｜基础设施**
+
+来源文档：`docs/architecture/service-blueprint.md`。
+
+问题描述：长任务编排是否引入 Temporal/Cadence 或继续自研状态机。
+
+影响：影响恢复、人工信号、重试、补偿事务和部署复杂度。
+
+推荐方案：
+
+- 方案 A（推荐）：P1 自研状态机。利：早期可控、不引入重依赖；弊：长期恢复和补偿能力有限。
+- 方案 B：P6/P8 评估 Temporal/Cadence。利：长任务能力成熟；弊：引入新平台和运维复杂度。
+- 方案 C：接入企业已有 workflow 后端。利：符合组织标准；弊：需要适配企业接口。
+- 可另提方案：可以指定已有长任务编排平台。
+
+负责人/工作流：平台内核/SRE/架构。
+
+最晚确认阶段：P6 前。
+
+确认结论：待确认。
+
+解决说明文档：待确认。
+
+关联需求/风险：REQ-011/R-008。
+
+关闭任务/commit：待确认。
+
+最后更新UTC：2026-08-23。
+
+**OQ-MEMORY-001｜Open｜Memory Gateway**
+
+来源文档：`docs/planning/integrated-platform-plan.md`、`docs/architecture/service-blueprint.md`、`docs/decisions/P0-hermes-planner-only.md`。
+
+问题描述：Hermes Memory Gateway 的五层记忆具体层级、保留期和冲突策略是什么。
+
+影响：影响 P3 planner context、并发写入、快照、冲突解决和审计。
+
+推荐方案：
+
+- 方案 A：会话、用户、Agent、组织、审计五层。利：能力完整；弊：P3 范围和测试复杂度高。
+- 方案 B（推荐）：先交付三层最小实现。利：P3 可控，便于后续扩展；弊：部分高级记忆策略延后。
+- 方案 C：按产品策略后置高级层级。利：避免过早设计；弊：P3 需要保留足够扩展点。
+- 可另提方案：可以指定你希望的平台记忆层级。
+
+负责人/工作流：平台内核/Hermes/产品。
+
+最晚确认阶段：P3 前。
+
+确认结论：待确认。
+
+解决说明文档：待确认。
+
+关联需求/风险：REQ-008/R-005。
+
+关闭任务/commit：待确认。
+
+最后更新UTC：2026-08-23。
+
+**OQ-MEMORY-002｜Open｜Memory Gateway**
+
+来源文档：`docs/architecture/service-blueprint.md`、`docs/risks/risk-register.md`。
+
+问题描述：Memory Gateway 生产检索和存储选型是什么。
+
+影响：影响检索延迟、一致性、租户隔离、备份和运维复杂度。
+
+推荐方案：
+
+- 方案 A（推荐）：PostgreSQL + pgvector。利：一致性和备份简单；弊：超大规模语义检索能力有限。
+- 方案 B：Qdrant。利：向量检索能力强；弊：增加独立存储和运维复杂度。
+- 方案 C：企业向量检索标准。利：符合组织平台化要求；弊：如果标准未定会拖慢 P3。
+- 可另提方案：可以指定现有数据库或向量检索系统。
+
+负责人/工作流：平台内核/SRE/Hermes。
+
+最晚确认阶段：P3 前，P8 发布前复核。
+
+确认结论：待确认。
+
+解决说明文档：待确认。
+
+关联需求/风险：REQ-008/REQ-013/R-005/R-008。
+
+关闭任务/commit：待确认。
+
+最后更新UTC：2026-08-23。
+
+**OQ-DSH-001｜Open｜DSH 执行器**
+
+来源文档：`docs/architecture/dsh-versioning-and-replacement.md`、`docs/risks/risk-register.md`。
+
+问题描述：DSH 预览版是否固定为当前 `0.1.1-rc.2` provider，后续如何并存、禁用和回滚。
+
+影响：影响 P2 provider registry、兼容 fixture、升级门禁和生产默认 executor 切换。
+
+推荐方案：
+
+- 方案 A（推荐）：固定当前 `0.1.1-rc.2` provider。利：P2 变量最少；弊：后续升级需要兼容矩阵。
+- 方案 B：新旧 provider 并存。利：升级和回滚弹性强；弊：P2 实现复杂度更高。
+- 方案 C：评估替代 executor。利：降低 DSH 预览版依赖；弊：会扩大 P2 范围。
+- 可另提方案：可以指定必须接入的 executor provider。
+
+负责人/工作流：上游改造/执行器/SRE。
+
+最晚确认阶段：P2 前。
+
+确认结论：待确认。
+
+解决说明文档：待确认。
+
+关联需求/风险：REQ-018/R-001/R-016。
+
+关闭任务/commit：待确认。
+
+最后更新UTC：2026-08-23。
+
+**OQ-DSH-002｜Open｜DSH 执行器**
+
+来源文档：`docs/decisions/P0-dsh-executor-only.md`、`docs/risks/risk-register.md`。
+
+问题描述：DSH 正式沙箱后端、文件/网络策略、取消语义和 artifact 归档策略是什么。
+
+影响：影响 executor-only 改造、安全测试、产物入库、取消/超时和故障注入。
+
+推荐方案：
+
+- 方案 A：Landlock/native sandbox。利：执行隔离强；弊：系统兼容性和实现成本要验证。
+- 方案 B（推荐）：容器隔离。利：边界清晰，适合服务化部署；弊：资源和文件策略需要细化。
+- 方案 C：企业沙箱或最小 deny-by-default。利：可贴合企业安全标准；弊：若企业沙箱未定，P2 会等待。
+- 可另提方案：可以指定现有沙箱或执行隔离技术。
+
+负责人/工作流：上游改造/安全/SRE。
+
+最晚确认阶段：P2 前。
+
+确认结论：待确认。
+
+解决说明文档：待确认。
+
+关联需求/风险：REQ-009/REQ-018/R-001/R-004。
+
+关闭任务/commit：待确认。
+
+最后更新UTC：2026-08-23。
+
+**OQ-DEPLOY-001｜Open｜部署交付**
+
+来源文档：`docs/planning/integrated-platform-plan.md`、`docs/planning/development-schedule.md`。
+
+问题描述：生产部署目标是单机 Docker Compose、Kubernetes，还是两者同时作为正式交付物。
+
+影响：影响 P8 编排、CI/CD、运维手册、备份恢复和发布门禁。
+
+推荐方案：
+
+- 方案 A：Docker Compose 生产包。利：交付简单，适合小规模私有化；弊：扩缩容和生产治理较弱。
+- 方案 B：Kubernetes 正式包。利：生产标准化强，扩缩容和治理好；弊：交付复杂度更高。
+- 方案 C（推荐）：两者都交付但分优先级。利：兼顾小规模和标准生产；弊：P8 文档和测试工作增加。
+- 可另提方案：可以指定只交付一种部署形态。
+
+负责人/工作流：SRE/架构/产品。
+
+最晚确认阶段：P8 前，建议 P1 结束前定方向。
+
+确认结论：待确认。
+
+解决说明文档：待确认。
+
+关联需求/风险：REQ-005/REQ-014/R-008。
+
+关闭任务/commit：待确认。
+
+最后更新UTC：2026-08-23。
+
+**OQ-PRODUCT-001｜Open｜产品范围**
+
+来源文档：`docs/planning/development-schedule.md`、`docs/planning/integrated-platform-plan.md`。
+
+问题描述：P7 高级能力是否进入首版。
+
+影响：影响 W15-W18 是否需要额外冻结窗口、资源预算和 MVP 范围。
+
+推荐方案：
+
+- 方案 A（推荐）：P7 全部延后，不阻塞 MVP。利：MVP 风险最低；弊：高级能力价值延后。
+- 方案 B：只选择单项高级能力进入首版。利：可展示差异化能力；弊：需要额外测试和产品验收。
+- 方案 C：P7 全量进入生产候选并重排冻结窗口。利：首版能力最完整；弊：MVP 和 P8 风险显著上升。
+- 可另提方案：可以指定哪些 P7 能力必须首版上线。
+
+负责人/工作流：产品/架构/评测。
+
+最晚确认阶段：P6 开始前。
+
+确认结论：待确认。
+
+解决说明文档：待确认。
+
+关联需求/风险：REQ-014/R-009。
+
+关闭任务/commit：待确认。
+
+最后更新UTC：2026-08-23。
 
 ## 4. 当前关闭摘要
 

@@ -227,10 +227,15 @@ for open_question_marker in \
   '3.2.3 需要在 P4 前自动确认的' \
   '3.2.4 需要在 P5/P6 前自动确认的' \
   '3.3 完整问题台账' \
-  '推荐方案（至少 3 项，可另提方案）' \
+  '本节保留完整审计字段，但不使用表格展示问题' \
   '方案 A：' \
   '方案 B：' \
   '方案 C：' \
+  '方案 A（推荐）' \
+  '方案 B（推荐）' \
+  '方案 C（推荐）' \
+  '利：' \
+  '弊：' \
   '可另提方案' \
   '需要我确认 | 14' \
   '后续自动确认 | 9' \
@@ -245,6 +250,10 @@ for open_question_marker in \
   'OQ-LEGAL-001'; do
   rg -q "$open_question_marker" docs/planning/open-questions-register.md || fail "open questions register marker missing: $open_question_marker"
 done
+full_register_block="$(sed -n '/^### 3\.3 完整问题台账$/,/^## 4\. 当前关闭摘要$/p' docs/planning/open-questions-register.md)"
+if printf '%s\n' "$full_register_block" | rg -q '^\|'; then
+  fail 'open questions 3.3 full register must use card layout, not markdown table rows'
+fi
 rg -q 'P0-09 的 \[待确认问题集中台账\]' docs/README.md || fail 'docs README missing P0-09 open questions summary'
 rg -q 'open-questions-register.md' docs/planning/ai-schedule-prompt-template.md || fail 'AI schedule prompt template missing open questions register reference'
 rg -q 'OQ-\*' docs/planning/ai-schedule-prompt-template.md || fail 'AI schedule prompt template missing OQ ID requirement'
