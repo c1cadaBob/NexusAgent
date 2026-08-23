@@ -255,10 +255,37 @@ if printf '%s\n' "$full_register_block" | rg -q '^\|'; then
   fail 'open questions 3.3 full register must use card layout, not markdown table rows'
 fi
 rg -q 'P0-09 的 \[待确认问题集中台账\]' docs/README.md || fail 'docs README missing P0-09 open questions summary'
+rg -q '待确认问题分阶段处理计划' docs/README.md || fail 'docs README missing open questions phased plan summary'
 rg -q 'open-questions-register.md' docs/planning/ai-schedule-prompt-template.md || fail 'AI schedule prompt template missing open questions register reference'
+rg -q 'docs/planning/open-questions/' docs/planning/ai-schedule-prompt-template.md || fail 'AI schedule prompt template missing phased open questions plan reference'
 rg -q 'OQ-\*' docs/planning/ai-schedule-prompt-template.md || fail 'AI schedule prompt template missing OQ ID requirement'
 rg -q 'P0-09 已新增待确认问题集中台账' docs/traceability/requirements-matrix.md || fail 'REQ-015 missing P0-09 open questions status'
 rg -q 'P0-09 待确认问题集中台账更新' docs/risks/risk-register.md || fail 'risk register missing P0-09 update'
+
+for open_questions_plan in \
+  docs/planning/open-questions/README.md \
+  docs/planning/open-questions/P0-resolution-plan.md \
+  docs/planning/open-questions/P1-resolution-plan.md \
+  docs/planning/open-questions/P2-resolution-plan.md \
+  docs/planning/open-questions/P3-resolution-plan.md \
+  docs/planning/open-questions/P4-resolution-plan.md \
+  docs/planning/open-questions/P5-resolution-plan.md \
+  docs/planning/open-questions/P6-resolution-plan.md \
+  docs/planning/open-questions/P8-resolution-plan.md; do
+  [[ -f "$open_questions_plan" ]] || fail "open questions phased plan missing: $open_questions_plan"
+done
+for oq_id in \
+  OQ-UPSTREAM-001 OQ-UPSTREAM-002 OQ-UPSTREAM-003 OQ-UPSTREAM-004 \
+  OQ-SCHEDULE-001 OQ-SCHEDULE-002 OQ-API-001 OQ-API-002 \
+  OQ-CHANNEL-001 OQ-PLUGIN-001 OQ-LEGAL-001 \
+  OQ-INFRA-001 OQ-INFRA-002 OQ-INFRA-003 OQ-INFRA-004 OQ-INFRA-005 OQ-INFRA-006 \
+  OQ-MEMORY-001 OQ-MEMORY-002 OQ-DSH-001 OQ-DSH-002 \
+  OQ-DEPLOY-001 OQ-PRODUCT-001; do
+  rg -q "$oq_id" docs/planning/open-questions || fail "open questions phased plans missing OQ coverage: $oq_id"
+  rg -q "$oq_id" docs/planning/open-questions-register.md || fail "open questions register missing OQ coverage: $oq_id"
+done
+rg -q 'docs/planning/open-questions/P1-resolution-plan.md' docs/planning/open-questions-register.md || fail 'open questions register missing P1 plan linkage'
+rg -q 'docs/planning/open-questions/P8-resolution-plan.md' docs/planning/open-questions-register.md || fail 'open questions register missing P8 plan linkage'
 
 for endpoint in '/v1/health:' '/v1/tasks:' '/v1/skills:' '/v1/memory/search:' '/v1/tenants:' '/v1/approvals:'; do
   rg -q "^  ${endpoint}" docs/contracts/openapi.yaml || fail "OpenAPI endpoint missing: ${endpoint}"

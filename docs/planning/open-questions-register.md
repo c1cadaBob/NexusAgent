@@ -1,8 +1,8 @@
 # NexusAgent 待确认问题集中台账
 
-> 文档状态：P0-09 集中台账基线。
+> 文档状态：P0-09 集中台账基线，已补充分阶段处理计划索引。
 >
-> 维护规则：本文件是【待确认问题】的状态索引，不替代架构、契约、风险、决策或任务文档。技术细节仍写在专业文档中，本台账负责记录问题、影响、责任工作流、最晚确认阶段、确认结论和解决说明文档位置。
+> 维护规则：本文件是【待确认问题】的状态索引，不替代架构、契约、风险、决策或任务文档。技术细节仍写在专业文档中，本台账负责记录问题、影响、责任工作流、最晚确认阶段、确认结论和解决说明文档位置。分阶段处理计划维护在 `docs/planning/open-questions/`。
 >
 > 最后更新UTC：2026-08-23。
 
@@ -378,7 +378,7 @@
 
 确认结论：待确认。
 
-解决说明文档：待确认。
+解决说明文档：`docs/planning/open-questions/P3-resolution-plan.md`、`docs/planning/open-questions/P8-resolution-plan.md`。
 
 关联需求/风险：REQ-019/R-016。
 
@@ -407,7 +407,7 @@
 
 确认结论：待确认。
 
-解决说明文档：待确认。
+解决说明文档：`docs/planning/open-questions/P4-resolution-plan.md`、`docs/planning/open-questions/P8-resolution-plan.md`。
 
 关联需求/风险：REQ-019/R-016。
 
@@ -436,7 +436,7 @@
 
 确认结论：待确认。
 
-解决说明文档：待确认。
+解决说明文档：`docs/planning/open-questions/P2-resolution-plan.md`、`docs/planning/open-questions/P8-resolution-plan.md`。
 
 关联需求/风险：REQ-018/R-001/R-016。
 
@@ -465,7 +465,7 @@
 
 确认结论：待确认。
 
-解决说明文档：待确认。
+解决说明文档：`docs/planning/open-questions/P0-resolution-plan.md`。
 
 关联需求/风险：REQ-004/R-015。
 
@@ -494,7 +494,7 @@
 
 确认结论：待确认。
 
-解决说明文档：待确认。
+解决说明文档：`docs/planning/open-questions/P0-resolution-plan.md`。
 
 关联需求/风险：REQ-014/R-009。
 
@@ -523,7 +523,7 @@
 
 确认结论：待确认。
 
-解决说明文档：待确认。
+解决说明文档：`docs/planning/open-questions/P0-resolution-plan.md`。
 
 关联需求/风险：REQ-014/R-009。
 
@@ -552,7 +552,7 @@
 
 确认结论：待确认。
 
-解决说明文档：待确认。
+解决说明文档：`docs/planning/open-questions/P1-resolution-plan.md`。
 
 关联需求/风险：REQ-007/REQ-014。
 
@@ -581,7 +581,7 @@
 
 确认结论：待确认。
 
-解决说明文档：待确认。
+解决说明文档：`docs/planning/open-questions/P5-resolution-plan.md`。
 
 关联需求/风险：REQ-007/R-007。
 
@@ -610,7 +610,7 @@
 
 确认结论：待确认。
 
-解决说明文档：待确认。
+解决说明文档：`docs/planning/open-questions/P0-resolution-plan.md`、`docs/planning/open-questions/P4-resolution-plan.md`。
 
 关联需求/风险：REQ-020/R-013/R-014。
 
@@ -639,7 +639,7 @@
 
 确认结论：待确认。
 
-解决说明文档：待确认。
+解决说明文档：`docs/planning/open-questions/P5-resolution-plan.md`、`docs/planning/open-questions/P8-resolution-plan.md`。
 
 关联需求/风险：REQ-020/R-013/R-014。
 
@@ -668,7 +668,7 @@
 
 确认结论：待确认。
 
-解决说明文档：待确认。
+解决说明文档：`docs/planning/open-questions/P5-resolution-plan.md`、`docs/planning/open-questions/P8-resolution-plan.md`。
 
 关联需求/风险：R-015/R-016/REQ-020。
 
@@ -697,7 +697,7 @@
 
 确认结论：待确认。
 
-解决说明文档：待确认。
+解决说明文档：`docs/planning/open-questions/P1-resolution-plan.md`。
 
 关联需求/风险：REQ-011/R-008。
 
@@ -726,7 +726,7 @@
 
 确认结论：待确认。
 
-解决说明文档：待确认。
+解决说明文档：`docs/planning/open-questions/P1-resolution-plan.md`、`docs/planning/open-questions/P8-resolution-plan.md`。
 
 关联需求/风险：REQ-013/R-008。
 
@@ -755,7 +755,7 @@
 
 确认结论：待确认。
 
-解决说明文档：待确认。
+解决说明文档：`docs/planning/open-questions/P1-resolution-plan.md`、`docs/planning/open-questions/P8-resolution-plan.md`。
 
 关联需求/风险：REQ-009/REQ-013/R-008。
 
@@ -784,7 +784,7 @@
 
 确认结论：待确认。
 
-解决说明文档：待确认。
+解决说明文档：`docs/planning/open-questions/P1-resolution-plan.md`、`docs/planning/open-questions/P8-resolution-plan.md`。
 
 关联需求/风险：REQ-013/R-014。
 
@@ -813,7 +813,7 @@
 
 确认结论：待确认。
 
-解决说明文档：待确认。
+解决说明文档：`docs/planning/open-questions/P1-resolution-plan.md`、`docs/planning/open-questions/P8-resolution-plan.md`。
 
 关联需求/风险：REQ-013/R-008。
 
@@ -842,7 +842,7 @@
 
 确认结论：待确认。
 
-解决说明文档：待确认。
+解决说明文档：`docs/planning/open-questions/P6-resolution-plan.md`。
 
 关联需求/风险：REQ-011/R-008。
 
@@ -871,7 +871,7 @@
 
 确认结论：待确认。
 
-解决说明文档：待确认。
+解决说明文档：`docs/planning/open-questions/P3-resolution-plan.md`。
 
 关联需求/风险：REQ-008/R-005。
 
@@ -900,7 +900,7 @@
 
 确认结论：待确认。
 
-解决说明文档：待确认。
+解决说明文档：`docs/planning/open-questions/P3-resolution-plan.md`、`docs/planning/open-questions/P8-resolution-plan.md`。
 
 关联需求/风险：REQ-008/REQ-013/R-005/R-008。
 
@@ -929,7 +929,7 @@
 
 确认结论：待确认。
 
-解决说明文档：待确认。
+解决说明文档：`docs/planning/open-questions/P2-resolution-plan.md`。
 
 关联需求/风险：REQ-018/R-001/R-016。
 
@@ -958,7 +958,7 @@
 
 确认结论：待确认。
 
-解决说明文档：待确认。
+解决说明文档：`docs/planning/open-questions/P2-resolution-plan.md`。
 
 关联需求/风险：REQ-009/REQ-018/R-001/R-004。
 
@@ -987,7 +987,7 @@
 
 确认结论：待确认。
 
-解决说明文档：待确认。
+解决说明文档：`docs/planning/open-questions/P1-resolution-plan.md`、`docs/planning/open-questions/P8-resolution-plan.md`。
 
 关联需求/风险：REQ-005/REQ-014/R-008。
 
@@ -1016,7 +1016,7 @@
 
 确认结论：待确认。
 
-解决说明文档：待确认。
+解决说明文档：`docs/planning/open-questions/P6-resolution-plan.md`。
 
 关联需求/风险：REQ-014/R-009。
 

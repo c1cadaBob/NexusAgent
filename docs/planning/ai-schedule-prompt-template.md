@@ -19,7 +19,7 @@
 
 ## 2. 自动填充字段字典
 
-自动生成提示词时，必须优先从当前仓库文档读取字段，不得手工猜测。字段缺失时保留 `【待确认问题】`。所有未关闭问题必须优先读取 `docs/planning/open-questions-register.md`，并在输出中保留对应 `OQ-*` 问题 ID。
+自动生成提示词时，必须优先从当前仓库文档读取字段，不得手工猜测。字段缺失时保留 `【待确认问题】`。所有未关闭问题必须优先读取 `docs/planning/open-questions-register.md` 和 `docs/planning/open-questions/` 分阶段处理计划，并在输出中保留对应 `OQ-*` 问题 ID。
 
 | 占位符 | 来源 | 示例/规则 |
 |---|---|---|
@@ -44,13 +44,13 @@
 | `{{milestone}}` | `development-schedule.md` | `M2：P2-P4 内部三组件接入` |
 | `{{owner_workstream}}` | `development-schedule.md`、团队分工 | 上游改造、平台内核、测试 |
 | `{{quality_gates}}` | 任务表、测试策略、阶段门禁 | 单元、契约、集成、安全、冒烟、`git diff --check` |
-| `{{open_questions_register}}` | `docs/planning/open-questions-register.md` | 集中台账路径、状态枚举、问题 ID、责任工作流、最晚确认阶段和解决说明文档 |
+| `{{open_questions_register}}` | `docs/planning/open-questions-register.md`、`docs/planning/open-questions/` | 集中台账路径、状态枚举、问题 ID、责任工作流、最晚确认阶段、推荐处理路线、阶段计划和解决说明文档 |
 | `{{plugin_bridge_strategy}}` | `docs/architecture/upstream-versioning-and-plugin-bridge.md` | Plugin Bridge 白名单、能力描述符、宿主侧车和禁止事项 |
 | `{{provider_strategy}}` | `docs/architecture/dsh-versioning-and-replacement.md`、`docs/architecture/upstream-versioning-and-plugin-bridge.md` | OpenClaw/Hermes/DSH provider 并存、升级、禁用和回滚规则 |
 | `{{smoke_script}}` | 阶段脚本约定 | `tests/smoke/P2.sh` |
 | `{{related_requirements}}` | `docs/traceability/requirements-matrix.md` | `REQ-009`、`REQ-012` |
 | `{{related_risks}}` | `docs/risks/risk-register.md`、规划第 12 节 | `R-003`、`R-004` |
-| `{{open_questions}}` | `docs/planning/open-questions-register.md`，辅以阶段待确认问题和排期待确认事项 | 保留问题 ID、状态、影响和最晚确认阶段，不得擅自假设 |
+| `{{open_questions}}` | `docs/planning/open-questions-register.md`，辅以 `docs/planning/open-questions/`、阶段待确认问题和排期待确认事项 | 保留问题 ID、状态、影响、推荐处理、关闭证据和最晚确认阶段，不得擅自假设 |
 | `{{allowed_write_paths}}` | 项目约束和任务路径 | `vendor/` 副本、`platform/`、`product/`、`docs/`、`tests/`、`deploy/`、`config/`、`scripts/` |
 | `{{readonly_upstream_paths}}` | 固定值 | `/opt/project/hermes-agent-main`、`/opt/project/openclaw-main`、`/opt/project/deepseek-harness-master` |
 
@@ -99,7 +99,7 @@ AI 生成排期时必须输出以下结构，缺一不可：
 5. 风险与降级：列出触发条件、影响、补救方式和是否影响 MVP。
 6. 门禁清单：列出必须通过的测试、脚本、文档更新和安全验证。
 7. 自动填充差异：说明本次排期相对 `development-schedule.md` 的变化。
-8. 待确认问题：优先引用 `docs/planning/open-questions-register.md`，保留 `OQ-*` ID、状态、影响、负责人和最晚确认阶段，不得擅自下结论。
+8. 待确认问题：优先引用 `docs/planning/open-questions-register.md` 和 `docs/planning/open-questions/`，保留 `OQ-*` ID、状态、影响、负责人、推荐处理、关闭证据和最晚确认阶段，不得擅自下结论。
 9. 插件与 provider 治理：列出是否涉及 Plugin Bridge、社区插件复用、provider 兼容、禁用和回滚。
 10. 审计要求：列出对应任务 ID 文档路径，并要求执行前后填写“修改记录包”。
 
@@ -162,6 +162,7 @@ AI 生成排期时必须输出以下结构，缺一不可：
 - 当前风险登记册：`docs/risks/risk-register.md`
 - 当前需求追踪矩阵：`docs/traceability/requirements-matrix.md`
 - 当前待确认问题集中台账：`docs/planning/open-questions-register.md`
+- 当前待确认问题分阶段处理计划：`docs/planning/open-questions/`
 
 # 不可违反约束
 1. 原始上游目录只读：{{readonly_upstream_paths}}。
@@ -171,7 +172,7 @@ AI 生成排期时必须输出以下结构，缺一不可：
 5. 所有阶段必须保留统一 ID、UTC 时间、单调时钟、trace_id、质量门禁、冒烟脚本和防绕过验证。
 6. 三大平台社区插件只能通过 Plugin Bridge 白名单和原生宿主侧车复用；不得开放租户任意安装或绕过平台凭据、审计和 artifact 管理。
 7. OpenClaw/Hermes/DSH provider 可以并存、禁用、灰度和回滚；平台契约不得随上游版本变化。
-8. 未确认事项必须从 `docs/planning/open-questions-register.md` 读取，保留 `OQ-*` ID，并标记为【待确认问题】，不得擅自假设。
+8. 未确认事项必须从 `docs/planning/open-questions-register.md` 和 `docs/planning/open-questions/` 读取，保留 `OQ-*` ID，并标记为【待确认问题】，不得擅自假设。
 
 # 当前排期输入
 - 排期模式：{{prompt_mode}}
@@ -210,7 +211,7 @@ AI 生成排期时必须输出以下结构，缺一不可：
 - 相关需求：{{related_requirements}}
 - 相关风险：{{related_risks}}
 - 前置依赖：{{dependencies}}
-- 待确认问题：{{open_questions}}（优先来自 `docs/planning/open-questions-register.md`，必须保留 `OQ-*` ID）
+- 待确认问题：{{open_questions}}（优先来自 `docs/planning/open-questions-register.md` 和 `docs/planning/open-questions/`，必须保留 `OQ-*` ID）
 
 # 不可违反约束
 - 原始上游目录只读：{{readonly_upstream_paths}}。
@@ -363,7 +364,7 @@ Markdown，包含影响分析表、三套重排方案、推荐方案、不可降
 - 已运行命令：{{executed_commands}}
 - 测试结果：{{test_results}}
 - 文档更新：{{doc_updates}}
-- 未关闭问题：{{open_questions}}（优先来自 `docs/planning/open-questions-register.md`，必须保留 `OQ-*` ID）
+- 未关闭问题：{{open_questions}}（优先来自 `docs/planning/open-questions-register.md` 和 `docs/planning/open-questions/`，必须保留 `OQ-*` ID）
 - 相关风险：{{related_risks}}
 
 # 判定规则
