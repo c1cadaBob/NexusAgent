@@ -17,6 +17,7 @@
 - [待确认问题确认文件](planning/open-questions/README.md)：按 P0/P1/P2/P3/P4/P5/P6/P8 承接全部 `OQ-*`，保存推荐处理方式、默认解决方案、三平台影响分析和关闭证据。
 - [AI 排期提示词模板](planning/ai-schedule-prompt-template.md)
 - [任务实施规划提示词索引](planning/task-prompts/README.md)
+- [子 Agent 角色记忆](agents/README.md)：P0-01 基线，固化长期协作角色、只读上游边界、交接格式和各角色常读资料，避免上下文压缩或交接后遗忘项目约束。
 - [对外 API 契约](contracts/openapi.yaml)
 - [Plugin Bridge 平台契约](../platform/contracts/plugin-inventory.schema.json)
 - [P1 公共契约与任务状态机](../platform/contracts/task-state.schema.json)：P1-01 基线，覆盖统一 ID、TaskRequest、TaskState、EventEnvelope、Artifact/Credential 引用和状态转移测试。
@@ -36,6 +37,7 @@
 
 ## P0 架构基线关系
 
+- P0-01 的 [子 Agent 角色记忆](agents/README.md) 定义 Program Lead、Upstream Snapshot Engineer、Platform Core Engineer、Security Quality Engineer 和 Product Delivery Engineer 五类长期角色；后续子 agent 开工前必须读取对应角色文档和当前任务修改记录包。
 - P0-05 的 [上游接口摸底](architecture/upstream-interface-inventory.md) 定义三大上游入口的保留、隔离和禁止分类。
 - P0-06 的 [对外 API 契约](contracts/openapi.yaml) 定义只包含平台概念的 REST OpenAPI 初稿和平台错误码草案。
 - P0-07 的 [服务功能与整合蓝图](architecture/service-blueprint.md) 把十个基础服务映射到 P1 最小交付、P2-P4 上游接入和 P5 产品化能力。

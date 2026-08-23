@@ -27,6 +27,12 @@ required_paths=(
   docs/planning/open-questions-register.md
   docs/planning/ai-schedule-prompt-template.md
   docs/planning/task-prompts/README.md
+  docs/agents/README.md
+  docs/agents/roles/program-lead.md
+  docs/agents/roles/upstream-snapshot-engineer.md
+  docs/agents/roles/platform-core-engineer.md
+  docs/agents/roles/security-quality-engineer.md
+  docs/agents/roles/product-delivery-engineer.md
   docs/decisions/P0-openclaw-gateway-only.md
   docs/decisions/P0-hermes-planner-only.md
   docs/decisions/P0-dsh-executor-only.md
@@ -44,6 +50,23 @@ required_paths=(
 
 for path in "${required_paths[@]}"; do
   [[ -e "$path" ]] || fail "missing required path: $path"
+done
+
+for agent_marker in \
+  '角色记忆' \
+  '交接格式' \
+  'Program Lead' \
+  'Upstream Snapshot Engineer' \
+  'Platform Core Engineer' \
+  'Security Quality Engineer' \
+  'Product Delivery Engineer'; do
+  rg -q "$agent_marker" docs/agents || fail "agent role memory marker missing: $agent_marker"
+done
+
+for role_doc in docs/agents/roles/*.md; do
+  rg -q '不可遗忘边界' "$role_doc" || fail "role doc missing boundary memory: $role_doc"
+  rg -q '常读资料' "$role_doc" || fail "role doc missing reading list: $role_doc"
+  rg -q '交付记忆' "$role_doc" || fail "role doc missing delivery memory: $role_doc"
 done
 
 rg -q 'version: "0\.20\.5"' vendor/MANIFEST.yaml || fail 'Hermes version missing from manifest'
@@ -441,4 +464,4 @@ if find . -path ./.git -prune -o -path ./vendor -prune -o -type d \( \
 fi
 
 git diff --check -- . ':!vendor/**' || fail 'whitespace errors found outside vendor snapshot'
-printf 'PASS: P0 structure, vendor manifest, plan sections, OpenAPI placeholders, task prompts, audit templates, and exclusions\n'
+printf 'PASS: P0 structure, vendor manifest, plan sections, OpenAPI placeholders, task prompts, agent role memory, audit templates, and exclusions\n'
