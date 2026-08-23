@@ -2,41 +2,93 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://nexusagent.local/contracts/execution-event.schema.json",
   "title": "NexusAgent ExecutionEvent",
-  "description": "P0 experimental schema for the DSH executor-only proof. P2 will harden this into the production execution event contract.",
-  "type": "object",
-  "additionalProperties": false,
-  "required": [
-    "schema_version",
-    "execution_id",
-    "event_type",
-    "status",
-    "payload"
+  "description": "Execution event contract. P0 proof events remain accepted while P2 adds provider-scoped executor events.",
+  "oneOf": [
+    { "$ref": "#/$defs/p0ExecutionEvent" },
+    { "$ref": "#/$defs/p2ProviderExecutionEvent" }
   ],
-  "properties": {
-    "schema_version": {
-      "const": "nexus.execution_event.p0.v1"
+  "$defs": {
+    "p0ExecutionEvent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "execution_id",
+        "event_type",
+        "status",
+        "payload"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": "nexus.execution_event.p0.v1"
+        },
+        "execution_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "trace_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "event_type": {
+          "enum": [
+            "execution.accepted",
+            "execution.blocked",
+            "tool.blocked",
+            "tool.result"
+          ]
+        },
+        "status": {
+          "enum": ["accepted", "blocked", "completed", "failed"]
+        },
+        "payload": {
+          "type": "object"
+        }
+      }
     },
-    "execution_id": {
-      "type": "string",
-      "minLength": 1
-    },
-    "trace_id": {
-      "type": "string",
-      "minLength": 1
-    },
-    "event_type": {
-      "enum": [
-        "execution.accepted",
-        "execution.blocked",
-        "tool.blocked",
-        "tool.result"
-      ]
-    },
-    "status": {
-      "enum": ["accepted", "blocked", "completed", "failed"]
-    },
-    "payload": {
-      "type": "object"
+    "p2ProviderExecutionEvent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "execution_id",
+        "provider_id",
+        "event_type",
+        "status",
+        "payload"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": "nexus.execution_event.p2.v1"
+        },
+        "execution_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "trace_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "provider_id": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9._-]{0,127}$"
+        },
+        "event_type": {
+          "enum": [
+            "execution.accepted",
+            "execution.blocked",
+            "execution.cancelled",
+            "tool.blocked",
+            "tool.result"
+          ]
+        },
+        "status": {
+          "enum": ["accepted", "blocked", "cancelled", "completed", "failed"]
+        },
+        "payload": {
+          "type": "object"
+        }
+      }
     }
   }
 }

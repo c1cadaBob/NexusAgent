@@ -26,6 +26,8 @@
 
 关闭证据：provider registry 可列出、启用、禁用和回滚；P2 smoke 验证默认 provider；P6 故障注入验证 provider 回滚。
 
+P2-01 进展：`platform/adapters/dsh/index.ts` 已新增 `DshProviderRegistry`，固定 `dsh-0.1.1-rc.2` 为默认 provider，并覆盖列出、启用、禁用、切换默认 provider、回滚到上一默认 provider和未知 provider 拒绝；`tests/unit/dsh-provider-registry.test.mjs` 与 `tests/smoke/P2.sh` 已作为关闭证据入口。P6 仍需做真实 provider 故障注入和生产切换演练后再把该 OQ 从集中台账关闭。
+
 ## OQ-DSH-002：沙箱、文件/网络、取消和 artifact 策略
 
 推荐处理：P2 默认使用容器隔离作为基线，同时评估 Landlock/native sandbox、gVisor/Firecracker 或企业沙箱作为 P8 强化候选。所有执行必须带 sandbox policy、resource budget、credential_ref 和 artifact policy。
@@ -37,3 +39,5 @@
 - OpenClaw：渠道命令不能直接变成 DSH 原生命令，必须先过平台任务状态机和 Policy-Gate。
 
 关闭证据：文件/网络越权测试失败、取消语义可追踪、artifact 入库成功、stdout/stderr 无明文凭据、直接调用 DSH 原生 agent-loop 失败。
+
+P2-01 进展：vendor guard 已在 scheduler 前校验平台取消请求，`nexus.execution_event.p2.v1` 可表达 `execution.cancelled`；`nexus-executor-only-provider.spec.ts` 覆盖取消不进入 native tool dispatch。正式文件/网络 deny-by-default、artifact 入库和 stdout/stderr 脱敏仍由 P2-03/P2-04 关闭。

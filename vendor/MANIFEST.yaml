@@ -84,3 +84,17 @@ sources:
           - vendor/deepseek-harness-master/packages/core/agent-loop/src/index.ts
           - vendor/deepseek-harness-master/packages/core/agent-loop/src/tool-calls.ts
           - vendor/deepseek-harness-master/packages/core/agent-loop/tests/nexus-executor-only-experiment.spec.ts
+      - task_id: P2-01
+        description: "NexusAgent P2 DSH executor-only provider boundary hardening"
+        decision_record: docs/planning/task-prompts/P2/P2-01.md
+        files:
+          - vendor/deepseek-harness-master/packages/core/agent-loop/src/agent.ts
+          - vendor/deepseek-harness-master/packages/core/agent-loop/src/constants.ts
+          - vendor/deepseek-harness-master/packages/core/agent-loop/src/nexus-executor-only-experiment.ts
+          - vendor/deepseek-harness-master/packages/core/agent-loop/src/runtime-context.ts
+          - vendor/deepseek-harness-master/packages/core/agent-loop/src/tool-calls.ts
+          - vendor/deepseek-harness-master/packages/core/agent-loop/tests/nexus-executor-only-provider.spec.ts
+          - vendor/deepseek-harness-master/packages/core/agent/src/dispatch.ts
+          - platform/adapters/dsh/index.ts
+          - tests/unit/dsh-provider-registry.test.mjs
+          - tests/smoke/P2.sh

@@ -84,6 +84,7 @@ export class ReactLoopAgent implements Agent {
     public readonly options: AgentOptions,
     public readonly session: Session,
   ) {
+    assertNexusNativeAgentLoopAllowed('ReactLoopAgent.constructor')
     this.dispatch = agentEvents(loopCtx, this)
     this.inbox = new Inbox(session, {
       inserted: (message) => { this.dispatch.emit('agent/inbox/inserted', { message }) },

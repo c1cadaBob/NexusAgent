@@ -15,7 +15,12 @@ import type { Context } from '@deepseek-ai/cordis'
 import { assertNever, createToolResultMessage, type ToolCallBlock } from '@deepseek-ai/dsh-llm'
 import type { Session, UserMessage } from '@deepseek-ai/dsh-session'
 import { TOOL_ABORTED_BEFORE_DISPATCH, TOOL_RUNTIME_SCHEDULER, type ToolExecutionInput, type ToolExecutionMode, type ToolExecutionResult, type ToolRunContext } from '@deepseek-ai/dsh-tools'
-import { assertNexusToolAllowed, isNexusDshExecutorOnlyEnabled, requireNexusExecutionRequest } from './nexus-executor-only-experiment.ts'
+import {
+  assertNexusExecutionNotCancelled,
+  assertNexusToolAllowed,
+  isNexusDshExecutorOnlyEnabled,
+  requireNexusExecutionRequest,
+} from './nexus-executor-only-experiment.ts'
 
 /** One tool call after argument parsing, ready to schedule. */
 interface PlannedCall {
@@ -68,6 +73,7 @@ export async function executeToolCalls(
   const agent = ctx.agents.requireInitiator()
   const { session } = agent
   const nexusExecution = isNexusDshExecutorOnlyEnabled() ? requireNexusExecutionRequest() : undefined
+  if (nexusExecution !== undefined) assertNexusExecutionNotCancelled(nexusExecution)
 
   // Inputs are distinct because tools/execute wrappers may replace `exec.signal`.
   const planned: PlannedCall[] = toolCalls.map(block => ({

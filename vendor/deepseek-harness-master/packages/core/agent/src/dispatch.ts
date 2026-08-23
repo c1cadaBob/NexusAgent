@@ -12,6 +12,22 @@ import type { Scoped } from '@deepseek-ai/dsh-scope'
 import type { AssembleContext } from '@deepseek-ai/dsh-system-prompt'
 import type { Agent } from './runtime-types.ts'
 
+const NEXUS_DSH_EXECUTOR_ONLY_ENV = 'NEXUS_DSH_EXECUTOR_ONLY'
+const NEXUS_DSH_AGENT_LOOP_BLOCKED = 'NEXUS_DSH_EXECUTOR_ONLY_AGENT_LOOP_BLOCKED'
+const NEXUS_TRUTHY = new Set(['1', 'true', 'yes', 'on'])
+
+function isNexusDshExecutorOnlyEnabled(): boolean {
+  return NEXUS_TRUTHY.has((globalThis.process?.env?.[NEXUS_DSH_EXECUTOR_ONLY_ENV] ?? '').trim().toLowerCase())
+}
+
+function assertNexusAgentDispatchAllowed(action: string): void {
+  if (!isNexusDshExecutorOnlyEnabled()) return
+  const error = new Error(`NexusAgent executor-only mode blocks native DSH agent-loop action: ${action}`) as Error & { code?: string }
+  error.name = 'NexusDshExecutorOnlyError'
+  error.code = NEXUS_DSH_AGENT_LOOP_BLOCKED
+  throw error
+}
+
 /** Extract the parameter tuple from an event handler type (its `this` is not part of the tuple). */
 type Params<F> = F extends (...args: infer P) => unknown ? P : never
 /** Extract the return type from an event handler type. */
@@ -105,6 +121,7 @@ export function agentCarrier(agent: Agent): Scoped<Agent> {
  * @returns the fused dispatcher.
  */
 export function agentEvents(ctx: Context, agent: Agent, carrier: Scoped<Agent> = agentCarrier(agent)): AgentEventDispatch {
+  assertNexusAgentDispatchAllowed('agentEvents')
   // The ordinary dispatch methods forward through Cordis' variadic mixins. The
   // fused (carrier, name, payload, ...rest) tuple is provably a valid argument
   // list for the matching thisArg overload, but TypeScript cannot relate the
@@ -172,5 +189,6 @@ export function emitAgentEvent<K extends AgentSubjectEvent>(
  * @returns the context to pass to `assemble()`.
  */
 export function assembleContextFor(agent: Agent, signal?: AbortSignal): AssembleContext {
+  assertNexusAgentDispatchAllowed('assembleContextFor')
   return { agent, scope: agent, ...signal === undefined ? {} : { signal } }
 }

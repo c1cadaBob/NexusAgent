@@ -1,6 +1,6 @@
 # DSH 版本兼容与替换策略
 
-> 文档状态：P0 架构补充。本文只定义 DeepSeek Harness（DSH）作为内部执行后端的兼容、升级、回滚和替换边界；不确认任何未实测的 DSH 上游行为。
+> 文档状态：P2-01 更新。本文只定义 DeepSeek Harness（DSH）作为内部执行后端的兼容、升级、回滚和替换边界；不确认任何未实测的 DSH 上游行为。
 
 ## 1. 核心结论
 
@@ -24,6 +24,8 @@ platform/adapters/dsh/
 
 Provider 内部可以适配 DSH 当前版本的函数、类、session、tool-call、sandbox 或 artifact 细节；provider 外部只能看见平台 schema。Coordinator、Policy-Gate、product API、SDK 和控制台禁止直接 import DSH provider 或 vendor 源码。
 
+P2-01 已落地最小 provider registry：`platform/adapters/dsh/index.ts` 固定 `dsh-0.1.1-rc.2` 为当前默认 provider，支持列出、启用、禁用、选择默认 provider 和回滚到上一默认 provider；`tests/unit/dsh-provider-registry.test.mjs` 与 `tests/smoke/P2.sh` 验证该边界。完整 anti-corruption adapter、跨进程协议、sandbox policy、artifact 入库和故障注入仍按 P2-02/P2-03/P2-04/P6 执行。
+
 ## 3. 升级接入流程
 
 每次接入 DSH 新版本必须按以下顺序执行：
@@ -46,6 +48,12 @@ DSH 新版本或替代执行后端上线前，至少通过以下检查：
 - artifact 必须进入平台 Artifact Store，只返回 `artifact_id` 或平台 artifact reference。
 - 超时、取消、重试和沙箱拒绝必须映射为平台状态机和平台错误码。
 - 新旧 provider 至少跑同一组 contract fixture；fixture 只使用平台 schema。
+
+P2-01 当前门禁补充：
+
+- `corepack pnpm exec vitest run packages/core/agent-loop/tests/nexus-executor-only-experiment.spec.ts packages/core/agent-loop/tests/nexus-executor-only-provider.spec.ts` 验证 native loop 阻断、平台 execution context、provider disabled、取消和工具 allowlist。
+- `node --test tests/unit/dsh-provider-registry.test.mjs` 验证 provider registry 默认 provider、禁用、启用、未知 provider 和回滚语义。
+- `bash tests/smoke/P2.sh` 汇总 P2-01 静态、registry、vendor targeted tests、manifest 登记和公共泄漏检查。
 
 ## 5. 替换路线
 
