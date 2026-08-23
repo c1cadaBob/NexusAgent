@@ -206,6 +206,17 @@ p0_09_audit_block="$(sed -n '/^# P0-09 修改记录包$/,/^## 完整提示词$/p
 if printf '%s\n' "$p0_09_audit_block" | rg -q '\.\.\.'; then
   fail 'P0-09 audit record package still contains placeholder ellipses'
 fi
+for p0_09_marker in \
+  '集中台账以表格索引维护' \
+  '推荐处理方式统一保存到 `docs/planning/open-questions/`' \
+  '集中台账不包含候选推荐方案' \
+  '阶段历史问题回扫' \
+  '当前 23 个问题均为 `自动确认`'; do
+  rg -q "$p0_09_marker" "$p0_09_prompt" || fail "P0-09 current workflow marker missing: $p0_09_marker"
+done
+if rg -q '方案 A|方案 B|方案 C|每个问题提供至少 3|从表格改为|卡片形式' "$p0_09_prompt"; then
+  fail 'P0-09 prompt must not preserve obsolete card-style candidate option workflow'
+fi
 p0_11_prompt="docs/planning/task-prompts/P0/P0-11.md"
 [[ -f "$p0_11_prompt" ]] || fail 'P0-11 realtime planning prompt is missing'
 for p0_11_marker in \
