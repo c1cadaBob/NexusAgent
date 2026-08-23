@@ -1,3 +1,194 @@
 name: nexusagent-dev
 
-services: {}
+x-nexus-dev-service: &nexus-dev-service
+  image: node:22-alpine
+  working_dir: /workspace
+  command: ["node", "--watch", "--inspect=0.0.0.0:9229", "scripts/dev/p1-dev-service.mjs"]
+  restart: unless-stopped
+  init: true
+  volumes:
+    - type: bind
+      source: ../platform
+      target: /workspace/platform
+    - type: bind
+      source: ../product
+      target: /workspace/product
+    - type: bind
+      source: ../scripts
+      target: /workspace/scripts
+    - type: bind
+      source: ../config
+      target: /workspace/config
+  healthcheck:
+    test: ["CMD-SHELL", "node -e \"fetch('http://127.0.0.1:' + process.env.PORT + '/health').then((response) => { if (!response.ok) process.exit(1); }).catch(() => process.exit(1));\""]
+    interval: 10s
+    timeout: 3s
+    retries: 3
+    start_period: 5s
+  networks:
+    - nexus-dev-internal
+
+services:
+  platform-api:
+    <<: *nexus-dev-service
+    environment:
+      NEXUS_SERVICE_NAME: platform-api
+      NEXUS_PUBLIC: "true"
+      NEXUS_HOT_RELOAD: "true"
+      NEXUS_DEBUG_PORT: "9250"
+      PORT: "8080"
+    ports:
+      - "3050:8080"
+      - "127.0.0.1:9250:9229"
+    labels:
+      nexus.service.role: platform-api
+      nexus.service.public: "true"
+      nexus.dev.hot_reload: "true"
+
+  web-console:
+    <<: *nexus-dev-service
+    environment:
+      NEXUS_SERVICE_NAME: web-console
+      NEXUS_PUBLIC: "true"
+      NEXUS_HOT_RELOAD: "true"
+      NEXUS_DEBUG_PORT: "9251"
+      PORT: "3000"
+    ports:
+      - "3051:3000"
+      - "127.0.0.1:9251:9229"
+    labels:
+      nexus.service.role: web-console
+      nexus.service.public: "true"
+      nexus.dev.hot_reload: "true"
+
+  openclaw-adapter:
+    <<: *nexus-dev-service
+    environment:
+      NEXUS_SERVICE_NAME: openclaw-adapter
+      NEXUS_PUBLIC: "false"
+      NEXUS_HOT_RELOAD: "true"
+      NEXUS_DEBUG_PORT: "9252"
+      PORT: "8080"
+    ports:
+      - "127.0.0.1:3052:8080"
+      - "127.0.0.1:9252:9229"
+    labels:
+      nexus.service.role: gateway-adapter
+      nexus.service.public: "false"
+      nexus.dev.hot_reload: "true"
+
+  dsh-adapter:
+    <<: *nexus-dev-service
+    environment:
+      NEXUS_SERVICE_NAME: dsh-adapter
+      NEXUS_PUBLIC: "false"
+      NEXUS_HOT_RELOAD: "true"
+      NEXUS_DEBUG_PORT: "9253"
+      PORT: "8080"
+    ports:
+      - "127.0.0.1:3053:8080"
+      - "127.0.0.1:9253:9229"
+    labels:
+      nexus.service.role: executor-adapter
+      nexus.service.public: "false"
+      nexus.dev.hot_reload: "true"
+
+  hermes-adapter:
+    <<: *nexus-dev-service
+    environment:
+      NEXUS_SERVICE_NAME: hermes-adapter
+      NEXUS_PUBLIC: "false"
+      NEXUS_HOT_RELOAD: "true"
+      NEXUS_DEBUG_PORT: "9254"
+      PORT: "8080"
+    ports:
+      - "127.0.0.1:3054:8080"
+      - "127.0.0.1:9254:9229"
+    labels:
+      nexus.service.role: planner-adapter
+      nexus.service.public: "false"
+      nexus.dev.hot_reload: "true"
+
+  memory-gateway:
+    <<: *nexus-dev-service
+    environment:
+      NEXUS_SERVICE_NAME: memory-gateway
+      NEXUS_PUBLIC: "false"
+      NEXUS_HOT_RELOAD: "true"
+      NEXUS_DEBUG_PORT: "9255"
+      PORT: "8080"
+    ports:
+      - "127.0.0.1:3055:8080"
+      - "127.0.0.1:9255:9229"
+    labels:
+      nexus.service.role: memory-gateway
+      nexus.service.public: "false"
+      nexus.dev.hot_reload: "true"
+
+  artifact-store:
+    <<: *nexus-dev-service
+    environment:
+      NEXUS_SERVICE_NAME: artifact-store
+      NEXUS_PUBLIC: "false"
+      NEXUS_HOT_RELOAD: "true"
+      NEXUS_DEBUG_PORT: "9256"
+      PORT: "8080"
+    ports:
+      - "127.0.0.1:3056:8080"
+      - "127.0.0.1:9256:9229"
+    labels:
+      nexus.service.role: artifact-store
+      nexus.service.public: "false"
+      nexus.dev.hot_reload: "true"
+
+  event-bus:
+    <<: *nexus-dev-service
+    environment:
+      NEXUS_SERVICE_NAME: event-bus
+      NEXUS_PUBLIC: "false"
+      NEXUS_HOT_RELOAD: "true"
+      NEXUS_DEBUG_PORT: "9257"
+      PORT: "8080"
+    ports:
+      - "127.0.0.1:3057:8080"
+      - "127.0.0.1:9257:9229"
+    labels:
+      nexus.service.role: event-bus
+      nexus.service.public: "false"
+      nexus.dev.hot_reload: "true"
+
+  credential-center:
+    <<: *nexus-dev-service
+    environment:
+      NEXUS_SERVICE_NAME: credential-center
+      NEXUS_PUBLIC: "false"
+      NEXUS_HOT_RELOAD: "true"
+      NEXUS_DEBUG_PORT: "9258"
+      PORT: "8080"
+    ports:
+      - "127.0.0.1:3058:8080"
+      - "127.0.0.1:9258:9229"
+    labels:
+      nexus.service.role: credential-center
+      nexus.service.public: "false"
+      nexus.dev.hot_reload: "true"
+
+  observability:
+    <<: *nexus-dev-service
+    environment:
+      NEXUS_SERVICE_NAME: observability
+      NEXUS_PUBLIC: "false"
+      NEXUS_HOT_RELOAD: "true"
+      NEXUS_DEBUG_PORT: "9259"
+      PORT: "9090"
+    ports:
+      - "127.0.0.1:3059:9090"
+      - "127.0.0.1:9259:9229"
+    labels:
+      nexus.service.role: observability
+      nexus.service.public: "false"
+      nexus.dev.hot_reload: "true"
+
+networks:
+  nexus-dev-internal:
+    name: nexusagent-dev-internal

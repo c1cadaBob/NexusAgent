@@ -1,15 +1,99 @@
 version: 1
 mode: development
+runtime_image: node:22-alpine
 hot_reload: true
 debug_ports: true
+health_path: /health
+debug_container_port: 9229
+dev_command: "node --watch --inspect=0.0.0.0:9229 scripts/dev/p1-dev-service.mjs"
 services:
-  platform-api: { command: "development placeholder", source: "product/api" }
-  web-console: { command: "development placeholder", source: "product/web-console" }
-  openclaw-adapter: { command: "development placeholder", source: "platform/adapters/openclaw" }
-  dsh-adapter: { command: "development placeholder", source: "platform/adapters/dsh" }
-  hermes-adapter: { command: "development placeholder", source: "platform/adapters/hermes" }
-  memory-gateway: { command: "development placeholder", source: "platform/memory-gateway" }
-  artifact-store: { command: "development placeholder", source: "platform/artifact-store" }
-  event-bus: { command: "development placeholder", source: "platform/event-bus" }
-  credential-center: { command: "development placeholder", source: "platform/credentials" }
-  observability: { command: "development placeholder", source: "platform/observability" }
+  platform-api:
+    role: platform-api
+    source: product/api
+    command: "node --watch --inspect=0.0.0.0:9229 scripts/dev/p1-dev-service.mjs"
+    container_port: 8080
+    health_path: /health
+    hot_reload: true
+    debug: true
+    public: true
+  web-console:
+    role: web-console
+    source: product/web-console
+    command: "node --watch --inspect=0.0.0.0:9229 scripts/dev/p1-dev-service.mjs"
+    container_port: 3000
+    health_path: /health
+    hot_reload: true
+    debug: true
+    public: true
+  openclaw-adapter:
+    role: gateway-adapter
+    source: platform/adapters/openclaw
+    command: "node --watch --inspect=0.0.0.0:9229 scripts/dev/p1-dev-service.mjs"
+    container_port: 8080
+    health_path: /health
+    hot_reload: true
+    debug: true
+    public: false
+  dsh-adapter:
+    role: executor-adapter
+    source: platform/adapters/dsh
+    command: "node --watch --inspect=0.0.0.0:9229 scripts/dev/p1-dev-service.mjs"
+    container_port: 8080
+    health_path: /health
+    hot_reload: true
+    debug: true
+    public: false
+  hermes-adapter:
+    role: planner-adapter
+    source: platform/adapters/hermes
+    command: "node --watch --inspect=0.0.0.0:9229 scripts/dev/p1-dev-service.mjs"
+    container_port: 8080
+    health_path: /health
+    hot_reload: true
+    debug: true
+    public: false
+  memory-gateway:
+    role: memory-gateway
+    source: platform/memory-gateway
+    command: "node --watch --inspect=0.0.0.0:9229 scripts/dev/p1-dev-service.mjs"
+    container_port: 8080
+    health_path: /health
+    hot_reload: true
+    debug: true
+    public: false
+  artifact-store:
+    role: artifact-store
+    source: platform/artifact-store
+    command: "node --watch --inspect=0.0.0.0:9229 scripts/dev/p1-dev-service.mjs"
+    container_port: 8080
+    health_path: /health
+    hot_reload: true
+    debug: true
+    public: false
+  event-bus:
+    role: event-bus
+    source: platform/event-bus
+    command: "node --watch --inspect=0.0.0.0:9229 scripts/dev/p1-dev-service.mjs"
+    container_port: 8080
+    health_path: /health
+    hot_reload: true
+    debug: true
+    public: false
+  credential-center:
+    role: credential-center
+    source: platform/credentials
+    command: "node --watch --inspect=0.0.0.0:9229 scripts/dev/p1-dev-service.mjs"
+    container_port: 8080
+    health_path: /health
+    hot_reload: true
+    debug: true
+    public: false
+  observability:
+    role: observability
+    source: platform/observability
+    command: "node --watch --inspect=0.0.0.0:9229 scripts/dev/p1-dev-service.mjs"
+    container_port: 9090
+    health_path: /health
+    hot_reload: true
+    debug: true
+    public: false

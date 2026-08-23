@@ -1,6 +1,7 @@
 version: 1
 base_host_port: 3050
 debug_base_port: 9250
+debug_container_port: 9229
 services:
   platform-api: { host: 3050, container: 8080, debug: 9250, public: true }
   web-console: { host: 3051, container: 3000, debug: 9251, public: true }

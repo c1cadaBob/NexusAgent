@@ -9,13 +9,13 @@
 | R-003 | 原生 API/记忆/Agent 能力泄漏 | 极高 | P0-03 已验证 Hermes 原生 final response、tool、file memory、loop 实验阻断；P0-04 已验证 DSH native agent-loop 和无策略 tool-call 阻断；P1-05 已新增审计/观测接口且仅记录平台 ID、平台动作和平台 trace，不引入上游原生 URL/错误码/存储路径；生产隔离待 P2/P3/P6 | P1-P6 |
 | R-004 | 防腐适配器绕过平台内核 | 极高 | P0-04 已证明 DSH 进程内 guard 可阻断 native loop 和缺少平台策略的工具调度；P1-01 已新增平台事件信封、统一状态机和跨租户拒绝单元测试；P1-02 已新增可信 Policy-Gate 决策和 `invokeSecuredAdapter` 防绕过测试；P1-03 已新增 adapter lifecycle、mock adapter 直接调用失败和 Coordinator/Event Bus 集成测试；P1-05 已新增 Tenancy/RBAC/Audit/Observability 负向测试，覆盖跨租户、越权、伪造审计租户和缺 trace 拒绝，正式端口和 sidecar 隔离仍待 P2-P6 | P1-P6 |
 | R-005 | 记忆快照、并发写入和脏数据 | 高 | P0-03 已验证实验模式拒绝原生文件记忆直读直写；P1-04 已新增本地 Memory Gateway、五层 memory scope、版本和租户隔离测试；并发冲突、快照、长期保留和真实存储仍待 P3/P6 | P1/P3/P6 |
-| R-006 | 跨栈联调、性能或 Token 超标 | 高 | 未验证 | P1-P7 |
-| R-007 | 服务边界不清导致上游原生概念泄漏到产品层 | 极高 | P0-02/P0-03/P0-04 已记录 OpenClaw、Hermes、DSH 原生入口阻断证据；P0-05 已把已知入口登记为保留/隔离/禁止；P0-06 已新增公共 OpenAPI 泄漏检查；P2-P5 仍需持续验证 SDK 和控制台不泄漏原生概念 | P0-P6 |
-| R-008 | 外部基础设施选型过早锁死导致 P1/P8 返工 | 高 | P0-07 已把 Temporal/OPA/NATS/Kafka/MinIO/S3/Vault/KMS/Keycloak/OpenTelemetry/Grafana/pgvector/Qdrant 标记为候选或可借鉴项目；P1-01/P1-03/P1-04 仅固定平台抽象、schema、状态机、Clock、内存 Event Bus、本地 Artifact/Memory/Credential；P1-05 仅固定本地 RBAC、hash-chain Audit 和 Observability 接口，不锁死生产 IdP、OPA、审计存储或观测后端，生产选型仍待 P1/P8 | P0/P1/P8 |
+| R-006 | 跨栈联调、性能或 Token 超标 | 高 | P1-06 已新增 10 服务开发 Compose、健康占位服务和 P1 smoke 编排校验，降低本地联调端口/健康检查漂移风险；真实跨栈性能、Token 和上游 provider 联调仍待 P2-P7 | P1-P7 |
+| R-007 | 服务边界不清导致上游原生概念泄漏到产品层 | 极高 | P0-02/P0-03/P0-04 已记录 OpenClaw、Hermes、DSH 原生入口阻断证据；P0-05 已把已知入口登记为保留/隔离/禁止；P0-06 已新增公共 OpenAPI 泄漏检查；P1-06 已同步平台错误码 schema/OpenAPI 并由 P1 smoke 校验公共错误码不含上游原生命名；P2-P5 仍需持续验证 SDK 和控制台不泄漏原生概念 | P0-P6 |
+| R-008 | 外部基础设施选型过早锁死导致 P1/P8 返工 | 高 | P0-07 已把 Temporal/OPA/NATS/Kafka/MinIO/S3/Vault/KMS/Keycloak/OpenTelemetry/Grafana/pgvector/Qdrant 标记为候选或可借鉴项目；P1-01/P1-03/P1-04 仅固定平台抽象、schema、状态机、Clock、内存 Event Bus、本地 Artifact/Memory/Credential；P1-05 仅固定本地 RBAC、hash-chain Audit 和 Observability 接口；P1-06 仅固定开发 Compose、Node health 占位、端口和 smoke，不锁死生产 IdP、OPA、审计存储、观测后端或 Kubernetes/Compose 最终生产形态，生产选型仍待 P1/P8 | P0/P1/P8 |
 | R-009 | 实际团队容量低于排期基线导致关键路径延后 | 高 | P0 门禁已关闭 `OQ-SCHEDULE-001` 和 `OQ-SCHEDULE-002`，默认采用 8-10 核心角色容量模型、4-5 人降级排期和当前日历冻结缓冲；真实容量或冻结窗口变化由自动重排触发器处理 | P0-P8 |
 | R-010 | AI 自动生成排期时遗漏只读目录、上游不可见、防绕过或验收命令等高危约束 | 高 | P0-10 生成器已默认执行 `--check`，校验只读目录、差异化角色、集中台账、确认文件目录、阶段历史问题回扫和验收命令；显式 `--write --overwrite` 才允许覆盖已有提示词 | P0-P8 |
 | R-011 | 任务提示词文档与实施规划任务表不同步 | 中 | P0-10 已校验 45 个任务 ID 均有单独提示词文档，并把生成器检查纳入 P0 smoke；后续任务变更仍需同步运行生成器 `--check` | P0-P8 |
-| R-012 | 任务实现缺少修改前、修改过程、修改后验证审计记录 | 高 | P0-09 修改记录包纳入 P0 smoke 检查；P1-01/P1-02/P1-03/P1-04/P1-05 已按实时规划规则先填写修改前分析并补过程/验证记录，集中台账关闭项必须引用关闭任务/commit，阶段门禁仍需持续拒绝空白审计记录 | P0-P8 |
+| R-012 | 任务实现缺少修改前、修改过程、修改后验证审计记录 | 高 | P0-09 修改记录包纳入 P0 smoke 检查；P1-01/P1-02/P1-03/P1-04/P1-05/P1-06 已按实时规划规则先填写修改前分析并补过程/验证记录，集中台账关闭项必须引用关闭任务/commit，阶段门禁仍需持续拒绝空白审计记录 | P0-P8 |
 | R-013 | 第三方插件绕过平台权限或直接调用原生宿主 | 极高 | 未验证 | P3-P8 |
 | R-014 | 第三方插件凭据、artifact 或日志泄漏 | 极高 | P1-04 已新增本地 Credential Center 引用/短租约元数据、Artifact Store metadata-only 事件、credential material 不进入 reference/audit/event 的安全测试；第三方插件恶意泄漏仍待 P3-P8 | P3-P8 |
 | R-015 | 第三方插件许可证、NOTICE 或再分发条款不清 | 高 | P0-05 已确认三大上游根许可证为 MIT，但插件、extras、native addon、vendored packages 和 THIRD_PARTY_NOTICE 仍需 P5/P8 或法务确认 | P0/P5/P8 |
