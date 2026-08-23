@@ -20,11 +20,19 @@ required_files=(
   platform/task-state/index.ts
   platform/policy-gate/index.ts
   platform/coordinator/index.ts
+  platform/clock/index.ts
+  platform/event-bus/index.ts
+  platform/adapters/index.ts
   tests/unit/task-state.test.mjs
   tests/unit/policy-gate.test.mjs
+  tests/unit/clock.test.mjs
+  tests/unit/event-bus.test.mjs
+  tests/unit/adapters.test.mjs
   tests/contract/p1-contracts.test.mjs
   tests/integration/coordinator-policy-gate.test.mjs
+  tests/integration/coordinator-adapter-event-bus.test.mjs
   tests/security/policy-gate-bypass.test.mjs
+  tests/security/adapter-bypass.test.mjs
 )
 
 for file in "${required_files[@]}"; do
@@ -41,15 +49,23 @@ rg -q 'PolicyGate' platform/policy-gate/index.ts || fail 'Policy-Gate implementa
 rg -q 'Coordinator' platform/coordinator/index.ts || fail 'Coordinator implementation missing'
 rg -q 'assertAllowedDecision' platform/policy-gate/index.ts platform/coordinator/index.ts || fail 'Policy-Gate guard missing'
 rg -q 'invokeSecuredAdapter' platform/coordinator/index.ts tests/security/policy-gate-bypass.test.mjs || fail 'secured adapter invocation missing'
+rg -q 'ManualClock' platform/clock/index.ts tests/unit/clock.test.mjs || fail 'manual platform clock missing'
+rg -q 'InMemoryEventBus' platform/event-bus/index.ts tests/unit/event-bus.test.mjs || fail 'in-memory event bus missing'
+rg -q 'AdapterRegistry' platform/adapters/index.ts tests/unit/adapters.test.mjs || fail 'adapter registry missing'
+rg -q 'MockPlannerAdapter' platform/adapters/index.ts tests/integration/coordinator-adapter-event-bus.test.mjs || fail 'mock planner adapter missing'
+rg -q 'deadLetter' platform/event-bus/index.ts tests/unit/event-bus.test.mjs || fail 'event bus dead-letter behavior missing'
 
-if rg -n 'Date\.now\(|datetime\.now\(' platform/task-state platform/contracts platform/policy-gate platform/coordinator; then
-  fail 'wall-clock duration helper detected in P1 contracts or core state/policy/coordinator code'
+if rg -n 'Date\.now\(|datetime\.now\(' platform/task-state platform/contracts platform/policy-gate platform/coordinator platform/clock platform/event-bus platform/adapters; then
+  fail 'wall-clock duration helper detected in P1 contracts or core state/policy/coordinator/clock/event-bus/adapter code'
 fi
 
 if rg -n 'Hermes|OpenClaw|DeepSeek|DSH|hermes|openclaw|deepseek' \
   platform/task-state \
   platform/policy-gate \
   platform/coordinator \
+  platform/clock \
+  platform/event-bus \
+  platform/adapters/index.ts \
   platform/contracts/common-identifiers.schema.json \
   platform/contracts/task-request.schema.json \
   platform/contracts/task-state.schema.json \
@@ -62,8 +78,13 @@ fi
 node --test \
   tests/unit/task-state.test.mjs \
   tests/unit/policy-gate.test.mjs \
+  tests/unit/clock.test.mjs \
+  tests/unit/event-bus.test.mjs \
+  tests/unit/adapters.test.mjs \
   tests/contract/p1-contracts.test.mjs \
   tests/integration/coordinator-policy-gate.test.mjs \
-  tests/security/policy-gate-bypass.test.mjs
+  tests/integration/coordinator-adapter-event-bus.test.mjs \
+  tests/security/policy-gate-bypass.test.mjs \
+  tests/security/adapter-bypass.test.mjs
 
-echo 'PASS: P1 contracts, task-state, Policy-Gate, Coordinator, and bypass guards'
+echo 'PASS: P1 contracts, task-state, Policy-Gate, Coordinator, Clock, Event Bus, adapters, and bypass guards'

@@ -5,6 +5,9 @@ import {
   type TaskSnapshot,
   type TaskState,
 } from "../task-state/index.ts";
+import { type PlatformClock } from "../clock/index.ts";
+import { markTrustedAdapterInvocation } from "../adapters/index.ts";
+import { type EventBus, type PlatformEventEnvelope, type PlatformEventType } from "../event-bus/index.ts";
 import {
   PolicyGate,
   PolicyGateError,
@@ -88,6 +91,12 @@ export interface DispatchResult {
   adapter_result: CoordinatorAdapterResult;
 }
 
+export interface CoordinatorOptions {
+  policyGate?: PolicyGate;
+  clock?: PlatformClock;
+  eventBus?: EventBus;
+}
+
 export class CoordinatorError extends Error {
   readonly code:
     | "PLATFORM_INVALID_REQUEST"
@@ -106,13 +115,21 @@ export class CoordinatorError extends Error {
 
 export class Coordinator {
   readonly policyGate: PolicyGate;
+  readonly clock?: PlatformClock;
+  readonly eventBus?: EventBus;
   readonly #adapters = new Map<string, CoordinatorAdapterPort>();
   readonly #snapshots = new Map<string, TaskSnapshot>();
   readonly #events: Record<string, unknown>[] = [];
   #eventSequence = 0;
 
-  constructor(policyGate = new PolicyGate()) {
-    this.policyGate = policyGate;
+  constructor(policyGateOrOptions: PolicyGate | CoordinatorOptions = new PolicyGate()) {
+    if (policyGateOrOptions instanceof PolicyGate) {
+      this.policyGate = policyGateOrOptions;
+      return;
+    }
+    this.policyGate = policyGateOrOptions.policyGate ?? new PolicyGate();
+    this.clock = policyGateOrOptions.clock;
+    this.eventBus = policyGateOrOptions.eventBus;
   }
 
   registerAdapter(adapter: CoordinatorAdapterPort): void {
@@ -127,6 +144,7 @@ export class Coordinator {
 
   submitTask(request: CoordinatorTaskRequest, options: SubmitTaskOptions): SubmitTaskResult {
     this.#assertTaskRequest(request);
+    const reading = this.#clockReading(request.created_at_utc, request.monotonic_ms);
 
     const decision = this.policyGate.evaluate({
       action: "task.submit",
@@ -136,16 +154,16 @@ export class Coordinator {
       execution_id: request.execution_id,
       conversation_id: request.conversation_id,
       trace_id: request.trace_id,
-      monotonic_ms: request.monotonic_ms,
-      requested_at_utc: request.created_at_utc,
+      monotonic_ms: reading.monotonic_ms,
+      requested_at_utc: reading.utc_timestamp,
       principal: options.principal,
       budget: options.budget,
       approval: options.approval,
     });
 
-    const current = this.#snapshotFromRequest(request, "received", 1, request.monotonic_ms);
+    const current = this.#snapshotFromRequest(request, "received", 1, reading.monotonic_ms);
     const nextState: TaskState = decision.allow ? "admitted" : "blocked";
-    const next = this.#snapshotFromRequest(request, nextState, 2, request.monotonic_ms + 1);
+    const next = this.#snapshotFromRequest(request, nextState, 2, reading.monotonic_ms + 1);
     const transition = assertTransition({
       current,
       next,
@@ -153,14 +171,14 @@ export class Coordinator {
     });
     const event = buildTaskStateEvent(transition, {
       event_id: this.#nextEventId(request.trace_id),
-      occurred_at_utc: request.created_at_utc,
-      monotonic_ms: request.monotonic_ms + 1,
+      occurred_at_utc: reading.utc_timestamp,
+      monotonic_ms: reading.monotonic_ms + 1,
       producer_service: "coordinator",
       producer_component: "task-intake",
     });
 
     this.#snapshots.set(request.task_id, next);
-    this.#events.push(event);
+    this.#recordEvent(event as PlatformEventEnvelope);
     return {
       accepted: decision.allow,
       decision,
@@ -179,6 +197,10 @@ export class Coordinator {
     if (!adapter) {
       throw new CoordinatorError("PLATFORM_NOT_FOUND", "Adapter not registered", { adapter_name: options.adapter_name });
     }
+    const reading = this.#clockReading(
+      typeof options.payload.requested_at_utc === "string" ? options.payload.requested_at_utc : undefined,
+      (snapshot.monotonic_ms ?? 0) + 1,
+    );
 
     const decision = this.policyGate.evaluate({
       action: "adapter.invoke",
@@ -188,8 +210,8 @@ export class Coordinator {
       execution_id: snapshot.execution_id ?? "",
       conversation_id: snapshot.conversation_id,
       trace_id: snapshot.trace_id,
-      monotonic_ms: (snapshot.monotonic_ms ?? 0) + 1,
-      requested_at_utc: options.payload.requested_at_utc as string,
+      monotonic_ms: reading.monotonic_ms,
+      requested_at_utc: reading.utc_timestamp,
       principal: options.principal,
       budget: options.budget,
       approval: options.approval,
@@ -206,6 +228,8 @@ export class Coordinator {
       trace_id: snapshot.trace_id,
     });
 
+    this.#recordEvent(this.#adapterLifecycleEvent(adapter.kind, "started", snapshot, reading));
+
     const adapterResult = await invokeSecuredAdapter(this.policyGate, adapter, {
       tenant_id: snapshot.tenant_id,
       task_id: snapshot.task_id,
@@ -213,12 +237,16 @@ export class Coordinator {
       execution_id: snapshot.execution_id ?? "",
       conversation_id: snapshot.conversation_id,
       trace_id: snapshot.trace_id,
-      monotonic_ms: (snapshot.monotonic_ms ?? 0) + 2,
+      monotonic_ms: reading.monotonic_ms + 1,
       payload: options.payload,
       policy_decision: decision,
     });
 
     this.#assertAdapterResultMatchesSnapshot(adapterResult, snapshot);
+    this.#recordEvent(this.#adapterLifecycleEvent(adapter.kind, adapterResult.status, snapshot, {
+      utc_timestamp: reading.utc_timestamp,
+      monotonic_ms: reading.monotonic_ms + 2,
+    }));
     return {
       decision,
       adapter_result: adapterResult,
@@ -272,6 +300,60 @@ export class Coordinator {
     return `event_${traceId.replace(/^trace_/, "")}_${String(this.#eventSequence).padStart(4, "0")}`;
   }
 
+  #clockReading(fallbackUtc: string | undefined, fallbackMonotonic: number): { utc_timestamp: string; monotonic_ms: number } {
+    if (this.clock) {
+      return this.clock.now();
+    }
+    return {
+      utc_timestamp: fallbackUtc ?? "",
+      monotonic_ms: fallbackMonotonic,
+    };
+  }
+
+  #recordEvent(event: PlatformEventEnvelope): void {
+    this.#events.push(event);
+    this.eventBus?.publish(event);
+  }
+
+  #adapterLifecycleEvent(
+    adapterKind: AdapterKind,
+    status: CoordinatorAdapterResult["status"] | "started",
+    snapshot: TaskSnapshot,
+    reading: { utc_timestamp: string; monotonic_ms: number },
+  ): PlatformEventEnvelope {
+    const eventType = adapterKind === "planner"
+      ? (status === "started" ? "planning.started" : "planning.completed")
+      : adapterKind === "executor"
+        ? (status === "failed" ? "execution.failed" : status === "started" ? "execution.started" : "execution.completed")
+        : "task.received";
+
+    return {
+      schema_version: "nexus.event_envelope.v1",
+      event_id: this.#nextEventId(snapshot.trace_id),
+      event_type: eventType as PlatformEventType,
+      tenant_id: snapshot.tenant_id,
+      task_id: snapshot.task_id,
+      attempt_id: snapshot.attempt_id,
+      execution_id: snapshot.execution_id,
+      conversation_id: snapshot.conversation_id,
+      trace_id: snapshot.trace_id,
+      occurred_at_utc: reading.utc_timestamp,
+      monotonic_ms: reading.monotonic_ms,
+      producer: {
+        service: "coordinator",
+        component: "adapter-dispatch",
+      },
+      subject: {
+        kind: adapterKind === "executor" ? "execution" : "task",
+        id: adapterKind === "executor" ? snapshot.execution_id ?? snapshot.task_id : snapshot.task_id,
+      },
+      payload: {
+        adapter_kind: adapterKind,
+        status,
+      },
+    };
+  }
+
   #assertAdapterResultMatchesSnapshot(result: CoordinatorAdapterResult, snapshot: TaskSnapshot): void {
     const mismatches = [
       ["tenant_id", snapshot.tenant_id, result.tenant_id],
@@ -299,7 +381,7 @@ export async function invokeSecuredAdapter(
     trace_id: invocation.trace_id,
   });
 
-  const result = await adapter.invoke(invocation);
+  const result = await adapter.invoke(markTrustedAdapterInvocation({ ...invocation }));
   if (!result.execution_id || !result.trace_id) {
     throw new PolicyGateError("PLATFORM_POLICY_DENIED", "Adapter result must include execution_id and trace_id");
   }
