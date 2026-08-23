@@ -17,7 +17,7 @@
 - [任务实施规划提示词索引](planning/task-prompts/README.md)
 - [对外 API 契约](contracts/openapi.yaml)
 - [Plugin Bridge 平台契约](../platform/contracts/plugin-inventory.schema.json)
-- [服务功能与整合蓝图](architecture/service-blueprint.md)
+- [服务功能与整合蓝图](architecture/service-blueprint.md)：P0-07 基线，覆盖十个基础服务的功能、技术栈、输入输出、复用边界、参考项目和 P1 工作包。
 - [DSH 版本兼容与替换策略](architecture/dsh-versioning-and-replacement.md)
 - [上游版本适配与社区插件复用桥接策略](architecture/upstream-versioning-and-plugin-bridge.md)
 - [需求追踪矩阵](traceability/requirements-matrix.md)
@@ -26,6 +26,12 @@
 - [远端上传与关键节点提交规则](operations/remote-upload-policy.md)
 - [风险登记册](risks/risk-register.md)
 - [上游接口摸底](architecture/upstream-interface-inventory.md)
+
+## P0 架构基线关系
+
+- P0-05 的 [上游接口摸底](architecture/upstream-interface-inventory.md) 定义三大上游入口的保留、隔离和禁止分类。
+- P0-06 的 [对外 API 契约](contracts/openapi.yaml) 定义只包含平台概念的 REST OpenAPI 初稿和平台错误码草案。
+- P0-07 的 [服务功能与整合蓝图](architecture/service-blueprint.md) 把十个基础服务映射到 P1 最小交付、P2-P4 上游接入和 P5 产品化能力。
 
 所有文档使用 UTC 时间、平台统一标识和平台层术语。Hermes、OpenClaw、DSH 只在内部实现、适配器、风险和源码追踪语境中出现。
 

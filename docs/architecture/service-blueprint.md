@@ -1,6 +1,6 @@
 # NexusAgent 服务功能与整合蓝图
 
-> 文档状态：P0 架构补充草案。本文回答十个基础服务的功能需求、技术栈、设计规划、三大上游复用边界、外部可借鉴项目和整合方式。OpenClaw、Hermes 与 DSH 已分别在 P0-02/P0-03/P0-04 形成实验性剥离证据；生产 provider 化仍需 P2-P4 和 P6 安全验证。
+> 文档状态：P0-07 架构基线。本文回答十个基础服务的功能需求、技术栈、设计规划、三大上游复用边界、外部可借鉴项目和整合方式。OpenClaw、Hermes 与 DSH 已分别在 P0-02/P0-03/P0-04 形成实验性剥离证据；P0-05 已登记上游接口分类；P0-06 已形成平台 OpenAPI 初稿。生产 provider 化仍需 P2-P4 和 P6 安全验证。
 >
 > 工时说明：人天仅为工程估算，会受上游开源版本变更影响。
 
@@ -26,6 +26,21 @@
 | Event Bus | 内部事件分发；任务状态、审批、执行、artifact、审计、观测事件；支持幂等、重放、死信和订阅 | P1 可用轻量内存/Redis/NATS；生产评估 NATS JetStream 或 Kafka | 统一事件信封；Coordinator 发布任务生命周期事件；adapter、审计、观测按订阅消费；禁止服务直接调用底层实现绕过事件 | 三大上游只通过 adapter 进入事件总线；不复用上游事件模型作为平台公共模型 | 事件信封和状态语义必须自研；底层消息系统可借鉴 NATS/Kafka/Temporal 事件历史能力 |
 | Credential Center | 凭据引用、密钥托管、访问授权、轮换、脱敏、审计；渠道 token、模型密钥、对象存储密钥、执行凭据 | Node.js + TypeScript；开发可用本地加密存储；生产对接 Vault/KMS；OIDC service account | 平台只传 `credential_ref`，禁止服务间传明文；Policy-Gate 决定能否解析；审计记录谁在何时为何使用凭据 | 不复用三大上游凭据机制；OpenClaw/DSH/Hermes 只能通过 adapter 获取临时凭据 | 权限模型和引用协议必须自研；密钥存储、动态凭据和审计可借鉴 Vault/KMS |
 | Observability | 统一 health、metrics、logs、traces、审计关联；trace_id 贯穿 API、Coordinator、adapter、执行器、事件总线 | OpenTelemetry SDK/Collector；Prometheus/Grafana/Loki/Tempo 或同类栈待 P1/P8 决策 | 所有服务默认输出结构化日志和 OTEL trace；内部事件携带 trace_id；控制台可查看任务级时间线、错误和资源消耗 | 可接收三大上游 adapter 的包装指标；不直接暴露上游原生日志路径和错误码 | 观测语义、指标命名和任务时间线自研；采集、面板和告警借鉴 OpenTelemetry/Grafana 生态 |
+
+### 2.1 服务输入输出与 P1 最小交付
+
+| 服务 | 平台输入 | 平台输出 | P1 最小交付 | 后续阶段约束 |
+|---|---|---|---|---|
+| 平台统一 API | `TaskRequest`、查询参数、审批决策、管理员插件治理请求、bearer token | 平台资源 JSON、`PlatformError`、health 状态、分页结果 | Fastify 或 NestJS skeleton、OpenAPI 路由占位、统一鉴权 middleware、`trace_id` 注入、错误映射 | P5 才补完整产品 API、SDK、SSE/gRPC 事件出口和兼容契约测试 |
+| Web 管理控制台 | 平台 API 响应、用户会话、权限结果 | 任务面板、审批队列、渠道/插件治理视图、健康和审计查询 UI | React + Vite skeleton、只读 health/task/approval 页面 mock 到平台 API schema | P5 前不得展示上游原生品牌、原生 URL、原生错误码或原生存储路径 |
+| OpenClaw 网关适配器 | 渠道事件、平台渠道配置、租户映射、出站平台事件 | 平台 `TaskRequest`、渠道回写结果、渠道审计事件 | 空 adapter + contract fixture；只接收/输出平台 schema | P4 才接入真实渠道插件和 gateway-only provider；所有消息必须先过 Policy-Gate |
+| DSH 执行器适配器 | 平台 `ExecutionRequest`、sandbox policy、credential reference、artifact policy | `ExecutionEvent`、`ExecutionResult`、artifact reference、执行审计事件 | 空 adapter + executor provider interface；先固化 execution/event/error schema | P2 才接入 DSH 工具和沙箱；禁止外部启动 native agent-loop |
+| Hermes 规划器适配器 | 平台任务上下文、Memory Gateway 摘要、技能/能力描述 | 标准 `ExecutionPlan`、planner 诊断事件 | Python sidecar 调用边界或 mock provider interface；先固化 plan schema | P3 才接入真实规划推理；禁止工具执行、最终回复和文件记忆直读 |
+| Memory Gateway | 记忆读写请求、租户/用户/agent 范围、版本条件 | 记忆结果、冲突状态、快照引用、审计事件 | 本地存储接口 + schema，占位检索实现，版本字段和租户隔离检查 | P3/P6 再确定五层记忆、保留期、冲突策略和向量存储 |
+| Artifact Store | 上传文件、执行产物、日志片段、模型输出快照、访问请求 | `artifact_id`、artifact reference、生命周期状态、审计事件 | 本地/MinIO 兼容接口占位、metadata schema、权限检查入口 | P2/P6 验证执行产物脱敏、对象存储权限和越权访问失败 |
+| Event Bus | 任务、审批、执行、artifact、memory、audit 事件 | 订阅投递、重放游标、死信记录、观测信号 | 开发期内存或 Redis/NATS 兼容接口、统一 event envelope、outbox 占位 | P1/P8 再决定 NATS JetStream 或 Kafka，不把底层事件模型暴露给产品层 |
+| Credential Center | `credential_ref`、用途、主体、租户、策略上下文 | 临时凭据句柄、拒绝结果、使用审计记录 | 本地加密/假密钥 provider、引用解析接口、日志脱敏规则 | 生产对接 Vault/KMS；禁止事件、日志、artifact 或环境变量传递明文 secret |
+| Observability | health、logs、metrics、traces、audit correlation | OTEL trace、metrics、结构化日志、任务时间线数据 | OpenTelemetry SDK 规范、统一字段名、health/version/trace_id 日志 | P8 再锁定 Collector、Prometheus/Grafana/Loki/Tempo 或企业标准观测栈 |
 
 ## 3. 哪些服务可以基于三大平台改造整合
 
@@ -75,6 +90,20 @@ DSH 当前处于快速迭代阶段，不假设后续版本与当前 `0.1.1-rc.2`
 | Web 控制台信息架构 | Backstage / Grafana | 借鉴插件化、目录、数据源和仪表盘组织；不直接把 NexusAgent 做成 Backstage 插件 | 产品控制台自研 |
 | Memory Gateway 检索 | PostgreSQL + pgvector / Qdrant | 小到中型优先 Postgres + pgvector 简化一致性；大规模语义检索评估 Qdrant | 记忆策略自研，向量存储不从零写 |
 | 社区插件准入治理 | OpenClaw ClawHub、Hermes Agent Plugins v1、MCP、DSH Cordis | 原生插件生态通过 Plugin Bridge 白名单复用；平台自研 inventory、admission、capability descriptor 和 host binding | 不重写三大生态插件主体，但准入、权限、审计、凭据和产品展示必须平台化 |
+
+### 4.1 选型状态声明
+
+| 能力 | P0-07 状态 | 最晚确认阶段 | 未确认影响 |
+|---|---|---|---|
+| Web/API 框架 | Fastify 与 NestJS 均为候选，P1 选择一个并记录 ADR | P1 | 影响 middleware、依赖注入、测试结构和 SDK 生成方式 |
+| 事件总线 | 开发期可先用内存/Redis/NATS 兼容接口，生产 NATS JetStream 或 Kafka 待评估 | P1/P8 | 影响重放、顺序性、死信、运维成本和容量规划 |
+| 对象存储 | 开发默认 MinIO/S3 兼容思路，生产对象存储标准待确认 | P1/P8 | 影响 artifact URL、生命周期、加密和备份恢复 |
+| 凭据后端 | 本地 provider 仅用于开发，Vault/KMS 或企业标准待确认 | P1/P8 | 影响凭据轮换、动态租约、审计和密钥权限模型 |
+| 记忆检索 | PostgreSQL + pgvector 与 Qdrant 均为候选 | P3 | 影响检索延迟、一致性、备份、租户隔离和运维复杂度 |
+| 观测栈 | OpenTelemetry 是采集标准，后端 Prometheus/Grafana/Loki/Tempo 或企业标准待确认 | P1/P8 | 影响指标命名、日志保留、trace 存储和告警接入 |
+| 长任务编排 | P1 先自研状态机，Temporal/Cadence 仅作升级候选 | P6/P8 | 影响恢复、人工信号、重试、补偿事务和部署复杂度 |
+
+任何候选项目进入生产依赖前，都必须补充 ADR、许可证/NOTICE 检查、运维负责人、容量假设、回滚方式和阶段验收脚本。
 
 ## 5. 服务整合方式
 
@@ -157,6 +186,16 @@ Policy-Gate
 5. 实现 Artifact Store、Memory Gateway、Credential Center 的本地最小可用版本，先保证接口和审计。
 6. 接入 OpenClaw/Hermes/DSH adapter 的空实现，跑通 P1 smoke 后再进入 P2-P4 的真实 vendor 改造。
 
+### 6.1 P1 工作包拆分
+
+| 工作包 | 覆盖服务 | 主要输出 | 验收脚本 |
+|---|---|---|---|
+| P1 contracts spine | 平台统一 API、Coordinator、Task State、Event Bus | `platform/contracts/`、任务状态机、事件信封、错误码、OpenAPI 路由 skeleton | `tests/unit/`、`tests/smoke/P1.sh` |
+| P1 policy spine | Policy-Gate、Tenancy、RBAC、Credential Center | 租户解析、权限决策、凭据引用校验、审批触发接口 | `tests/security/`、`tests/smoke/P1.sh` |
+| P1 data spine | Memory Gateway、Artifact Store、Audit | 本地存储接口、artifact metadata、memory query stub、审计事件 | `tests/integration/`、`tests/smoke/P1.sh` |
+| P1 observability spine | Observability、Event Bus、所有服务 health | health/version、结构化日志、`trace_id`、OTEL 基线 | `tests/smoke/P1.sh` |
+| P1 adapter shell | OpenClaw/Hermes/DSH adapters | 空 provider、contract fixtures、禁用真实 vendor 调用的默认配置 | `tests/contract/`、`tests/smoke/P1.sh` |
+
 ## 7. 阶段门禁补充
 
 - P1 完成前，每个服务至少有 health、version、trace_id 日志和契约测试。
@@ -176,3 +215,22 @@ Policy-Gate
 | secrets | HashiCorp Vault Secrets Engines | 动态凭据、租约、轮换和分路径隔离；平台只保存 credential reference |
 | identity | Keycloak OIDC/RBAC 文档 | OIDC 登录、客户端 scope 和角色映射；平台保留自己的 user/tenant/RBAC 资源授权 |
 | observability | OpenTelemetry Collector 与 Signals 文档 | traces、metrics、logs 的统一采集和 OTLP 导出；平台定义业务指标和脱敏规则 |
+
+## 9. P0-07 验收状态
+
+- 十个基础服务均已具备功能需求、默认技术栈、设计规划、上游复用方式、自研/借鉴边界、输入输出、P1 最小交付和后续阶段约束。
+- 三个上游组件的复用范围与 P0-05 接口摸底保持一致：OpenClaw 只做 gateway-only，Hermes 只做 planner-only，DSH 只做 executor-only。
+- 外部基础设施均标记为候选或可借鉴项目，没有作为生产锁定选型写入。
+- P1 可按 contracts spine、policy spine、data spine、observability spine、adapter shell 五个工作包拆分。
+- 本文不声明任何未完成 P2-P4/P6 测试的生产安全边界。
+
+## 10. 保留【待确认问题】
+
+1. 企业默认 Node API 框架是 Fastify、NestJS，还是已有内部标准。
+2. REST 与 gRPC 是否必须在 P5 同期交付；若同期交付，需要新增 Protobuf 契约和 SDK 生成链路。
+3. Event Bus 生产选型是 NATS JetStream、Kafka、Temporal 事件历史，还是企业既有消息系统。
+4. Artifact Store 生产对象存储、加密、备份恢复和生命周期策略是否已有标准。
+5. Credential Center 是否必须接入 Vault/KMS，还是允许先用企业 IdP/OIDC service account 方案。
+6. Memory Gateway 的五层记忆、保留期、冲突策略、向量库和快照策略仍待 P3 决策。
+7. Observability 后端、日志保留期、trace 采样率、告警渠道和审计留存期限仍待 P1/P8 决策。
+8. 首批正式渠道、插件市场开放范围和租户自助安装时间点仍待 P4/P5/P8 决策。

@@ -153,6 +153,28 @@ if rg -qi 'Hermes|OpenClaw|DeepSeek|DSH|MEMORY\.md|USER\.md|原生|native' docs/
 fi
 rg -q 'PLATFORM_INTERNAL_ERROR' platform/contracts/platform-error.schema.json || fail 'P0-06 platform error schema missing error code draft'
 
+p0_07_prompt="docs/planning/task-prompts/P0/P0-07.md"
+p0_07_audit_block="$(sed -n '/^# P0-07 修改记录包$/,/^## 完整提示词$/p' "$p0_07_prompt")"
+[[ -n "$p0_07_audit_block" ]] || fail 'P0-07 audit record package is missing'
+if printf '%s\n' "$p0_07_audit_block" | rg -q '\.\.\.'; then
+  fail 'P0-07 audit record package still contains placeholder ellipses'
+fi
+for blueprint_marker in \
+  'P0-07 架构基线' \
+  '服务输入输出与 P1 最小交付' \
+  '选型状态声明' \
+  'P1 工作包拆分' \
+  'P0-07 验收状态' \
+  '平台统一 API' \
+  'Web 管理控制台' \
+  'Memory Gateway' \
+  'Artifact Store' \
+  'Credential Center' \
+  'Observability'; do
+  rg -q "$blueprint_marker" docs/architecture/service-blueprint.md || fail "P0-07 service blueprint marker missing: $blueprint_marker"
+done
+rg -q 'P0-07 的 \[服务功能与整合蓝图\]' docs/README.md || fail 'docs README missing P0-07 baseline summary'
+
 for endpoint in '/v1/health:' '/v1/tasks:' '/v1/skills:' '/v1/memory/search:' '/v1/tenants:' '/v1/approvals:'; do
   rg -q "^  ${endpoint}" docs/contracts/openapi.yaml || fail "OpenAPI endpoint missing: ${endpoint}"
 done
