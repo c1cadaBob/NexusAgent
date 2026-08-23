@@ -216,29 +216,21 @@ for open_question_marker in \
   'Blocked' \
   '解决说明文档' \
   '最后更新UTC' \
-  '3.1 需要我确认的' \
-  '3.1.1 需要在 P1 前确认的' \
-  '3.1.2 需要在 P2 前确认的' \
-  '3.1.3 需要在 P5 前确认的' \
-  '3.1.4 需要在 P6/P8 前确认的' \
-  '3.2 能在后续过程中自动确认的' \
-  '3.2.1 需要在 P2 前自动确认的' \
-  '3.2.2 需要在 P3 前自动确认的' \
-  '3.2.3 需要在 P4 前自动确认的' \
-  '3.2.4 需要在 P5/P6 前自动确认的' \
-  '3.3 完整问题台账' \
-  '本节保留完整审计字段，但不使用表格展示问题' \
-  '方案 A：' \
-  '方案 B：' \
-  '方案 C：' \
-  '方案 A（推荐）' \
-  '方案 B（推荐）' \
-  '方案 C（推荐）' \
-  '利：' \
-  '弊：' \
-  '可另提方案' \
-  '需要我确认 | 14' \
-  '后续自动确认 | 9' \
+  '3. 当前确认状态' \
+  '4. 需要负责人确认的问题' \
+  '4.1 P1 前需要确认' \
+  '4.2 P2 前需要确认' \
+  '4.3 P5 前需要确认' \
+  '4.4 P6/P8 前需要确认' \
+  '5. 后续自动确认的问题' \
+  '5.1 P2 前自动确认' \
+  '5.2 P3 前自动确认' \
+  '5.3 P4 前自动确认' \
+  '5.4 P5/P6 前自动确认' \
+  '6. 完整问题台账' \
+  '7. 当前关闭摘要' \
+  '本台账不展示候选方案' \
+  '当前这些问题还没有完成确认' \
   'OQ-UPSTREAM-001' \
   'OQ-SCHEDULE-001' \
   'OQ-DSH-001' \
@@ -250,9 +242,11 @@ for open_question_marker in \
   'OQ-LEGAL-001'; do
   rg -q "$open_question_marker" docs/planning/open-questions-register.md || fail "open questions register marker missing: $open_question_marker"
 done
-full_register_block="$(sed -n '/^### 3\.3 完整问题台账$/,/^## 4\. 当前关闭摘要$/p' docs/planning/open-questions-register.md)"
-if printf '%s\n' "$full_register_block" | rg -q '^\|'; then
-  fail 'open questions 3.3 full register must use card layout, not markdown table rows'
+rg -F -q '| 问题ID | 状态 | 分类 | 问题描述 | 最晚确认阶段 | 负责人/工作流 | 解决说明文档 |' docs/planning/open-questions-register.md || fail 'open questions register missing summary table header'
+rg -F -q '| 问题ID | 状态 | 分类 | 来源文档 | 问题描述 | 影响 | 负责人/工作流 | 最晚确认阶段 | 确认结论 | 解决说明文档 | 关联需求/风险 | 关闭任务/commit | 最后更新UTC |' docs/planning/open-questions-register.md || fail 'open questions register missing full table header'
+rg -F -q '| Confirmed | 0 | 当前没有已完成确认的问题 |' docs/planning/open-questions-register.md || fail 'open questions register must show zero confirmed items'
+if rg -q '方案 A|方案 B|方案 C|可另提方案' docs/planning/open-questions-register.md; then
+  fail 'open questions register must not include candidate recommendation options'
 fi
 rg -q 'P0-09 的 \[待确认问题集中台账\]' docs/README.md || fail 'docs README missing P0-09 open questions summary'
 rg -q '待确认问题分阶段处理计划' docs/README.md || fail 'docs README missing open questions phased plan summary'
