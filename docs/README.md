@@ -12,7 +12,7 @@
 ## 目录
 
 - [完整实施规划](planning/integrated-platform-plan.md)
-- [开发排期基线](planning/development-schedule.md)
+- [开发排期基线](planning/development-schedule.md)：P0-08 基线，覆盖 P0-P8 日历、MVP/生产边界、关键路径、容量假设、阶段门禁和自动重排触发器。
 - [AI 排期提示词模板](planning/ai-schedule-prompt-template.md)
 - [任务实施规划提示词索引](planning/task-prompts/README.md)
 - [对外 API 契约](contracts/openapi.yaml)
@@ -32,6 +32,7 @@
 - P0-05 的 [上游接口摸底](architecture/upstream-interface-inventory.md) 定义三大上游入口的保留、隔离和禁止分类。
 - P0-06 的 [对外 API 契约](contracts/openapi.yaml) 定义只包含平台概念的 REST OpenAPI 初稿和平台错误码草案。
 - P0-07 的 [服务功能与整合蓝图](architecture/service-blueprint.md) 把十个基础服务映射到 P1 最小交付、P2-P4 上游接入和 P5 产品化能力。
+- P0-08 的 [开发排期基线](planning/development-schedule.md) 把 P0-P8 转换为日历排期、周计划、关键路径、资源容量和阶段门禁，并保留团队容量、节假日和冻结窗口为【待确认问题】。
 
 所有文档使用 UTC 时间、平台统一标识和平台层术语。Hermes、OpenClaw、DSH 只在内部实现、适配器、风险和源码追踪语境中出现。
 

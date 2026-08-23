@@ -23,6 +23,7 @@ required_paths=(
   product/web-console
   deploy/docker-compose.dev.yml
   docs/planning/integrated-platform-plan.md
+  docs/planning/development-schedule.md
   docs/planning/ai-schedule-prompt-template.md
   docs/planning/task-prompts/README.md
   docs/decisions/P0-openclaw-gateway-only.md
@@ -34,6 +35,7 @@ required_paths=(
   platform/contracts/platform-error.schema.json
   docs/architecture/upstream-interface-inventory.md
   docs/traceability/requirements-matrix.md
+  docs/risks/risk-register.md
   scripts/planning/generate-task-prompts.py
   scripts/upstream-tracking/README.md
   scripts/upstream-tracking/upstream-change-record.template.md
@@ -174,6 +176,28 @@ for blueprint_marker in \
   rg -q "$blueprint_marker" docs/architecture/service-blueprint.md || fail "P0-07 service blueprint marker missing: $blueprint_marker"
 done
 rg -q 'P0-07 的 \[服务功能与整合蓝图\]' docs/README.md || fail 'docs README missing P0-07 baseline summary'
+
+p0_08_prompt="docs/planning/task-prompts/P0/P0-08.md"
+p0_08_audit_block="$(sed -n '/^# P0-08 修改记录包$/,/^## 完整提示词$/p' "$p0_08_prompt")"
+[[ -n "$p0_08_audit_block" ]] || fail 'P0-08 audit record package is missing'
+if printf '%s\n' "$p0_08_audit_block" | rg -q '\.\.\.'; then
+  fail 'P0-08 audit record package still contains placeholder ellipses'
+fi
+for schedule_marker in \
+  'P0-08 排期基线' \
+  '基线边界' \
+  'P0-P6 MVP 主线' \
+  'P7 高级能力' \
+  'P8 生产交付' \
+  '角色容量模型' \
+  '阶段门禁与验收命令' \
+  '自动重排触发器' \
+  'P0-08 验收状态'; do
+  rg -q "$schedule_marker" docs/planning/development-schedule.md || fail "P0-08 schedule marker missing: $schedule_marker"
+done
+rg -q 'P0-08 的 \[开发排期基线\]' docs/README.md || fail 'docs README missing P0-08 baseline summary'
+rg -q 'P0-08 已交付 P0-P8 日历排期' docs/traceability/requirements-matrix.md || fail 'REQ-014 missing P0-08 delivery status'
+rg -q 'P0-08 开发排期基线更新' docs/risks/risk-register.md || fail 'risk register missing P0-08 update'
 
 for endpoint in '/v1/health:' '/v1/tasks:' '/v1/skills:' '/v1/memory/search:' '/v1/tenants:' '/v1/approvals:'; do
   rg -q "^  ${endpoint}" docs/contracts/openapi.yaml || fail "OpenAPI endpoint missing: ${endpoint}"
