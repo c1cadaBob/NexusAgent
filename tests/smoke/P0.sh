@@ -216,8 +216,14 @@ for open_question_marker in \
   'Blocked' \
   '解决说明文档' \
   '最后更新UTC' \
+  '3.1 需要我确认的' \
+  '3.2 能在后续过程中自动确认的' \
+  '3.3 完整问题台账' \
+  '需要我确认 | 14' \
+  '后续自动确认 | 9' \
   'OQ-UPSTREAM-001' \
   'OQ-SCHEDULE-001' \
+  'OQ-DSH-001' \
   'OQ-INFRA-001' \
   'OQ-API-001' \
   'OQ-CHANNEL-001' \

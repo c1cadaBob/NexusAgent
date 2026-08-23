@@ -25,6 +25,45 @@
 
 ## 3. 集中台账
 
+### 3.1 需要我确认的
+
+> 这里的“我”指项目负责人，或由项目负责人指定的产品、SRE、安全、法务等最终拍板人。这类问题通常涉及范围、资源、交付目标、企业标准或合规边界，后续任务不能自行假设为事实。
+
+| 问题ID | 分类 | 需要确认的决策 | 为什么需要你确认 | 最晚确认阶段 |
+|---|---|---|---|---|
+| OQ-UPSTREAM-004 | 上游快照 | 是否允许长期排除构建产物、缓存、日志和依赖目录作为正式交付快照 | 影响交付审计口径和快照归档范围 | P0 门禁前 |
+| OQ-SCHEDULE-001 | 排期资源 | 实际团队人数、角色和可投入比例 | 影响 MVP 日期、P2/P3/P4 是否并行和 P5 范围 | P0 W1 结束前 |
+| OQ-SCHEDULE-002 | 排期资源 | 地区节假日和公司发布冻结窗口 | 影响 W13-W18、MVP 冻结和 P8 生产发布日历 | P0 W1 结束前 |
+| OQ-API-001 | API/产品 | REST 与 gRPC 是否同期交付 | 影响 P5 API/SDK 工期和契约测试范围 | P1 结束前 |
+| OQ-CHANNEL-001 | 渠道/插件 | 首批正式渠道清单 | 影响 P4 渠道接入、P5 渠道管理和插件白名单测试 | P0 结束前 |
+| OQ-PLUGIN-001 | 插件治理 | 插件市场是否仅管理员白名单，后续是否开放租户自助安装 | 影响产品范围、租户权限和恶意插件测试 | P5 前 |
+| OQ-LEGAL-001 | 许可证/法务 | 上游二次开发、第三方插件和再分发条款是否需要法务确认 | 影响生产交付、插件启用和客户分发 | P5 前，P8 发布前复核 |
+| OQ-INFRA-001 | 基础设施 | Web/API 框架是否选择 Fastify、NestJS 或企业标准框架 | 影响 P1 技术栈、测试结构和 SDK/契约生成 | P1 前 |
+| OQ-INFRA-002 | 基础设施 | Event Bus 生产底层选型 | 影响事件重放、顺序、死信、容量和运维成本 | P1 结束前，P8 发布前复核 |
+| OQ-INFRA-003 | 基础设施 | Artifact Store 生产对象存储和备份策略 | 影响 artifact 生命周期、加密、备份恢复和越权测试 | P1 结束前，P8 发布前复核 |
+| OQ-INFRA-004 | 基础设施 | Credential Center 生产密钥后端 | 影响凭据轮换、动态租约、审计和明文泄漏测试 | P1 结束前，P8 发布前复核 |
+| OQ-INFRA-005 | 基础设施 | Observability 生产后端和告警标准 | 影响 trace、日志、指标、告警和控制台监控页 | P1 结束前，P8 发布前复核 |
+| OQ-DEPLOY-001 | 部署交付 | 生产部署目标是 Docker Compose、Kubernetes，还是两者同时交付 | 影响 P8 编排、CI/CD、运维手册和发布门禁 | P8 前，建议 P1 结束前定方向 |
+| OQ-PRODUCT-001 | 产品范围 | P7 高级能力是否进入首版 | 影响资源预算、冻结窗口和 MVP 范围 | P6 开始前 |
+
+### 3.2 能在后续过程中自动确认的
+
+> 这类问题可由后续任务通过源码证据、测试结果、实验记录、ADR 或阶段验收自动关闭。若后续任务无法取证，或确认结论改变产品范围、企业标准、合规边界，则必须升级回 3.1 由你或指定负责人确认。
+
+| 问题ID | 分类 | 自动确认路径 | 关闭所需证据 | 最晚确认阶段 |
+|---|---|---|---|---|
+| OQ-UPSTREAM-001 | 上游版本 | P3 Hermes provider/upstream tracking 过程中确认 | remote/tag/fork 证据、版本 hash、兼容记录和回滚方式 | P3 前 |
+| OQ-UPSTREAM-002 | 上游版本 | P4 OpenClaw provider/upstream tracking 过程中确认 | remote/tag/fork 证据、版本 hash、渠道兼容记录和回滚方式 | P4 前 |
+| OQ-UPSTREAM-003 | 上游版本 | P2 DSH provider/upstream tracking 过程中确认 | remote/tag/fork 证据、版本 hash、executor 兼容记录和回滚方式 | P2 前 |
+| OQ-API-002 | API/产品 | P5 API 契约冻结和 contract tests 过程中确认 | OpenAPI/SDK/控制台文档、契约测试和错误码/事件出口说明 | P5 前 |
+| OQ-INFRA-006 | 基础设施 | P6/P8 长任务恢复、重试和补偿评审过程中确认 | ADR、状态机/Temporal 评估、故障注入和回滚演练 | P6 前 |
+| OQ-MEMORY-001 | Memory Gateway | P3 Memory Gateway 设计和 Hermes planner 接入过程中确认 | 记忆层级、保留期、冲突策略、租户隔离测试和审计说明 | P3 前 |
+| OQ-MEMORY-002 | Memory Gateway | P3/P8 存储适配和备份恢复过程中确认 | pgvector/Qdrant/企业标准评估、性能/备份/租户隔离验证 | P3 前，P8 发布前复核 |
+| OQ-DSH-001 | DSH 执行器 | P2 provider registry 和兼容 fixture 过程中确认 | provider 固定版本、禁用/并存/回滚测试和兼容矩阵草案 | P2 前 |
+| OQ-DSH-002 | DSH 执行器 | P2 沙箱策略和 artifact 事件实现过程中确认 | 沙箱策略、文件/网络负向测试、取消语义和 artifact 归档测试 | P2 前 |
+
+### 3.3 完整问题台账
+
 | 问题ID | 状态 | 分类 | 来源文档 | 问题描述 | 影响 | 候选选项 | 负责人/工作流 | 最晚确认阶段 | 确认结论 | 解决说明文档 | 关联需求/风险 | 关闭任务/commit | 最后更新UTC |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|
 | OQ-UPSTREAM-001 | Open | 上游版本 | `vendor/MANIFEST.yaml`、`docs/architecture/upstream-interface-inventory.md`、`docs/risks/risk-register.md` | Hermes 真实 Git remote、release commit 和 fork 分支是什么 | 影响 provider 兼容矩阵、补丁回滚、许可证追踪和上游升级判断 | 确认官方 remote/tag；确认内部 fork；继续使用本地快照但标记来源不完整 | 上游改造 | P3 前 | 待确认 | 待确认 | REQ-019/R-016 | 待确认 | 2026-08-23 |
@@ -56,6 +95,8 @@
 | 状态 | 数量 | 说明 |
 |---|---:|---|
 | Open | 23 | 首轮从 P0 规划、风险、蓝图、排期和决策记录导入 |
+| 需要我确认 | 14 | 涉及范围、资源、企业标准、交付目标或合规边界 |
+| 后续自动确认 | 9 | 可由后续任务通过源码证据、测试、ADR 或阶段验收关闭 |
 | Confirmed | 0 | 尚无集中台账关闭记录 |
 | Deferred | 0 | 尚无集中台账延后记录 |
 | Superseded | 0 | 尚无集中台账替代记录 |
