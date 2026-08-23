@@ -248,8 +248,21 @@ rg -F -q '| Confirmed | 0 | 当前没有已完成确认的问题 |' docs/plannin
 if rg -q '方案 A|方案 B|方案 C|可另提方案' docs/planning/open-questions-register.md; then
   fail 'open questions register must not include candidate recommendation options'
 fi
+for open_question_workflow_marker in \
+  '推荐处理方式、默认解决方案、三大平台影响分析和关闭证据统一写入 `docs/planning/open-questions/`' \
+  '新问题产生时，先写入本台账对应分类和阶段位置' \
+  '推荐处理方式”即作为默认解决方案' \
+  '如果问题解决需要进入开发排期，必须同步在 `docs/planning/task-prompts/`'; do
+  rg -q "$open_question_workflow_marker" docs/planning/open-questions-register.md || fail "open question workflow marker missing from register: $open_question_workflow_marker"
+done
+for agents_open_question_marker in \
+  '所有待确认问题必须按以下流程处理' \
+  '所有确认内容、推荐处理方式、三大平台影响分析、默认解决方案和关闭证据' \
+  '如果某个问题的解决需要进入开发排期'; do
+  rg -q "$agents_open_question_marker" AGENTS.md || fail "AGENTS open question workflow marker missing: $agents_open_question_marker"
+done
 rg -q 'P0-09 的 \[待确认问题集中台账\]' docs/README.md || fail 'docs README missing P0-09 open questions summary'
-rg -q '待确认问题分阶段处理计划' docs/README.md || fail 'docs README missing open questions phased plan summary'
+rg -q '待确认问题确认文件' docs/README.md || fail 'docs README missing open questions confirmation file summary'
 rg -q 'open-questions-register.md' docs/planning/ai-schedule-prompt-template.md || fail 'AI schedule prompt template missing open questions register reference'
 rg -q 'docs/planning/open-questions/' docs/planning/ai-schedule-prompt-template.md || fail 'AI schedule prompt template missing phased open questions plan reference'
 rg -q 'OQ-\*' docs/planning/ai-schedule-prompt-template.md || fail 'AI schedule prompt template missing OQ ID requirement'
@@ -267,6 +280,13 @@ for open_questions_plan in \
   docs/planning/open-questions/P6-resolution-plan.md \
   docs/planning/open-questions/P8-resolution-plan.md; do
   [[ -f "$open_questions_plan" ]] || fail "open questions phased plan missing: $open_questions_plan"
+done
+for open_questions_readme_marker in \
+  '确认文件与处理计划存放位置' \
+  '默认解决方案' \
+  'docs/planning/task-prompts/' \
+  '新问题产生后，必须先写入'; do
+  rg -q "$open_questions_readme_marker" docs/planning/open-questions/README.md || fail "open questions README workflow marker missing: $open_questions_readme_marker"
 done
 for oq_id in \
   OQ-UPSTREAM-001 OQ-UPSTREAM-002 OQ-UPSTREAM-003 OQ-UPSTREAM-004 \

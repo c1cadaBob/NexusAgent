@@ -86,7 +86,7 @@ DSH 不作为稳定平台契约，只作为内部 executor provider。P2 必须�
 
 ## P0-09 待确认问题集中台账更新
 
-- R-010：新增 `docs/planning/open-questions-register.md` 和 `docs/planning/open-questions/` 分阶段处理计划，把上游版本、排期资源、API 产品、渠道插件、基础设施、Memory/DSH、部署、产品范围和许可证问题统一登记为 `OQ-*` ID；集中台账以表格维护状态索引，分阶段计划按 P0/P1/P2/P3/P4/P5/P6/P8 写明处理路线、三平台影响和关闭证据，后续 AI 排期必须优先读取集中台账与阶段计划。
+- R-010：新增 `docs/planning/open-questions-register.md` 和 `docs/planning/open-questions/` 确认文件目录，把上游版本、排期资源、API 产品、渠道插件、基础设施、Memory/DSH、部署、产品范围和许可证问题统一登记为 `OQ-*` ID；集中台账以表格维护状态索引，确认文件按 P0/P1/P2/P3/P4/P5/P6/P8 写明推荐处理方式、默认解决方案、三平台影响和关闭证据。需要加入排期的问题必须同步更新 `docs/planning/task-prompts/` 对应阶段提示词，后续 AI 排期必须优先读取集中台账与确认文件。
 - R-011：`docs/planning/ai-schedule-prompt-template.md` 已要求自动填充保留 `OQ-*` ID、状态、责任工作流、最晚确认阶段和解决说明文档，减少散落文档与任务提示词漂移。
 - R-012：P0 smoke 新增 P0-09 修改记录包和集中台账检查；台账关闭规则要求 `Confirmed` 项必须填写确认结论、解决说明文档和关闭任务/commit。
 - 保留【待确认问题】：本次只建立台账，不关闭业务问题；所有 `Open` 项仍需在对应阶段由责任工作流确认。

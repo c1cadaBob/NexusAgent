@@ -44,13 +44,13 @@
 | `{{milestone}}` | `development-schedule.md` | `M2：P2-P4 内部三组件接入` |
 | `{{owner_workstream}}` | `development-schedule.md`、团队分工 | 上游改造、平台内核、测试 |
 | `{{quality_gates}}` | 任务表、测试策略、阶段门禁 | 单元、契约、集成、安全、冒烟、`git diff --check` |
-| `{{open_questions_register}}` | `docs/planning/open-questions-register.md`、`docs/planning/open-questions/` | 集中台账路径、状态枚举、问题 ID、责任工作流、最晚确认阶段、确认结论状态、阶段计划和解决说明文档 |
+| `{{open_questions_register}}` | `docs/planning/open-questions-register.md`、`docs/planning/open-questions/` | 集中台账路径、状态枚举、问题 ID、责任工作流、最晚确认阶段、确认结论状态、确认文件、阶段计划和解决说明文档 |
 | `{{plugin_bridge_strategy}}` | `docs/architecture/upstream-versioning-and-plugin-bridge.md` | Plugin Bridge 白名单、能力描述符、宿主侧车和禁止事项 |
 | `{{provider_strategy}}` | `docs/architecture/dsh-versioning-and-replacement.md`、`docs/architecture/upstream-versioning-and-plugin-bridge.md` | OpenClaw/Hermes/DSH provider 并存、升级、禁用和回滚规则 |
 | `{{smoke_script}}` | 阶段脚本约定 | `tests/smoke/P2.sh` |
 | `{{related_requirements}}` | `docs/traceability/requirements-matrix.md` | `REQ-009`、`REQ-012` |
 | `{{related_risks}}` | `docs/risks/risk-register.md`、规划第 12 节 | `R-003`、`R-004` |
-| `{{open_questions}}` | `docs/planning/open-questions-register.md`，辅以 `docs/planning/open-questions/`、阶段待确认问题和排期待确认事项 | 保留问题 ID、状态、影响、负责人、关闭证据和最晚确认阶段，不得擅自假设；处理路线从阶段计划读取 |
+| `{{open_questions}}` | `docs/planning/open-questions-register.md`，辅以 `docs/planning/open-questions/`、阶段待确认问题和排期待确认事项 | 保留问题 ID、状态、影响、负责人、关闭证据和最晚确认阶段，不得擅自假设；推荐处理方式、默认解决方案和确认内容从确认文件读取 |
 | `{{allowed_write_paths}}` | 项目约束和任务路径 | `vendor/` 副本、`platform/`、`product/`、`docs/`、`tests/`、`deploy/`、`config/`、`scripts/` |
 | `{{readonly_upstream_paths}}` | 固定值 | `/opt/project/hermes-agent-main`、`/opt/project/openclaw-main`、`/opt/project/deepseek-harness-master` |
 
@@ -66,7 +66,7 @@
 | 时间处理 | 所有时间字段使用 UTC；超时、重试、排序使用平台单调时钟，不用墙上时钟计算持续时间 | P1-03、P2-P6 必须安排 clock/timeout 语义测试 |
 | 标识符统一 | 全局使用 `tenant_id`、`user_id`、`agent_id`、`task_id`、`attempt_id`、`execution_id`、`conversation_id`、`artifact_id`、`trace_id` | 所有阶段验收都检查 trace 和 ID 贯穿 |
 | 上游行为 | 上游行为必须基于源码证据和实测，禁止凭文件名、README 或经验猜测 | P0、P2-P4 必须安排源码行号、调用图和实验日志 |
-| 待确认问题 | 未确认事项不得被当作事实；集中台账只输出 `OQ-*` ID、状态、影响、责任工作流和最晚确认时间 | 排期必须引用集中台账，并保留“待确认事项”表；处理路线另从分阶段计划读取 |
+| 待确认问题 | 未确认事项不得被当作事实；集中台账只输出 `OQ-*` ID、状态、影响、责任工作流和最晚确认时间 | 排期必须引用集中台账，并保留“待确认事项”表；推荐处理方式和默认解决方案从 `docs/planning/open-questions/` 确认文件读取 |
 | 裁剪/降级 | P7 可裁剪；Hermes 可降级；对外 API 和任务标识不变 | 延期重排必须先保护 P0-P6 MVP 主线 |
 | 安全防绕过 | 负向测试和绕过测试是阶段门禁，不是可选项 | P2-P6 必须排入 security/integration 工作流 |
 | 社区插件复用 | 三大平台社区插件默认不可信，只能通过 Plugin Bridge 白名单、能力描述符和原生宿主侧车复用；不得要求重复改造社区插件主体 | P3-P8 必须安排插件发现、准入、禁用、防泄漏、升级和回滚验证 |
@@ -99,7 +99,7 @@ AI 生成排期时必须输出以下结构，缺一不可：
 5. 风险与降级：列出触发条件、影响、补救方式和是否影响 MVP。
 6. 门禁清单：列出必须通过的测试、脚本、文档更新和安全验证。
 7. 自动填充差异：说明本次排期相对 `development-schedule.md` 的变化。
-8. 待确认问题：优先引用 `docs/planning/open-questions-register.md` 和 `docs/planning/open-questions/`，保留 `OQ-*` ID、状态、影响、负责人、关闭证据和最晚确认阶段，不得擅自下结论；集中台账不展示候选方案。
+8. 待确认问题：优先引用 `docs/planning/open-questions-register.md` 和 `docs/planning/open-questions/`，保留 `OQ-*` ID、状态、影响、负责人、关闭证据和最晚确认阶段，不得擅自下结论；集中台账不展示候选方案，`docs/planning/open-questions/` 中的推荐处理方式作为默认解决方案。
 9. 插件与 provider 治理：列出是否涉及 Plugin Bridge、社区插件复用、provider 兼容、禁用和回滚。
 10. 审计要求：列出对应任务 ID 文档路径，并要求执行前后填写“修改记录包”。
 
