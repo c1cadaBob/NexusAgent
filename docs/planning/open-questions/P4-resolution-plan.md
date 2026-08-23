@@ -25,3 +25,5 @@
 - DSH：渠道文件和命令最终只通过平台 `TaskRequest`、`ExecutionPlan` 和 `ExecutionRequest` 进入 DSH。
 
 关闭证据：P4 渠道白名单、渠道入站/出站 contract tests、未批准插件拒绝测试、直接触发 OpenClaw 原生 Agent 失败。
+
+确认结论：已关闭。P0 门禁接受钉钉、飞书、Telegram 为首批默认渠道；P4 继续落实 channel fixture、Plugin Bridge 白名单、凭据托管和防绕过测试，新增企业微信或 Slack 时按范围变更处理。

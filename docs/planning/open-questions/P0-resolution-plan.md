@@ -1,6 +1,8 @@
 # P0 待确认问题处理计划
 
 > 阶段目标：在 P0 门禁前把上游快照、资源假设、日历假设和首批渠道方向固化为后续 P1-P4 可执行输入。P0 不把尚未验证的 OpenClaw、Hermes、DSH 行为写成事实，只关闭可由项目负责人确认或已有脚本证明的问题。
+>
+> P0 门禁结论：本文件中的 4 个 P0 到期问题已按默认推荐方案关闭，关闭任务/commit 为 P0-GATE-COMMIT-1（待回填）。
 
 ## OQ-UPSTREAM-004：上游快照排除规则
 
@@ -16,6 +18,8 @@
 
 落点文档：`vendor/MANIFEST.yaml`、`scripts/bootstrap/vendor-snapshot.sh`、`scripts/source-manifest/create-manifest.sh`、`docs/planning/integrated-platform-plan.md`。
 
+确认结论：已关闭。P0 门禁接受该默认快照策略，并要求后续 provider 升级继续保留排除规则、版本 pin、tree hash、`local_patches` 和回滚说明。关闭证据同步见 `docs/planning/phase-gates/P0-gate-review.md`。
+
 ## OQ-SCHEDULE-001：团队人数、角色和投入比例
 
 推荐处理：默认采用 8-10 个核心角色的基线排期，同时保留 4-5 人降级排期。当前 P2/P3/P4 计划并行接入 DSH、Hermes、OpenClaw；如果实际资源不足，应把 Hermes 高级记忆和 P5 控制台高级页延后，而不是压缩安全、防绕过和 provider 回滚测试。
@@ -29,6 +33,8 @@
 关闭证据：项目负责人提供团队人数、角色、投入比例和可并行工作流；`docs/planning/development-schedule.md` 更新对应日历；风险登记册更新资源风险状态。
 
 落点文档：`docs/planning/development-schedule.md`、`docs/risks/risk-register.md`。
+
+确认结论：已关闭。P0 门禁接受 8-10 个核心角色基线和 4-5 人降级排期作为默认容量模型；真实团队容量变化不重开本问题，改由 `docs/planning/development-schedule.md` 的自动重排触发器处理。
 
 ## OQ-SCHEDULE-002：地区节假日和发布冻结窗口
 
@@ -44,6 +50,8 @@
 
 落点文档：`docs/planning/development-schedule.md`、`docs/planning/open-questions-register.md`。
 
+确认结论：已关闭。P0 门禁接受当前排期基线和冻结缓冲作为默认日历策略；真实节假日或冻结窗口变化不阻塞 P0，后续通过排期重算和风险复盘处理。
+
 ## OQ-CHANNEL-001：首批正式渠道清单
 
 推荐处理：默认首批选择钉钉、飞书、Telegram；若首个客户场景明确需要企业微信或 Slack，则把新增渠道纳入 P4/P5 范围并同步调增测试工作量。首版不建议同时打开太多渠道，避免 P4 gateway-only 防绕过和 P5 渠道管理分散。
@@ -57,3 +65,5 @@
 关闭证据：项目负责人确认首批渠道；P4 任务提示词和渠道测试 fixture 更新；P5 渠道管理页面/API 范围更新。
 
 落点文档：`docs/planning/open-questions/P4-resolution-plan.md`、`docs/planning/integrated-platform-plan.md`、`docs/architecture/upstream-versioning-and-plugin-bridge.md`。
+
+确认结论：已关闭。P0 门禁接受钉钉、飞书、Telegram 为首批默认渠道；企业微信、Slack 等新增渠道作为 P4/P5 范围变更和测试工作量调整处理。

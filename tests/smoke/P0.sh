@@ -25,6 +25,7 @@ required_paths=(
   docs/planning/integrated-platform-plan.md
   docs/planning/development-schedule.md
   docs/planning/open-questions-register.md
+  docs/planning/phase-gates/P0-gate-review.md
   docs/planning/ai-schedule-prompt-template.md
   docs/planning/task-prompts/README.md
   docs/agents/README.md
@@ -246,7 +247,7 @@ for p0_09_marker in \
   '推荐处理方式统一保存到 `docs/planning/open-questions/`' \
   '集中台账不包含候选推荐方案' \
   '阶段历史问题回扫' \
-  '当前 23 个问题均为 `自动确认`'; do
+  '当前 19 个问题仍为 `自动确认`'; do
   rg -q "$p0_09_marker" "$p0_09_prompt" || fail "P0-09 current workflow marker missing: $p0_09_marker"
 done
 if rg -q '方案 A|方案 B|方案 C|每个问题提供至少 3|从表格改为|卡片形式' "$p0_09_prompt"; then
@@ -328,7 +329,8 @@ for open_question_marker in \
   '6. 完整问题台账' \
   '7. 当前关闭摘要' \
   '本台账不展示候选方案' \
-  '当前 23 个问题已完成“自动确认”' \
+  '当前 19 个问题仍为“自动确认”' \
+  'P0 门禁已关闭 4 个最晚确认阶段属于 P0 的问题' \
   'OQ-UPSTREAM-001' \
   'OQ-SCHEDULE-001' \
   'OQ-DSH-001' \
@@ -342,8 +344,26 @@ for open_question_marker in \
 done
 rg -F -q '| 问题ID | 状态 | 分类 | 问题描述 | 最晚确认阶段 | 负责人/工作流 | 解决说明文档 |' docs/planning/open-questions-register.md || fail 'open questions register missing summary table header'
 rg -F -q '| 问题ID | 状态 | 分类 | 来源文档 | 问题描述 | 影响 | 负责人/工作流 | 最晚确认阶段 | 确认结论 | 解决说明文档 | 关联需求/风险 | 关闭任务/commit | 最后更新UTC |' docs/planning/open-questions-register.md || fail 'open questions register missing full table header'
-rg -F -q '| 自动确认 | 23 | 已结合三大平台在确认文件中生成默认解决方案，但尚未关闭 |' docs/planning/open-questions-register.md || fail 'open questions register must show 23 auto-confirmed items'
-rg -F -q '| 已关闭 | 0 | 暂无确认结论、解决说明文档和关闭 commit 全部补齐的问题 |' docs/planning/open-questions-register.md || fail 'open questions register must show zero closed items'
+rg -F -q '| 自动确认 | 19 | 已结合三大平台在确认文件中生成默认解决方案，但尚未关闭 |' docs/planning/open-questions-register.md || fail 'open questions register must show 19 auto-confirmed items'
+rg -F -q '| 已关闭 | 4 | P0 门禁已关闭上游快照排除规则、资源容量、日历冻结窗口和首批渠道默认范围 |' docs/planning/open-questions-register.md || fail 'open questions register must show four closed P0 gate items'
+for closed_oq in OQ-UPSTREAM-004 OQ-SCHEDULE-001 OQ-SCHEDULE-002 OQ-CHANNEL-001; do
+  rg -F -q "| ${closed_oq} | 已关闭 |" docs/planning/open-questions-register.md || fail "P0 gate OQ must be closed in register: ${closed_oq}"
+  rg -q "${closed_oq}" docs/planning/phase-gates/P0-gate-review.md || fail "P0 gate report missing closed OQ: ${closed_oq}"
+done
+for still_auto_oq in OQ-UPSTREAM-001 OQ-UPSTREAM-002 OQ-UPSTREAM-003 OQ-INFRA-001 OQ-API-001 OQ-DSH-001 OQ-MEMORY-001 OQ-PLUGIN-001 OQ-LEGAL-001 OQ-PRODUCT-001; do
+  rg -F -q "| ${still_auto_oq} | 自动确认 |" docs/planning/open-questions-register.md || fail "non-P0 OQ must remain auto-confirmed: ${still_auto_oq}"
+done
+for p0_gate_marker in \
+  'P0 阶段门禁报告' \
+  '门禁结论' \
+  '已关闭的 P0 问题' \
+  '仍为自动确认的问题' \
+  '历史问题回扫' \
+  '当前阶段及之前阶段不存在 `打开` 问题' \
+  '19 个问题仍为 `自动确认`' \
+  'P0-GATE-COMMIT-1'; do
+  rg -q "$p0_gate_marker" docs/planning/phase-gates/P0-gate-review.md || fail "P0 gate report marker missing: $p0_gate_marker"
+done
 if rg -q '方案 A|方案 B|方案 C|可另提方案' docs/planning/open-questions-register.md; then
   fail 'open questions register must not include candidate recommendation options'
 fi
@@ -464,4 +484,4 @@ if find . -path ./.git -prune -o -path ./vendor -prune -o -type d \( \
 fi
 
 git diff --check -- . ':!vendor/**' || fail 'whitespace errors found outside vendor snapshot'
-printf 'PASS: P0 structure, vendor manifest, plan sections, OpenAPI placeholders, task prompts, agent role memory, audit templates, and exclusions\n'
+printf 'PASS: P0 structure, vendor manifest, plan sections, OpenAPI placeholders, task prompts, agent role memory, phase gate, audit templates, and exclusions\n'

@@ -33,11 +33,11 @@
 |---|---:|---|
 | 待确认问题总数 | 23 | 来自当前 `OQ-*` 台账 |
 | 打开 | 0 | 暂无仅登记但未生成推荐处理方式的问题 |
-| 自动确认 | 23 | 已结合三大平台在确认文件中生成默认解决方案，但尚未关闭 |
+| 自动确认 | 19 | 已结合三大平台在确认文件中生成默认解决方案，但尚未关闭 |
 | 人工确认 | 0 | 暂无人工覆盖默认解决方案的问题；该状态可省略 |
-| 已关闭 | 0 | 暂无确认结论、解决说明文档和关闭 commit 全部补齐的问题 |
+| 已关闭 | 4 | P0 门禁已关闭上游快照排除规则、资源容量、日历冻结窗口和首批渠道默认范围 |
 
-当前 23 个问题已完成“自动确认”：即已结合 OpenClaw、Hermes、DSH 在 `docs/planning/open-questions/` 生成推荐处理方式，推荐处理方式即默认解决方案。它们尚未进入 `已关闭`，因为确认结论和关闭任务/commit 仍未补齐。
+当前 19 个问题仍为“自动确认”：即已结合 OpenClaw、Hermes、DSH 在 `docs/planning/open-questions/` 生成推荐处理方式，推荐处理方式即默认解决方案，但确认结论和关闭任务/commit 尚未补齐。P0 门禁已关闭 4 个最晚确认阶段属于 P0 的问题。
 
 ## 4. 人工确认（可省略）的问题
 
@@ -47,10 +47,10 @@
 
 | 问题ID | 状态 | 分类 | 问题描述 | 最晚确认阶段 | 负责人/工作流 | 解决说明文档 |
 | --- | --- | --- | --- | --- | --- | --- |
-| OQ-UPSTREAM-004 | 自动确认 | 上游快照 | 是否允许长期排除上游构建产物、缓存、日志和依赖目录后作为正式交付快照。 | P0 门禁前。 | 架构/上游改造/SRE。 | `docs/planning/open-questions/P0-resolution-plan.md`。 |
-| OQ-SCHEDULE-001 | 自动确认 | 排期资源 | 实际团队人数、角色和可投入比例是什么。 | P0 W1 结束前。 | 架构/产品。 | `docs/planning/open-questions/P0-resolution-plan.md`。 |
-| OQ-SCHEDULE-002 | 自动确认 | 排期资源 | 地区节假日和公司发布冻结窗口是什么。 | P0 W1 结束前。 | 架构/产品/SRE。 | `docs/planning/open-questions/P0-resolution-plan.md`。 |
-| OQ-CHANNEL-001 | 自动确认 | 渠道/插件 | 首批正式渠道是否为钉钉、飞书、Telegram，是否需要企业微信、Slack 等。 | P0 结束前。 | 渠道/产品/安全。 | `docs/planning/open-questions/P0-resolution-plan.md`、`docs/planning/open-questions/P4-resolution-plan.md`。 |
+| OQ-UPSTREAM-004 | 已关闭 | 上游快照 | 是否允许长期排除上游构建产物、缓存、日志和依赖目录后作为正式交付快照。 | P0 门禁前。 | 架构/上游改造/SRE。 | `docs/planning/open-questions/P0-resolution-plan.md`。 |
+| OQ-SCHEDULE-001 | 已关闭 | 排期资源 | 实际团队人数、角色和可投入比例是什么。 | P0 W1 结束前。 | 架构/产品。 | `docs/planning/open-questions/P0-resolution-plan.md`。 |
+| OQ-SCHEDULE-002 | 已关闭 | 排期资源 | 地区节假日和公司发布冻结窗口是什么。 | P0 W1 结束前。 | 架构/产品/SRE。 | `docs/planning/open-questions/P0-resolution-plan.md`。 |
+| OQ-CHANNEL-001 | 已关闭 | 渠道/插件 | 首批正式渠道是否为钉钉、飞书、Telegram，是否需要企业微信、Slack 等。 | P0 结束前。 | 渠道/产品/安全。 | `docs/planning/open-questions/P0-resolution-plan.md`、`docs/planning/open-questions/P4-resolution-plan.md`。 |
 | OQ-INFRA-001 | 自动确认 | 基础设施 | Web/API 框架是否选择 Fastify、NestJS 或企业标准框架。 | P1 前。 | 平台内核/API/SRE。 | `docs/planning/open-questions/P1-resolution-plan.md`。 |
 
 ### 4.2 P2 前人工确认（可省略）
@@ -112,19 +112,19 @@
 
 ## 6. 完整问题台账
 
-> 本节保留完整审计字段。当前 23 条记录均处于 `自动确认` 状态：确认文件已有默认解决方案，但关闭前仍必须补齐确认结论和关闭任务/commit。
+> 本节保留完整审计字段。当前 19 条记录仍处于 `自动确认` 状态，4 条 P0 到期记录已补齐确认结论、解决说明文档和关闭任务/commit 占位。
 
 | 问题ID | 状态 | 分类 | 来源文档 | 问题描述 | 影响 | 负责人/工作流 | 最晚确认阶段 | 确认结论 | 解决说明文档 | 关联需求/风险 | 关闭任务/commit | 最后更新UTC |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | OQ-UPSTREAM-001 | 自动确认 | 上游版本 | `vendor/MANIFEST.yaml`、`docs/architecture/upstream-interface-inventory.md`、`docs/risks/risk-register.md`。 | Hermes 真实 Git remote、release commit 和 fork 分支是什么。 | 影响 provider 兼容矩阵、补丁回滚、许可证追踪和上游升级判断。 | 上游改造。 | P3 前。 | 待补齐 | `docs/planning/open-questions/P3-resolution-plan.md`、`docs/planning/open-questions/P8-resolution-plan.md`。 | REQ-019/R-016。 | 待补齐 | 2026-08-23。 |
 | OQ-UPSTREAM-002 | 自动确认 | 上游版本 | `vendor/MANIFEST.yaml`、`docs/decisions/P0-openclaw-gateway-only.md`、`docs/risks/risk-register.md`。 | OpenClaw 真实 Git remote、release commit 和 fork 分支是什么。 | 影响 gateway provider 升级、渠道插件兼容和 P4 强制模式评审。 | 上游改造/渠道。 | P4 前。 | 待补齐 | `docs/planning/open-questions/P4-resolution-plan.md`、`docs/planning/open-questions/P8-resolution-plan.md`。 | REQ-019/R-016。 | 待补齐 | 2026-08-23。 |
 | OQ-UPSTREAM-003 | 自动确认 | 上游版本 | `vendor/MANIFEST.yaml`、`docs/architecture/dsh-versioning-and-replacement.md`、`docs/risks/risk-register.md`。 | DSH 真实 Git remote、release commit 和 fork 分支是什么。 | 影响 executor provider 固定、替换、回滚和预览版变更追踪。 | 上游改造/执行器。 | P2 前。 | 待补齐 | `docs/planning/open-questions/P2-resolution-plan.md`、`docs/planning/open-questions/P8-resolution-plan.md`。 | REQ-018/R-001/R-016。 | 待补齐 | 2026-08-23。 |
-| OQ-UPSTREAM-004 | 自动确认 | 上游快照 | `docs/planning/integrated-platform-plan.md`、`scripts/bootstrap/vendor-snapshot.sh`、`scripts/source-manifest/create-manifest.sh`。 | 是否允许长期排除上游构建产物、缓存、日志和依赖目录后作为正式交付快照。 | 影响 vendor 可复现性、审计范围和交付体积。 | 架构/上游改造/SRE。 | P0 门禁前。 | 待补齐 | `docs/planning/open-questions/P0-resolution-plan.md`。 | REQ-004/R-015。 | 待补齐 | 2026-08-23。 |
-| OQ-SCHEDULE-001 | 自动确认 | 排期资源 | `docs/planning/development-schedule.md`、`docs/risks/risk-register.md`。 | 实际团队人数、角色和可投入比例是什么。 | 影响 P2/P3/P4 是否并行、P5 控制台范围和 MVP 冻结日期。 | 架构/产品。 | P0 W1 结束前。 | 待补齐 | `docs/planning/open-questions/P0-resolution-plan.md`。 | REQ-014/R-009。 | 待补齐 | 2026-08-23。 |
-| OQ-SCHEDULE-002 | 自动确认 | 排期资源 | `docs/planning/development-schedule.md`、`docs/risks/risk-register.md`。 | 地区节假日和公司发布冻结窗口是什么。 | 影响 W13-W18、MVP 冻结、P8 发布候选和生产发布日历。 | 架构/产品/SRE。 | P0 W1 结束前。 | 待补齐 | `docs/planning/open-questions/P0-resolution-plan.md`。 | REQ-014/R-009。 | 待补齐 | 2026-08-23。 |
+| OQ-UPSTREAM-004 | 已关闭 | 上游快照 | `docs/planning/integrated-platform-plan.md`、`scripts/bootstrap/vendor-snapshot.sh`、`scripts/source-manifest/create-manifest.sh`。 | 是否允许长期排除上游构建产物、缓存、日志和依赖目录后作为正式交付快照。 | 影响 vendor 可复现性、审计范围和交付体积。 | 架构/上游改造/SRE。 | P0 门禁前。 | 接受默认快照策略：长期排除构建产物、缓存、日志和依赖目录，以源码快照、排除规则和可复现 hash 作为交付口径。 | `docs/planning/open-questions/P0-resolution-plan.md`、`docs/planning/phase-gates/P0-gate-review.md`。 | REQ-004/R-015。 | P0-GATE-COMMIT-1（待回填） | 2026-08-23。 |
+| OQ-SCHEDULE-001 | 已关闭 | 排期资源 | `docs/planning/development-schedule.md`、`docs/risks/risk-register.md`。 | 实际团队人数、角色和可投入比例是什么。 | 影响 P2/P3/P4 是否并行、P5 控制台范围和 MVP 冻结日期。 | 架构/产品。 | P0 W1 结束前。 | 接受默认容量模型：采用 8-10 个核心角色基线，保留 4-5 人降级排期；实际容量变化触发后续重排。 | `docs/planning/open-questions/P0-resolution-plan.md`、`docs/planning/phase-gates/P0-gate-review.md`。 | REQ-014/R-009。 | P0-GATE-COMMIT-1（待回填） | 2026-08-23。 |
+| OQ-SCHEDULE-002 | 已关闭 | 排期资源 | `docs/planning/development-schedule.md`、`docs/risks/risk-register.md`。 | 地区节假日和公司发布冻结窗口是什么。 | 影响 W13-W18、MVP 冻结、P8 发布候选和生产发布日历。 | 架构/产品/SRE。 | P0 W1 结束前。 | 接受默认日历策略：按当前排期基线和冻结缓冲推进；真实节假日或发布冻结窗口变化触发后续重排。 | `docs/planning/open-questions/P0-resolution-plan.md`、`docs/planning/phase-gates/P0-gate-review.md`。 | REQ-014/R-009。 | P0-GATE-COMMIT-1（待回填） | 2026-08-23。 |
 | OQ-API-001 | 自动确认 | API/产品 | `docs/contracts/openapi.yaml`、`docs/planning/integrated-platform-plan.md`、`docs/risks/risk-register.md`。 | 平台统一 REST 和 gRPC 是否要求同期交付。 | 影响 P5 API/SDK 工期、契约测试和 streaming 设计。 | API/SDK/产品。 | P1 结束前。 | 待补齐 | `docs/planning/open-questions/P1-resolution-plan.md`。 | REQ-007/REQ-014。 | 待补齐 | 2026-08-23。 |
 | OQ-API-002 | 自动确认 | API/产品 | `docs/risks/risk-register.md`、`docs/contracts/openapi.yaml`。 | 生产鉴权方案、分页游标格式、审批动作全集、错误码最终枚举和事件出口是什么。 | 影响公共契约稳定性、SDK 生成和控制台一致性。 | API/SDK/安全/产品。 | P5 前。 | 待补齐 | `docs/planning/open-questions/P5-resolution-plan.md`。 | REQ-007/R-007。 | 待补齐 | 2026-08-23。 |
-| OQ-CHANNEL-001 | 自动确认 | 渠道/插件 | `docs/planning/integrated-platform-plan.md`、`docs/architecture/upstream-versioning-and-plugin-bridge.md`、`docs/risks/risk-register.md`。 | 首批正式渠道是否为钉钉、飞书、Telegram，是否需要企业微信、Slack 等。 | 影响 P4 OpenClaw gateway adapter、P5 渠道管理和插件白名单测试。 | 渠道/产品/安全。 | P0 结束前。 | 待补齐 | `docs/planning/open-questions/P0-resolution-plan.md`、`docs/planning/open-questions/P4-resolution-plan.md`。 | REQ-020/R-013/R-014。 | 待补齐 | 2026-08-23。 |
+| OQ-CHANNEL-001 | 已关闭 | 渠道/插件 | `docs/planning/integrated-platform-plan.md`、`docs/architecture/upstream-versioning-and-plugin-bridge.md`、`docs/risks/risk-register.md`。 | 首批正式渠道是否为钉钉、飞书、Telegram，是否需要企业微信、Slack 等。 | 影响 P4 OpenClaw gateway adapter、P5 渠道管理和插件白名单测试。 | 渠道/产品/安全。 | P0 结束前。 | 接受默认首批渠道：钉钉、飞书、Telegram；企业微信、Slack 等新增渠道作为 P4/P5 范围变更处理。 | `docs/planning/open-questions/P0-resolution-plan.md`、`docs/planning/open-questions/P4-resolution-plan.md`、`docs/planning/phase-gates/P0-gate-review.md`。 | REQ-020/R-013/R-014。 | P0-GATE-COMMIT-1（待回填） | 2026-08-23。 |
 | OQ-PLUGIN-001 | 自动确认 | 插件治理 | `docs/architecture/upstream-versioning-and-plugin-bridge.md`、`docs/architecture/service-blueprint.md`。 | 插件市场是否仅管理员白名单，P7/P8 后是否开放租户自助安装。 | 影响 Plugin Bridge 产品范围、租户权限、恶意插件测试和许可证审核。 | 产品/安全/插件治理。 | P5 前。 | 待补齐 | `docs/planning/open-questions/P5-resolution-plan.md`、`docs/planning/open-questions/P8-resolution-plan.md`。 | REQ-020/R-013/R-014。 | 待补齐 | 2026-08-23。 |
 | OQ-LEGAL-001 | 自动确认 | 许可证/法务 | `docs/risks/risk-register.md`、`docs/architecture/upstream-interface-inventory.md`。 | 上游二次开发、第三方插件、extras、native addon、vendored packages 的许可证、NOTICE 和再分发条款是否需要法务确认。 | 影响生产交付、插件启用、客户分发和补丁维护边界。 | 法务/安全/上游改造。 | P5 前，P8 发布前复核。 | 待补齐 | `docs/planning/open-questions/P5-resolution-plan.md`、`docs/planning/open-questions/P8-resolution-plan.md`。 | R-015/R-016/REQ-020。 | 待补齐 | 2026-08-23。 |
 | OQ-INFRA-001 | 自动确认 | 基础设施 | `docs/architecture/service-blueprint.md`、`docs/planning/development-schedule.md`。 | Web/API 框架是否选择 Fastify、NestJS 或企业标准框架。 | 影响 P1 middleware、依赖注入、测试结构和 SDK/契约生成方式。 | 平台内核/API/SRE。 | P1 前。 | 待补齐 | `docs/planning/open-questions/P1-resolution-plan.md`。 | REQ-011/R-008。 | 待补齐 | 2026-08-23。 |
@@ -145,6 +145,6 @@
 | 状态 | 数量 | 说明 |
 |---|---:|---|
 | 打开 | 0 | 暂无 |
-| 自动确认 | 23 | 已生成默认解决方案，尚未关闭 |
+| 自动确认 | 19 | 已生成默认解决方案，尚未关闭 |
 | 人工确认 | 0 | 暂无；可省略 |
-| 已关闭 | 0 | 暂无 |
+| 已关闭 | 4 | P0 门禁已关闭 4 个到期问题 |
