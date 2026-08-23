@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://nexusagent.local/contracts/common-identifiers.schema.json",
+  "title": "NexusAgent Common Platform Identifiers",
+  "description": "Platform-owned identifiers shared across services. Internal providers must receive these identifiers from NexusAgent instead of generating public substitutes.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "tenant_id": { "$ref": "#/$defs/tenant_id" },
+    "user_id": { "$ref": "#/$defs/user_id" },
+    "agent_id": { "$ref": "#/$defs/agent_id" },
+    "task_id": { "$ref": "#/$defs/task_id" },
+    "attempt_id": { "$ref": "#/$defs/attempt_id" },
+    "execution_id": { "$ref": "#/$defs/execution_id" },
+    "conversation_id": { "$ref": "#/$defs/conversation_id" },
+    "artifact_id": { "$ref": "#/$defs/artifact_id" },
+    "trace_id": { "$ref": "#/$defs/trace_id" }
+  },
+  "$defs": {
+    "tenant_id": { "type": "string", "pattern": "^tenant_[A-Za-z0-9][A-Za-z0-9_-]{2,127}$" },
+    "user_id": { "type": "string", "pattern": "^user_[A-Za-z0-9][A-Za-z0-9_-]{2,127}$" },
+    "agent_id": { "type": "string", "pattern": "^agent_[A-Za-z0-9][A-Za-z0-9_-]{2,127}$" },
+    "task_id": { "type": "string", "pattern": "^task_[A-Za-z0-9][A-Za-z0-9_-]{2,127}$" },
+    "attempt_id": { "type": "string", "pattern": "^attempt_[A-Za-z0-9][A-Za-z0-9_-]{2,127}$" },
+    "execution_id": { "type": "string", "pattern": "^exec_[A-Za-z0-9][A-Za-z0-9_-]{2,127}$" },
+    "conversation_id": { "type": "string", "pattern": "^conv_[A-Za-z0-9][A-Za-z0-9_-]{2,127}$" },
+    "artifact_id": { "type": "string", "pattern": "^artifact_[A-Za-z0-9][A-Za-z0-9_-]{2,127}$" },
+    "trace_id": { "type": "string", "pattern": "^trace_[A-Za-z0-9][A-Za-z0-9_-]{2,127}$" },
+    "utc_timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d{3})?Z$"
+    },
+    "monotonic_ms": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Platform monotonic time in milliseconds. It is supplied by the platform clock and must be used for ordering, duration, retry, and timeout calculations."
+    }
+  }
+}

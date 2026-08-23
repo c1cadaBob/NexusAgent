@@ -19,6 +19,7 @@
 - [任务实施规划提示词索引](planning/task-prompts/README.md)
 - [对外 API 契约](contracts/openapi.yaml)
 - [Plugin Bridge 平台契约](../platform/contracts/plugin-inventory.schema.json)
+- [P1 公共契约与任务状态机](../platform/contracts/task-state.schema.json)：P1-01 基线，覆盖统一 ID、TaskRequest、TaskState、EventEnvelope、Artifact/Credential 引用和状态转移测试。
 - [服务功能与整合蓝图](architecture/service-blueprint.md)：P0-07 基线，覆盖十个基础服务的功能、技术栈、输入输出、复用边界、参考项目和 P1 工作包。
 - [DSH 版本兼容与替换策略](architecture/dsh-versioning-and-replacement.md)
 - [上游版本适配与社区插件复用桥接策略](architecture/upstream-versioning-and-plugin-bridge.md)

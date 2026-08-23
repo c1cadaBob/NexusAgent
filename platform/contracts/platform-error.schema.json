@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://nexusagent.local/contracts/platform-error.schema.json",
   "title": "NexusAgent PlatformError",
-  "description": "P0 draft for public platform error responses. Codes are platform-owned and do not expose internal implementation identifiers.",
+  "description": "Public platform error responses. Codes are platform-owned and do not expose internal implementation identifiers.",
   "type": "object",
   "additionalProperties": false,
   "required": ["code", "message", "trace_id"],
@@ -19,6 +19,9 @@
         "PLATFORM_POLICY_DENIED",
         "PLATFORM_APPROVAL_REQUIRED",
         "PLATFORM_TASK_NOT_CANCELABLE",
+        "PLATFORM_INVALID_STATE_TRANSITION",
+        "PLATFORM_CROSS_TENANT_ID",
+        "PLATFORM_SCHEMA_VALIDATION_FAILED",
         "PLATFORM_PROVIDER_UNAVAILABLE",
         "PLATFORM_TIMEOUT",
         "PLATFORM_INTERNAL_ERROR"
