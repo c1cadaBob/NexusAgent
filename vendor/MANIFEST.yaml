@@ -1,0 +1,86 @@
+generated_at_utc: 2026-08-22T08:52:31Z
+project_root: /opt/project/NexusAgent
+snapshot_policy:
+  excluded_directories:
+    - .git
+    - .hg
+    - .svn
+    - node_modules
+    - .pnpm-store
+    - .yarn/cache
+    - dist
+    - build
+    - out
+    - coverage
+    - .cache
+    - .turbo
+    - .next
+    - .vite
+    - .venv
+    - venv
+    - env
+    - __pycache__
+    - .pytest_cache
+    - .ruff_cache
+    - .mypy_cache
+  excluded_files:
+    - "*.py[cod]"
+    - "*.log"
+sources:
+  - upstream_name: Hermes
+    vendor_name: hermes-agent-main
+    internal_role: planner-only
+    source_path: /opt/project/hermes-agent-main
+    vendor_path: /opt/project/NexusAgent/vendor/hermes-agent-main
+    version: "0.20.5"
+    snapshot_time_utc: 2026-08-22T08:52:31Z
+    upstream_commit: "【待确认问题】"
+    upstream_remote: "【待确认问题】"
+    file_manifest_sha256: "7407f4aa1c4b7058c4df8bad02b07be45e0bc2d321804095a3873550dad46d3a"
+    tree_sha256: "7407f4aa1c4b7058c4df8bad02b07be45e0bc2d321804095a3873550dad46d3a"
+    local_patches:
+      - task_id: P0-03
+        description: "NexusAgent opt-in Hermes planner-only experiment guard"
+        decision_record: docs/decisions/P0-hermes-planner-only.md
+        files:
+          - vendor/hermes-agent-main/agent/nexus_planner_only_experiment.py
+          - vendor/hermes-agent-main/agent/conversation_loop.py
+          - vendor/hermes-agent-main/agent/tool_executor.py
+          - vendor/hermes-agent-main/agent/memory_manager.py
+          - vendor/hermes-agent-main/tools/memory_tool.py
+          - vendor/hermes-agent-main/hermes_cli/loops.py
+          - vendor/hermes-agent-main/tests/agent/test_nexus_planner_only_experiment.py
+          - vendor/hermes-agent-main/tests/hermes_cli/test_nexus_planner_only_loop.py
+  - upstream_name: OpenClaw
+    vendor_name: openclaw-main
+    internal_role: gateway-only
+    source_path: /opt/project/openclaw-main
+    vendor_path: /opt/project/NexusAgent/vendor/openclaw-main
+    version: "2026.8.1"
+    snapshot_time_utc: 2026-08-22T08:52:31Z
+    upstream_commit: "【待确认问题】"
+    upstream_remote: "【待确认问题】"
+    file_manifest_sha256: "ba6799694e6aabe947b110bd1091cac0c015c1b008d96ca924fc6daa45422a91"
+    tree_sha256: "ba6799694e6aabe947b110bd1091cac0c015c1b008d96ca924fc6daa45422a91"
+    local_patches: []
+  - upstream_name: DSH
+    vendor_name: deepseek-harness-master
+    internal_role: executor-only
+    source_path: /opt/project/deepseek-harness-master
+    vendor_path: /opt/project/NexusAgent/vendor/deepseek-harness-master
+    version: "0.1.1-rc.2"
+    snapshot_time_utc: 2026-08-22T08:52:31Z
+    upstream_commit: "【待确认问题】"
+    upstream_remote: "【待确认问题】"
+    file_manifest_sha256: "e73c0ee88a4d5522e8d37a8ffc9cc3204d777a829810d302267a10c9c1048b25"
+    tree_sha256: "e73c0ee88a4d5522e8d37a8ffc9cc3204d777a829810d302267a10c9c1048b25"
+    local_patches:
+      - task_id: P0-04
+        description: "NexusAgent opt-in DSH executor-only experiment guard"
+        decision_record: docs/decisions/P0-dsh-executor-only.md
+        files:
+          - vendor/deepseek-harness-master/packages/core/agent-loop/src/nexus-executor-only-experiment.ts
+          - vendor/deepseek-harness-master/packages/core/agent-loop/src/agent.ts
+          - vendor/deepseek-harness-master/packages/core/agent-loop/src/index.ts
+          - vendor/deepseek-harness-master/packages/core/agent-loop/src/tool-calls.ts
+          - vendor/deepseek-harness-master/packages/core/agent-loop/tests/nexus-executor-only-experiment.spec.ts

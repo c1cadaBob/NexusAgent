@@ -1,0 +1,15 @@
+version: 1
+mode: development
+hot_reload: true
+debug_ports: true
+services:
+  platform-api: { command: "development placeholder", source: "product/api" }
+  web-console: { command: "development placeholder", source: "product/web-console" }
+  openclaw-adapter: { command: "development placeholder", source: "platform/adapters/openclaw" }
+  dsh-adapter: { command: "development placeholder", source: "platform/adapters/dsh" }
+  hermes-adapter: { command: "development placeholder", source: "platform/adapters/hermes" }
+  memory-gateway: { command: "development placeholder", source: "platform/memory-gateway" }
+  artifact-store: { command: "development placeholder", source: "platform/artifact-store" }
+  event-bus: { command: "development placeholder", source: "platform/event-bus" }
+  credential-center: { command: "development placeholder", source: "platform/credentials" }
+  observability: { command: "development placeholder", source: "platform/observability" }

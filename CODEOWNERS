@@ -1,0 +1,13 @@
+# Platform kernel and cross-service contracts
+/platform/ @nexus-platform
+/docs/contracts/ @nexus-architecture
+
+# Product-facing API and console
+/product/ @nexus-product
+
+# Delivery, release, and operations
+/deploy/ @nexus-devops
+/scripts/ @nexus-devops
+
+# Tests and evaluation assets
+/tests/ @nexus-qa

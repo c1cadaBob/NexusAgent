@@ -1,0 +1,1096 @@
+openapi: 3.1.0
+info:
+  title: NexusAgent Platform API
+  version: 0.1.0-p0
+  summary: Unified public REST API for NexusAgent platform resources.
+  description: >-
+    P0 draft of the public NexusAgent API. The contract exposes only platform
+    resources: tasks, attempts, executions, skills, capabilities, memory,
+    tenants, approvals, plugin governance, artifacts, audit references, and
+    health. Internal implementation details, internal component brands, raw
+    endpoint references, internal error identifiers, and internal storage
+    locations are intentionally excluded.
+  license:
+    name: Internal planning draft
+    identifier: LicenseRef-NexusAgent-Planning-Draft
+servers:
+  - url: https://api.nexusagent.local
+    description: Platform API base URL placeholder for deployment-specific routing
+security:
+  - bearerAuth: []
+tags:
+  - name: health
+    description: Platform liveness and readiness checks.
+  - name: tasks
+    description: Task submission, state, cancellation, retry, and event reads.
+  - name: skills
+    description: Platform skill catalog operations.
+  - name: capabilities
+    description: Approved platform capabilities available to callers.
+  - name: memory
+    description: Memory access through the platform memory gateway.
+  - name: tenants
+    description: Tenant administration and visibility.
+  - name: approvals
+    description: Human or policy approval workflow.
+  - name: plugin-governance
+    description: Administrator-only plugin inventory and admission workflow.
+paths:
+  /v1/health:
+    get:
+      tags: [health]
+      operationId: getHealth
+      summary: Read platform health.
+      security: []
+      responses:
+        '200':
+          description: Platform is reachable.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthStatus'
+        '429':
+          $ref: '#/components/responses/PlatformError'
+        '503':
+          $ref: '#/components/responses/PlatformError'
+  /v1/tasks:
+    post:
+      tags: [tasks]
+      operationId: createTask
+      summary: Submit a platform task.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TaskRequest'
+      responses:
+        '202':
+          description: Task accepted.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+        '400':
+          $ref: '#/components/responses/PlatformError'
+        '401':
+          $ref: '#/components/responses/PlatformError'
+        '403':
+          $ref: '#/components/responses/PlatformError'
+        '409':
+          $ref: '#/components/responses/PlatformError'
+    get:
+      tags: [tasks]
+      operationId: listTasks
+      summary: List tasks visible to the caller.
+      parameters:
+        - $ref: '#/components/parameters/TenantIdQuery'
+        - $ref: '#/components/parameters/StateQuery'
+        - $ref: '#/components/parameters/LimitQuery'
+        - $ref: '#/components/parameters/CursorQuery'
+      responses:
+        '200':
+          description: Task list.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskList'
+        '401':
+          $ref: '#/components/responses/PlatformError'
+        '403':
+          $ref: '#/components/responses/PlatformError'
+  /v1/tasks/{task_id}:
+    parameters:
+      - $ref: '#/components/parameters/TaskId'
+    get:
+      tags: [tasks]
+      operationId: getTask
+      summary: Read a task and its current platform state.
+      responses:
+        '200':
+          description: Task.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+        '401':
+          $ref: '#/components/responses/PlatformError'
+        '403':
+          $ref: '#/components/responses/PlatformError'
+        '404':
+          $ref: '#/components/responses/PlatformError'
+  /v1/tasks/{task_id}/cancel:
+    post:
+      tags: [tasks]
+      operationId: cancelTask
+      summary: Request cancellation of the active task attempt.
+      parameters:
+        - $ref: '#/components/parameters/TaskId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TaskCancelRequest'
+      responses:
+        '202':
+          description: Cancellation accepted.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+        '400':
+          $ref: '#/components/responses/PlatformError'
+        '401':
+          $ref: '#/components/responses/PlatformError'
+        '403':
+          $ref: '#/components/responses/PlatformError'
+        '404':
+          $ref: '#/components/responses/PlatformError'
+        '409':
+          $ref: '#/components/responses/PlatformError'
+  /v1/tasks/{task_id}/retry:
+    post:
+      tags: [tasks]
+      operationId: retryTask
+      summary: Start a new attempt for a retryable task.
+      parameters:
+        - $ref: '#/components/parameters/TaskId'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TaskRetryRequest'
+      responses:
+        '202':
+          description: Retry accepted.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+        '401':
+          $ref: '#/components/responses/PlatformError'
+        '403':
+          $ref: '#/components/responses/PlatformError'
+        '404':
+          $ref: '#/components/responses/PlatformError'
+        '409':
+          $ref: '#/components/responses/PlatformError'
+  /v1/tasks/{task_id}/events:
+    get:
+      tags: [tasks]
+      operationId: listTaskEvents
+      summary: List platform events for one task.
+      parameters:
+        - $ref: '#/components/parameters/TaskId'
+        - $ref: '#/components/parameters/LimitQuery'
+        - $ref: '#/components/parameters/CursorQuery'
+      responses:
+        '200':
+          description: Task event list.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EventList'
+        '401':
+          $ref: '#/components/responses/PlatformError'
+        '403':
+          $ref: '#/components/responses/PlatformError'
+        '404':
+          $ref: '#/components/responses/PlatformError'
+  /v1/skills:
+    get:
+      tags: [skills]
+      operationId: listSkills
+      summary: List platform skills.
+      parameters:
+        - $ref: '#/components/parameters/TenantIdQuery'
+        - $ref: '#/components/parameters/LimitQuery'
+        - $ref: '#/components/parameters/CursorQuery'
+      responses:
+        '200':
+          description: Skill list.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SkillList'
+        '401':
+          $ref: '#/components/responses/PlatformError'
+        '403':
+          $ref: '#/components/responses/PlatformError'
+  /v1/capabilities:
+    get:
+      tags: [capabilities]
+      operationId: listCapabilities
+      summary: List approved platform capabilities visible to the caller.
+      parameters:
+        - $ref: '#/components/parameters/TenantIdQuery'
+        - $ref: '#/components/parameters/LimitQuery'
+        - $ref: '#/components/parameters/CursorQuery'
+      responses:
+        '200':
+          description: Capability list.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CapabilityList'
+        '401':
+          $ref: '#/components/responses/PlatformError'
+        '403':
+          $ref: '#/components/responses/PlatformError'
+  /v1/memory/search:
+    post:
+      tags: [memory]
+      operationId: searchMemory
+      summary: Search memory through the platform gateway.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MemorySearchRequest'
+      responses:
+        '200':
+          description: Memory search results.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MemorySearchResultList'
+        '400':
+          $ref: '#/components/responses/PlatformError'
+        '401':
+          $ref: '#/components/responses/PlatformError'
+        '403':
+          $ref: '#/components/responses/PlatformError'
+  /v1/tenants:
+    get:
+      tags: [tenants]
+      operationId: listTenants
+      summary: List tenants visible to an administrator.
+      parameters:
+        - $ref: '#/components/parameters/LimitQuery'
+        - $ref: '#/components/parameters/CursorQuery'
+      responses:
+        '200':
+          description: Tenant list.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TenantList'
+        '401':
+          $ref: '#/components/responses/PlatformError'
+        '403':
+          $ref: '#/components/responses/PlatformError'
+  /v1/approvals:
+    get:
+      tags: [approvals]
+      operationId: listApprovals
+      summary: List approvals visible to the caller.
+      parameters:
+        - $ref: '#/components/parameters/TenantIdQuery'
+        - $ref: '#/components/parameters/LimitQuery'
+        - $ref: '#/components/parameters/CursorQuery'
+      responses:
+        '200':
+          description: Approval list.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApprovalList'
+        '401':
+          $ref: '#/components/responses/PlatformError'
+        '403':
+          $ref: '#/components/responses/PlatformError'
+  /v1/approvals/{approval_id}/decision:
+    post:
+      tags: [approvals]
+      operationId: decideApproval
+      summary: Approve or reject a pending approval.
+      parameters:
+        - $ref: '#/components/parameters/ApprovalId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApprovalDecisionRequest'
+      responses:
+        '200':
+          description: Updated approval.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Approval'
+        '400':
+          $ref: '#/components/responses/PlatformError'
+        '401':
+          $ref: '#/components/responses/PlatformError'
+        '403':
+          $ref: '#/components/responses/PlatformError'
+        '404':
+          $ref: '#/components/responses/PlatformError'
+        '409':
+          $ref: '#/components/responses/PlatformError'
+  /v1/admin/plugins:
+    get:
+      tags: [plugin-governance]
+      operationId: listPluginInventory
+      summary: List plugin inventory entries for platform administrators.
+      parameters:
+        - $ref: '#/components/parameters/LimitQuery'
+        - $ref: '#/components/parameters/CursorQuery'
+      responses:
+        '200':
+          description: Plugin inventory list.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PluginInventoryList'
+        '401':
+          $ref: '#/components/responses/PlatformError'
+        '403':
+          $ref: '#/components/responses/PlatformError'
+  /v1/admin/plugins/import:
+    post:
+      tags: [plugin-governance]
+      operationId: importPluginInventoryEntry
+      summary: Import a plugin candidate into the platform inventory.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PluginImportRequest'
+      responses:
+        '202':
+          description: Plugin candidate accepted for scan.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PluginInventoryEntry'
+        '400':
+          $ref: '#/components/responses/PlatformError'
+        '401':
+          $ref: '#/components/responses/PlatformError'
+        '403':
+          $ref: '#/components/responses/PlatformError'
+  /v1/admin/plugins/{plugin_id}/admission:
+    post:
+      tags: [plugin-governance]
+      operationId: decidePluginAdmission
+      summary: Approve, disable, or reject a plugin inventory entry.
+      parameters:
+        - $ref: '#/components/parameters/PluginId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PluginAdmissionDecision'
+      responses:
+        '200':
+          description: Updated plugin inventory entry.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PluginInventoryEntry'
+        '400':
+          $ref: '#/components/responses/PlatformError'
+        '401':
+          $ref: '#/components/responses/PlatformError'
+        '403':
+          $ref: '#/components/responses/PlatformError'
+        '404':
+          $ref: '#/components/responses/PlatformError'
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  parameters:
+    TaskId:
+      name: task_id
+      in: path
+      required: true
+      schema:
+        $ref: '#/components/schemas/TaskId'
+    ApprovalId:
+      name: approval_id
+      in: path
+      required: true
+      schema:
+        $ref: '#/components/schemas/ApprovalId'
+    PluginId:
+      name: plugin_id
+      in: path
+      required: true
+      schema:
+        $ref: '#/components/schemas/PluginId'
+    TenantIdQuery:
+      name: tenant_id
+      in: query
+      required: false
+      schema:
+        $ref: '#/components/schemas/TenantId'
+    StateQuery:
+      name: state
+      in: query
+      required: false
+      schema:
+        $ref: '#/components/schemas/TaskState'
+    LimitQuery:
+      name: limit
+      in: query
+      required: false
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 50
+    CursorQuery:
+      name: cursor
+      in: query
+      required: false
+      schema:
+        type: string
+        minLength: 1
+  responses:
+    PlatformError:
+      description: Platform error response.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/PlatformError'
+  schemas:
+    TenantId:
+      type: string
+      minLength: 1
+      pattern: '^tenant_[A-Za-z0-9_-]+$'
+    UserId:
+      type: string
+      minLength: 1
+      pattern: '^user_[A-Za-z0-9_-]+$'
+    AgentId:
+      type: string
+      minLength: 1
+      pattern: '^agent_[A-Za-z0-9_-]+$'
+    TaskId:
+      type: string
+      minLength: 1
+      pattern: '^task_[A-Za-z0-9_-]+$'
+    AttemptId:
+      type: string
+      minLength: 1
+      pattern: '^attempt_[A-Za-z0-9_-]+$'
+    ExecutionId:
+      type: string
+      minLength: 1
+      pattern: '^execution_[A-Za-z0-9_-]+$'
+    ConversationId:
+      type: string
+      minLength: 1
+      pattern: '^conversation_[A-Za-z0-9_-]+$'
+    ArtifactId:
+      type: string
+      minLength: 1
+      pattern: '^artifact_[A-Za-z0-9_-]+$'
+    TraceId:
+      type: string
+      minLength: 1
+      pattern: '^trace_[A-Za-z0-9_-]+$'
+    SkillId:
+      type: string
+      minLength: 1
+      pattern: '^skill_[A-Za-z0-9_-]+$'
+    CapabilityId:
+      type: string
+      minLength: 1
+      pattern: '^capability_[A-Za-z0-9_-]+$'
+    ApprovalId:
+      type: string
+      minLength: 1
+      pattern: '^approval_[A-Za-z0-9_-]+$'
+    PluginId:
+      type: string
+      minLength: 1
+      pattern: '^plugin_[A-Za-z0-9_-]+$'
+    Timestamp:
+      type: string
+      format: date-time
+      description: UTC timestamp in RFC 3339 format.
+    TaskState:
+      type: string
+      enum:
+        - queued
+        - awaiting_approval
+        - planning
+        - executing
+        - paused
+        - cancel_requested
+        - canceled
+        - succeeded
+        - failed
+        - expired
+    TaskRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - tenant_id
+        - user_id
+        - agent_id
+        - conversation_id
+        - input
+        - trace_id
+      properties:
+        tenant_id:
+          $ref: '#/components/schemas/TenantId'
+        user_id:
+          $ref: '#/components/schemas/UserId'
+        agent_id:
+          $ref: '#/components/schemas/AgentId'
+        conversation_id:
+          $ref: '#/components/schemas/ConversationId'
+        input:
+          type: string
+          minLength: 1
+          maxLength: 64000
+        skill_id:
+          $ref: '#/components/schemas/SkillId'
+        capability_ids:
+          type: array
+          maxItems: 50
+          items:
+            $ref: '#/components/schemas/CapabilityId'
+        artifact_ids:
+          type: array
+          maxItems: 100
+          items:
+            $ref: '#/components/schemas/ArtifactId'
+        budget:
+          $ref: '#/components/schemas/TaskBudget'
+        metadata:
+          type: object
+          additionalProperties:
+            type: string
+        idempotency_key:
+          type: string
+          minLength: 1
+          maxLength: 128
+        trace_id:
+          $ref: '#/components/schemas/TraceId'
+    TaskBudget:
+      type: object
+      additionalProperties: false
+      properties:
+        max_input_tokens:
+          type: integer
+          minimum: 1
+        max_output_tokens:
+          type: integer
+          minimum: 1
+        max_execution_seconds:
+          type: integer
+          minimum: 1
+        max_cost_usd:
+          type: number
+          minimum: 0
+    Task:
+      type: object
+      additionalProperties: false
+      required:
+        - tenant_id
+        - user_id
+        - agent_id
+        - task_id
+        - attempt_id
+        - conversation_id
+        - state
+        - trace_id
+        - created_at
+        - updated_at
+      properties:
+        tenant_id:
+          $ref: '#/components/schemas/TenantId'
+        user_id:
+          $ref: '#/components/schemas/UserId'
+        agent_id:
+          $ref: '#/components/schemas/AgentId'
+        task_id:
+          $ref: '#/components/schemas/TaskId'
+        attempt_id:
+          $ref: '#/components/schemas/AttemptId'
+        execution_id:
+          $ref: '#/components/schemas/ExecutionId'
+        conversation_id:
+          $ref: '#/components/schemas/ConversationId'
+        state:
+          $ref: '#/components/schemas/TaskState'
+        summary:
+          type: string
+        artifact_ids:
+          type: array
+          items:
+            $ref: '#/components/schemas/ArtifactId'
+        approval_id:
+          $ref: '#/components/schemas/ApprovalId'
+        trace_id:
+          $ref: '#/components/schemas/TraceId'
+        created_at:
+          $ref: '#/components/schemas/Timestamp'
+        updated_at:
+          $ref: '#/components/schemas/Timestamp'
+    TaskList:
+      type: object
+      additionalProperties: false
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Task'
+        next_cursor:
+          type: string
+    TaskCancelRequest:
+      type: object
+      additionalProperties: false
+      required: [reason, trace_id]
+      properties:
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 1000
+        trace_id:
+          $ref: '#/components/schemas/TraceId'
+    TaskRetryRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        reason:
+          type: string
+          maxLength: 1000
+        trace_id:
+          $ref: '#/components/schemas/TraceId'
+    EventEnvelope:
+      type: object
+      additionalProperties: false
+      required:
+        - event_id
+        - event_type
+        - tenant_id
+        - task_id
+        - trace_id
+        - occurred_at
+        - payload
+      properties:
+        event_id:
+          type: string
+          minLength: 1
+        event_type:
+          type: string
+          enum:
+            - task.accepted
+            - task.state_changed
+            - task.approval_required
+            - task.cancellation_requested
+            - task.completed
+            - task.failed
+            - artifact.created
+            - memory.accessed
+            - approval.decided
+        tenant_id:
+          $ref: '#/components/schemas/TenantId'
+        task_id:
+          $ref: '#/components/schemas/TaskId'
+        attempt_id:
+          $ref: '#/components/schemas/AttemptId'
+        execution_id:
+          $ref: '#/components/schemas/ExecutionId'
+        trace_id:
+          $ref: '#/components/schemas/TraceId'
+        occurred_at:
+          $ref: '#/components/schemas/Timestamp'
+        payload:
+          type: object
+    EventList:
+      type: object
+      additionalProperties: false
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/EventEnvelope'
+        next_cursor:
+          type: string
+    Skill:
+      type: object
+      additionalProperties: false
+      required: [skill_id, tenant_id, display_name, status, version]
+      properties:
+        skill_id:
+          $ref: '#/components/schemas/SkillId'
+        tenant_id:
+          $ref: '#/components/schemas/TenantId'
+        display_name:
+          type: string
+          minLength: 1
+        description:
+          type: string
+        status:
+          type: string
+          enum: [draft, enabled, disabled, archived]
+        version:
+          type: string
+          minLength: 1
+        capability_ids:
+          type: array
+          items:
+            $ref: '#/components/schemas/CapabilityId'
+    SkillList:
+      type: object
+      additionalProperties: false
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Skill'
+        next_cursor:
+          type: string
+    CapabilityDescriptor:
+      type: object
+      additionalProperties: false
+      required:
+        - capability_id
+        - capability_type
+        - display_name
+        - status
+        - risk_level
+      properties:
+        capability_id:
+          $ref: '#/components/schemas/CapabilityId'
+        capability_type:
+          type: string
+          enum: [channel, message_transform, skill, mcp_server, tool, planner_hint]
+        display_name:
+          type: string
+          minLength: 1
+        description:
+          type: string
+        status:
+          type: string
+          enum: [approved, enabled, disabled, pending_review]
+        risk_level:
+          type: string
+          enum: [low, medium, high, critical]
+        required_permissions:
+          type: array
+          items:
+            type: string
+        required_credentials:
+          type: array
+          items:
+            type: string
+    CapabilityList:
+      type: object
+      additionalProperties: false
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/CapabilityDescriptor'
+        next_cursor:
+          type: string
+    MemorySearchRequest:
+      type: object
+      additionalProperties: false
+      required: [tenant_id, user_id, query, trace_id]
+      properties:
+        tenant_id:
+          $ref: '#/components/schemas/TenantId'
+        user_id:
+          $ref: '#/components/schemas/UserId'
+        query:
+          type: string
+          minLength: 1
+          maxLength: 4000
+        scopes:
+          type: array
+          items:
+            type: string
+            enum: [conversation, user, agent, organization, audit_snapshot]
+        limit:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 20
+        trace_id:
+          $ref: '#/components/schemas/TraceId'
+    MemorySearchResult:
+      type: object
+      additionalProperties: false
+      required: [memory_id, tenant_id, scope, text, score, trace_id]
+      properties:
+        memory_id:
+          type: string
+          minLength: 1
+        tenant_id:
+          $ref: '#/components/schemas/TenantId'
+        scope:
+          type: string
+          enum: [conversation, user, agent, organization, audit_snapshot]
+        text:
+          type: string
+        score:
+          type: number
+          minimum: 0
+          maximum: 1
+        trace_id:
+          $ref: '#/components/schemas/TraceId'
+    MemorySearchResultList:
+      type: object
+      additionalProperties: false
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/MemorySearchResult'
+    Tenant:
+      type: object
+      additionalProperties: false
+      required: [tenant_id, name, status, created_at]
+      properties:
+        tenant_id:
+          $ref: '#/components/schemas/TenantId'
+        name:
+          type: string
+          minLength: 1
+        status:
+          type: string
+          enum: [active, suspended, archived]
+        created_at:
+          $ref: '#/components/schemas/Timestamp'
+    TenantList:
+      type: object
+      additionalProperties: false
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Tenant'
+        next_cursor:
+          type: string
+    Approval:
+      type: object
+      additionalProperties: false
+      required: [approval_id, tenant_id, task_id, status, requested_at, trace_id]
+      properties:
+        approval_id:
+          $ref: '#/components/schemas/ApprovalId'
+        tenant_id:
+          $ref: '#/components/schemas/TenantId'
+        task_id:
+          $ref: '#/components/schemas/TaskId'
+        attempt_id:
+          $ref: '#/components/schemas/AttemptId'
+        status:
+          type: string
+          enum: [pending, approved, rejected, expired, canceled]
+        reason:
+          type: string
+        requested_at:
+          $ref: '#/components/schemas/Timestamp'
+        decided_at:
+          $ref: '#/components/schemas/Timestamp'
+        trace_id:
+          $ref: '#/components/schemas/TraceId'
+    ApprovalList:
+      type: object
+      additionalProperties: false
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Approval'
+        next_cursor:
+          type: string
+    ApprovalDecisionRequest:
+      type: object
+      additionalProperties: false
+      required: [decision, reason, trace_id]
+      properties:
+        decision:
+          type: string
+          enum: [approve, reject]
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 1000
+        trace_id:
+          $ref: '#/components/schemas/TraceId'
+    PluginInventoryEntry:
+      type: object
+      additionalProperties: false
+      required:
+        - plugin_id
+        - display_name
+        - source_kind
+        - version
+        - sha256
+        - license
+        - risk_level
+        - allowlist_status
+        - trace_id
+      properties:
+        plugin_id:
+          $ref: '#/components/schemas/PluginId'
+        display_name:
+          type: string
+          minLength: 1
+        source_kind:
+          type: string
+          enum: [marketplace, package_registry, git_repository, local_snapshot, mcp_manifest]
+        version:
+          type: string
+          minLength: 1
+        sha256:
+          type: string
+          minLength: 64
+          maxLength: 64
+        license:
+          type: string
+          minLength: 1
+        risk_level:
+          type: string
+          enum: [low, medium, high, critical]
+        allowlist_status:
+          type: string
+          enum: [pending_scan, pending_review, approved, disabled, rejected]
+        capability_ids:
+          type: array
+          items:
+            $ref: '#/components/schemas/CapabilityId'
+        trace_id:
+          $ref: '#/components/schemas/TraceId'
+    PluginInventoryList:
+      type: object
+      additionalProperties: false
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/PluginInventoryEntry'
+        next_cursor:
+          type: string
+    PluginImportRequest:
+      type: object
+      additionalProperties: false
+      required: [source_kind, source_ref, trace_id]
+      properties:
+        source_kind:
+          type: string
+          enum: [marketplace, package_registry, git_repository, local_snapshot, mcp_manifest]
+        source_ref:
+          type: string
+          minLength: 1
+          description: Platform-side import reference visible only to administrators.
+        expected_sha256:
+          type: string
+          minLength: 64
+          maxLength: 64
+        trace_id:
+          $ref: '#/components/schemas/TraceId'
+    PluginAdmissionDecision:
+      type: object
+      additionalProperties: false
+      required: [decision, reason, trace_id]
+      properties:
+        decision:
+          type: string
+          enum: [approve, disable, reject]
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 1000
+        tenant_scope:
+          type: array
+          items:
+            $ref: '#/components/schemas/TenantId'
+        trace_id:
+          $ref: '#/components/schemas/TraceId'
+    HealthStatus:
+      type: object
+      additionalProperties: false
+      required: [status, checked_at, service, trace_id]
+      properties:
+        status:
+          type: string
+          enum: [ok, degraded, unavailable]
+        checked_at:
+          $ref: '#/components/schemas/Timestamp'
+        service:
+          type: string
+          const: nexusagent-platform-api
+        trace_id:
+          $ref: '#/components/schemas/TraceId'
+        dependencies:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required: [name, status]
+            properties:
+              name:
+                type: string
+                enum:
+                  - coordinator
+                  - policy_gate
+                  - event_bus
+                  - task_state
+                  - memory_gateway
+                  - artifact_store
+                  - credential_center
+                  - tenancy
+                  - rbac
+                  - audit
+                  - observability
+              status:
+                type: string
+                enum: [ok, degraded, unavailable]
+    PlatformErrorCode:
+      type: string
+      enum:
+        - PLATFORM_INVALID_REQUEST
+        - PLATFORM_UNAUTHENTICATED
+        - PLATFORM_FORBIDDEN
+        - PLATFORM_NOT_FOUND
+        - PLATFORM_CONFLICT
+        - PLATFORM_RATE_LIMITED
+        - PLATFORM_POLICY_DENIED
+        - PLATFORM_APPROVAL_REQUIRED
+        - PLATFORM_TASK_NOT_CANCELABLE
+        - PLATFORM_PROVIDER_UNAVAILABLE
+        - PLATFORM_TIMEOUT
+        - PLATFORM_INTERNAL_ERROR
+    PlatformError:
+      type: object
+      additionalProperties: false
+      required: [code, message, trace_id]
+      properties:
+        code:
+          $ref: '#/components/schemas/PlatformErrorCode'
+        message:
+          type: string
+          minLength: 1
+        trace_id:
+          $ref: '#/components/schemas/TraceId'
+        details:
+          type: object
+          additionalProperties: true
