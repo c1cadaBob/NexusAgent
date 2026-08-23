@@ -4,7 +4,7 @@
 >
 > 评审日期 UTC：2026-08-23。
 >
-> 关闭任务/commit：P0-GATE-COMMIT-1（待回填）。
+> 关闭任务/commit：568014bebb2ae256b1d86a9618adde1abd6c24d1。
 
 ## 1. 门禁结论
 
@@ -37,10 +37,10 @@ P0 阶段允许进入后续阶段。P0-01 至 P0-11 已在 `main` 上完成并�
 
 | 问题ID | 确认结论 | 解决说明文档 | 关闭任务/commit |
 |---|---|---|---|
-| OQ-UPSTREAM-004 | 接受默认快照策略：长期排除构建产物、缓存、日志和依赖目录，以源码快照、排除规则和可复现 hash 作为交付口径。 | `docs/planning/open-questions/P0-resolution-plan.md` | P0-GATE-COMMIT-1（待回填） |
-| OQ-SCHEDULE-001 | 接受默认容量模型：采用 8-10 个核心角色基线，保留 4-5 人降级排期；实际容量变化触发后续重排。 | `docs/planning/open-questions/P0-resolution-plan.md` | P0-GATE-COMMIT-1（待回填） |
-| OQ-SCHEDULE-002 | 接受默认日历策略：按当前排期基线和冻结缓冲推进；真实节假日或发布冻结窗口变化触发后续重排。 | `docs/planning/open-questions/P0-resolution-plan.md` | P0-GATE-COMMIT-1（待回填） |
-| OQ-CHANNEL-001 | 接受默认首批渠道：钉钉、飞书、Telegram；企业微信、Slack 等新增渠道作为 P4/P5 范围变更处理。 | `docs/planning/open-questions/P0-resolution-plan.md`、`docs/planning/open-questions/P4-resolution-plan.md` | P0-GATE-COMMIT-1（待回填） |
+| OQ-UPSTREAM-004 | 接受默认快照策略：长期排除构建产物、缓存、日志和依赖目录，以源码快照、排除规则和可复现 hash 作为交付口径。 | `docs/planning/open-questions/P0-resolution-plan.md` | 568014bebb2ae256b1d86a9618adde1abd6c24d1 |
+| OQ-SCHEDULE-001 | 接受默认容量模型：采用 8-10 个核心角色基线，保留 4-5 人降级排期；实际容量变化触发后续重排。 | `docs/planning/open-questions/P0-resolution-plan.md` | 568014bebb2ae256b1d86a9618adde1abd6c24d1 |
+| OQ-SCHEDULE-002 | 接受默认日历策略：按当前排期基线和冻结缓冲推进；真实节假日或发布冻结窗口变化触发后续重排。 | `docs/planning/open-questions/P0-resolution-plan.md` | 568014bebb2ae256b1d86a9618adde1abd6c24d1 |
+| OQ-CHANNEL-001 | 接受默认首批渠道：钉钉、飞书、Telegram；企业微信、Slack 等新增渠道作为 P4/P5 范围变更处理。 | `docs/planning/open-questions/P0-resolution-plan.md`、`docs/planning/open-questions/P4-resolution-plan.md` | 568014bebb2ae256b1d86a9618adde1abd6c24d1 |
 
 ## 4. 仍为自动确认的问题
 

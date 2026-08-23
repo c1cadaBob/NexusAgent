@@ -361,9 +361,12 @@ for p0_gate_marker in \
   '历史问题回扫' \
   '当前阶段及之前阶段不存在 `打开` 问题' \
   '19 个问题仍为 `自动确认`' \
-  'P0-GATE-COMMIT-1'; do
+  '568014bebb2ae256b1d86a9618adde1abd6c24d1'; do
   rg -q "$p0_gate_marker" docs/planning/phase-gates/P0-gate-review.md || fail "P0 gate report marker missing: $p0_gate_marker"
 done
+if rg -q '待回填|P0-GATE-COMMIT-1' docs/planning/open-questions-register.md docs/planning/phase-gates/P0-gate-review.md docs/planning/open-questions/P0-resolution-plan.md; then
+  fail 'P0 gate closure records must not contain placeholder commit markers'
+fi
 if rg -q '方案 A|方案 B|方案 C|可另提方案' docs/planning/open-questions-register.md; then
   fail 'open questions register must not include candidate recommendation options'
 fi
