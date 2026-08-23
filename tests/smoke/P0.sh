@@ -246,10 +246,16 @@ for p0_10_marker in \
 done
 p0_11_prompt="docs/planning/task-prompts/P0/P0-11.md"
 [[ -f "$p0_11_prompt" ]] || fail 'P0-11 realtime planning prompt is missing'
+p0_11_audit_block="$(sed -n '/^# P0-11 修改记录包$/,/^## 完整提示词$/p' "$p0_11_prompt")"
+[[ -n "$p0_11_audit_block" ]] || fail 'P0-11 audit record package is missing'
+if printf '%s\n' "$p0_11_audit_block" | rg -q '待填写|\.\.\.'; then
+  fail 'P0-11 audit record package still contains placeholders'
+fi
 for p0_11_marker in \
   '实时规划提示词' \
   'P0 已自动确认问题同步修复' \
   'P0-01 至 P0-08' \
+  'P0-11 同步结果矩阵' \
   '先处理待确认问题，再进入下一步' \
   '自动确认` 不等于 `已关闭`' \
   '阶段门禁补充' \
@@ -258,6 +264,23 @@ for p0_11_marker in \
   '如果仍有未处理问题，必须创建或更新后续实时规划提示词' \
   '最低验收命令'; do
   rg -q "$p0_11_marker" "$p0_11_prompt" || fail "P0-11 realtime planning marker missing: $p0_11_marker"
+done
+for p0_sync_id in P0-01 P0-02 P0-03 P0-04 P0-05 P0-06 P0-07 P0-08; do
+  p0_sync_prompt="docs/planning/task-prompts/P0/${p0_sync_id}.md"
+  rg -q 'P0-11 待确认问题同步状态' "$p0_sync_prompt" || fail "${p0_sync_id} missing P0-11 OQ sync section"
+  rg -q '自动确认' "$p0_sync_prompt" || fail "${p0_sync_id} missing auto-confirmed OQ status"
+  rg -q 'docs/planning/open-questions/' "$p0_sync_prompt" || fail "${p0_sync_id} missing open questions confirmation file reference"
+  rg -q '已关闭' "$p0_sync_prompt" || fail "${p0_sync_id} missing closed-status guard"
+done
+for p0_sync_marker in \
+  'OQ-UPSTREAM-004' \
+  'OQ-CHANNEL-001' \
+  'OQ-MEMORY-001' \
+  'OQ-DSH-001' \
+  'OQ-API-001' \
+  'OQ-INFRA-001' \
+  'OQ-SCHEDULE-001'; do
+  rg -q "$p0_sync_marker" docs/planning/task-prompts/P0/P0-0{1,2,3,4,5,6,7,8}.md || fail "P0-11 sync marker missing from P0-01..P0-08: $p0_sync_marker"
 done
 for open_question_marker in \
   'NexusAgent 待确认问题集中台账' \
@@ -338,8 +361,11 @@ rg -q 'P0-09 待确认问题集中台账更新' docs/risks/risk-register.md || f
 rg -q 'P0-11 已新增实时规划提示词' docs/traceability/requirements-matrix.md || fail 'REQ-015 missing P0-11 realtime prompt status'
 rg -q 'P0-11 新增实时规划提示词执行规则' docs/risks/risk-register.md || fail 'risk register missing P0-11 realtime prompt update'
 rg -q 'P0-11 已补充阶段结束前历史问题回扫要求' docs/traceability/requirements-matrix.md || fail 'REQ-014 missing P0-11 stage history sweep status'
+rg -q 'P0-11 已把 P0-01 至 P0-08 的历史待确认问题同步为 OQ ID' docs/traceability/requirements-matrix.md || fail 'REQ-015 missing P0-11 sync completion status'
 rg -q '每个阶段结束前必须回扫当前阶段及其之前阶段' docs/risks/risk-register.md || fail 'risk register missing stage history sweep risk rule'
+rg -q 'P0-11 已把 P0-01 至 P0-08 的历史待确认问题回写为 `OQ-\*`' docs/risks/risk-register.md || fail 'risk register missing P0-11 sync completion status'
 rg -q '每个阶段结束前必须回扫当前阶段及其之前阶段' docs/README.md || fail 'docs README missing stage history sweep rule'
+rg -q 'P0-11 的 \[实时规划提示词\].*P0-01 至 P0-08 已 `自动确认`' docs/README.md || fail 'docs README missing P0-11 sync completion summary'
 
 for open_questions_plan in \
   docs/planning/open-questions/README.md \
