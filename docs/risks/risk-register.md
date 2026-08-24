@@ -15,7 +15,7 @@
 | R-009 | 实际团队容量低于排期基线导致关键路径延后 | 高 | P0 门禁已关闭 `OQ-SCHEDULE-001` 和 `OQ-SCHEDULE-002`，默认采用 8-10 核心角色容量模型、4-5 人降级排期和当前日历冻结缓冲；真实容量或冻结窗口变化由自动重排触发器处理 | P0-P8 |
 | R-010 | AI 自动生成排期时遗漏只读目录、上游不可见、防绕过或验收命令等高危约束 | 高 | P0-10 生成器已默认执行 `--check`，校验只读目录、差异化角色、集中台账、确认文件目录、阶段历史问题回扫和验收命令；显式 `--write --overwrite` 才允许覆盖已有提示词 | P0-P8 |
 | R-011 | 任务提示词文档与实施规划任务表不同步 | 中 | P0-10 已校验 45 个任务 ID 均有单独提示词文档，并把生成器检查纳入 P0 smoke；后续任务变更仍需同步运行生成器 `--check` | P0-P8 |
-| R-012 | 任务实现缺少修改前、修改过程、修改后验证审计记录 | 高 | P0-09 修改记录包纳入 P0 smoke 检查；P1-01/P1-02/P1-03/P1-04/P1-05/P1-06 已按实时规划规则先填写修改前分析并补过程/验证记录；P1 门禁报告已回扫 P0/P1 任务审计记录和仍为自动确认的问题，集中台账关闭项必须引用关闭任务/commit，后续阶段门禁仍需持续拒绝空白审计记录 | P0-P8 |
+| R-012 | 任务实现缺少修改前、修改过程、修改后验证审计记录 | 高 | P0-09 修改记录包纳入 P0 smoke 检查；P1-01/P1-02/P1-03/P1-04/P1-05/P1-06 已按实时规划规则先填写修改前分析并补过程/验证记录；P1 门禁报告已回扫 P0/P1 任务审计记录和仍为自动确认的问题；P2 门禁报告已回扫 P0/P1/P2 任务审计记录、修复 P1 审计文本占位式三点分支记号，并确认 P2-01/P2-02/P2-03/P2-04 修改记录包无占位；集中台账关闭项必须引用关闭任务/commit，后续阶段门禁仍需持续拒绝空白审计记录 | P0-P8 |
 | R-013 | 第三方插件绕过平台权限或直接调用原生宿主 | 极高 | 未验证 | P3-P8 |
 | R-014 | 第三方插件凭据、artifact 或日志泄漏 | 极高 | P1-04 已新增本地 Credential Center 引用/短租约元数据、Artifact Store metadata-only 事件、credential material 不进入 reference/audit/event 的安全测试；P2-03 已验证 DSH executor stdout/stderr/artifact candidates 入库前脱敏，artifact/event 只暴露 metadata；第三方插件恶意泄漏仍待 P3-P8 | P3-P8 |
 | R-015 | 第三方插件许可证、NOTICE 或再分发条款不清 | 高 | P0-05 已确认三大上游根许可证为 MIT，但插件、extras、native addon、vendored packages 和 THIRD_PARTY_NOTICE 仍需 P5/P8 或法务确认 | P0/P5/P8 |
@@ -88,6 +88,12 @@ DSH 不作为稳定平台契约，只作为内部 executor provider。P2 必须�
 - R-003/R-004：`tests/security/dsh-bypass.test.mjs` 已覆盖直接 adapter 调用、伪造 allow-like decision/header、伪造 trusted invocation、native-like payload、非法 execution_id、tenant mismatch 和 raw credential material 注入均失败。
 - R-007：`tests/security/dsh-network-isolation.test.mjs` 静态校验 `dsh-adapter` dev Compose 服务端口和 debug 端口仅绑定 loopback、`NEXUS_PUBLIC=false`、只接入 internal network，并确认 prod Compose 不含 DSH dev port、debug、`--inspect` 或 hot reload。
 - 遗留风险：P2-04 关闭 P2 最小防绕过、静态端口隔离和回滚证据，不代表真实容器/内核 sandbox、sidecar 权限、跨进程网络策略或生产故障注入已关闭；这些继续由 P6/P8 验证。
+
+## P2 阶段门禁收口更新
+
+- R-012：`docs/planning/phase-gates/P2-gate-review.md` 已回扫 P0-01 至 P2-04 任务文档、P0/P1 门禁、OQ 台账、需求追踪矩阵、风险登记册和 P0/P1/P2 smoke；P1-01 至 P1-05 审计记录中的旧三点分支记号已改为非占位描述。
+- R-001/R-004/R-016：P2 门禁确认 P2-01 至 P2-04 均通过，DSH provider registry、防腐 adapter、sandbox/artifact/event controls、防绕过、静态端口隔离和 fixture rollback 证据齐备。
+- 遗留风险：P2 自身收口不关闭 P3/P4 provider、P6 故障注入或 P8 生产基础设施风险；`OQ-UPSTREAM-003`、`OQ-DSH-001`、`OQ-DSH-002` 继续保持自动确认并由 P6/P8 关闭。
 
 ## P0-06 平台 OpenAPI 初稿更新
 
