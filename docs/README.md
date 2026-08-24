@@ -31,6 +31,7 @@
 - [P2 DSH executor provider registry](../platform/adapters/dsh/index.ts)：P2-01 基线，固定 `dsh-0.1.1-rc.2` 默认 provider，覆盖 provider 启用/禁用、默认切换、回滚、native loop 阻断和 `tests/smoke/P2.sh`。
 - [P2 DSH 防腐适配器](../platform/adapters/dsh/index.ts)：P2-02 基线，覆盖平台 `ExecutionRequest` / `ExecutionResult` schema、`DshExecutorAdapter`、provider 内部映射、contract fixture、Coordinator/Policy-Gate 集成和原生字段清洗测试。
 - [P2 DSH 沙箱、Artifact 与执行事件](../platform/adapters/dsh/index.ts)：P2-03 基线，覆盖 `resource_budget`、sandbox/network 静态门禁、stdout/stderr 脱敏入库、`ArtifactReference` 追踪和 adapter execution/sandbox Event Bus 事件。
+- [P2 DSH 集成、防绕过与回滚](../platform/adapters/dsh/index.ts)：P2-04 基线，覆盖直接调用/伪造决策/native payload/raw credential 拒绝、dev/prod 端口隔离静态校验和 provider failover/rollback 测试。
 - [服务功能与整合蓝图](architecture/service-blueprint.md)：P0-07 基线，覆盖十个基础服务的功能、技术栈、输入输出、复用边界、参考项目和 P1 工作包。
 - [DSH 版本兼容与替换策略](architecture/dsh-versioning-and-replacement.md)
 - [上游版本适配与社区插件复用桥接策略](architecture/upstream-versioning-and-plugin-bridge.md)

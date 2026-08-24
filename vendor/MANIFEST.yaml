@@ -127,3 +127,12 @@ sources:
           - tests/integration/dsh-artifact-events.test.mjs
           - tests/security/dsh-sandbox-credential.test.mjs
           - tests/smoke/P2.sh
+      - task_id: P2-04
+        description: "NexusAgent P2 DSH integration bypass and failover checks"
+        decision_record: docs/planning/task-prompts/P2/P2-04.md
+        files:
+          - platform/adapters/dsh/index.ts
+          - tests/security/dsh-bypass.test.mjs
+          - tests/security/dsh-network-isolation.test.mjs
+          - tests/integration/dsh-adapter-failover.test.mjs
+          - tests/smoke/P2.sh

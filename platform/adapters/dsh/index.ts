@@ -1347,6 +1347,11 @@ function isForbiddenNativeField(key: string): boolean {
     "vendor_path",
     "native_path",
     "session_id",
+    "credential_material",
+    "raw_credential",
+    "api_key",
+    "password",
+    "token",
     "secret_value",
     "plaintext",
   ].includes(key);
