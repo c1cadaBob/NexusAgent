@@ -41,3 +41,5 @@ P2-01 进展：`platform/adapters/dsh/index.ts` 已新增 `DshProviderRegistry`�
 关闭证据：文件/网络越权测试失败、取消语义可追踪、artifact 入库成功、stdout/stderr 无明文凭据、直接调用 DSH 原生 agent-loop 失败。
 
 P2-01 进展：vendor guard 已在 scheduler 前校验平台取消请求，`nexus.execution_event.p2.v1` 可表达 `execution.cancelled`；`nexus-executor-only-provider.spec.ts` 覆盖取消不进入 native tool dispatch。正式文件/网络 deny-by-default、artifact 入库和 stdout/stderr 脱敏仍由 P2-03/P2-04 关闭。
+
+P2-03 进展：`platform/adapters/dsh/index.ts` 已在平台 `ExecutionRequest` 中新增 `resource_budget`，并在 provider runner 前强制 `deny_by_default` 文件/网络策略；provider raw stdout/stderr/artifact candidates 经 adapter 脱敏、资源预算校验并入库为 `ArtifactReference`，`tests/unit/dsh-execution-policy.test.mjs`、`tests/integration/dsh-artifact-events.test.mjs` 和 `tests/security/dsh-sandbox-credential.test.mjs` 已作为最小关闭证据入口。生产级容器/内核沙箱、直接端口隔离、sidecar 权限和故障注入仍由 P2-04/P6/P8 继续关闭，因此该问题在集中台账中仍保持自动确认状态。

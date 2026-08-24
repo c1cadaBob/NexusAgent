@@ -1,6 +1,6 @@
 # DSH 0.1.1-rc.2 Provider
 
-当前 vendor 快照对应的 DeepSeek Harness provider 说明。P2-01 将该快照固定为 `platform/adapters/dsh/index.ts` 中的默认 executor-only provider，并通过 `vendor/deepseek-harness-master/packages/core/agent-loop/src/nexus-executor-only-experiment.ts` 校验平台 execution context、provider metadata、取消状态和工具 allowlist。P2-02 在本目录新增 provider 内部映射，把平台 `nexus.execution_request.p2.v1` 转成 DSH guard request fixture，并只返回平台 `nexus.execution_result.p2.v1`、P2 execution event 和平台错误码。
+当前 vendor 快照对应的 DeepSeek Harness provider 说明。P2-01 将该快照固定为 `platform/adapters/dsh/index.ts` 中的默认 executor-only provider，并通过 `vendor/deepseek-harness-master/packages/core/agent-loop/src/nexus-executor-only-experiment.ts` 校验平台 execution context、provider metadata、取消状态和工具 allowlist。P2-02 在本目录新增 provider 内部映射，把平台 `nexus.execution_request.p2.v1` 转成 DSH guard request fixture，并只返回平台 `nexus.execution_result.p2.v1`、P2 execution event 和平台错误码。P2-03 继续保持 provider 内部 raw output fixture，仅由 adapter 将 stdout/stderr/artifact candidates 脱敏、预算校验并上传为平台 `ArtifactReference`。
 
 范围：
 
@@ -10,6 +10,7 @@
 - provider registry：当前 provider 可被 `DshProviderRegistry.disable()` 禁用，可在候选 provider 切换后通过 `rollbackDefault()` 回到上一默认 provider。
 - execution event：P0 `nexus.execution_event.p0.v1` 继续兼容，P2 使用 `nexus.execution_event.p2.v1` 携带 `provider_id` 与平台状态。
 - anti-corruption fixture：`index.ts` 仅接收平台 request、tool allowlist、sandbox/network/artifact policy 标记和 `credential_ref`，不导出 DSH 原生类型、session、URL、路径或错误码。
+- sandbox/artifact fixture：`index.ts` 可在测试输入启用 provider raw output candidates，但 provider 外只返回 adapter 归一化后的 artifact references、execution events 和平台错误。
 
 禁止：
 
@@ -19,5 +20,4 @@
 
 遗留到后续任务：
 
-- P2-03：正式 sandbox policy、artifact 入库、stdout/stderr 脱敏和 credential reference 解析。
-- P2-04/P6：直接端口、伪造 header、sidecar 权限和 provider 故障注入验证。
+- P2-04/P6：直接端口、伪造 header、sidecar 权限、真实生产沙箱后端和 provider 故障注入验证。

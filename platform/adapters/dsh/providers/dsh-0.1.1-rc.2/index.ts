@@ -104,7 +104,22 @@ export function runDsh011Rc2ProviderFixture(
     tool_name: guardRequest.tool.name,
     accepted_input_keys: Object.keys(guardRequest.tool.input).sort(),
     provider_contract_version: provider.contract_version,
+    ...providerOutputArtifacts(guardRequest.tool.input),
   });
+}
+
+function providerOutputArtifacts(input: Record<string, unknown>): Record<string, unknown> {
+  if (input.emit_artifacts !== true) return {};
+  return {
+    stdout: typeof input.stdout === "string" ? input.stdout : "executor stdout fixture",
+    stderr: typeof input.stderr === "string" ? input.stderr : "executor stderr fixture",
+    artifact_candidates: [{
+      kind: "execution_output",
+      content_type: "text/plain",
+      data: typeof input.artifact_body === "string" ? input.artifact_body : "executor artifact fixture",
+      classification: "internal",
+    }],
+  };
 }
 
 function resultFor(

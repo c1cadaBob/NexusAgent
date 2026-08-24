@@ -112,3 +112,18 @@ sources:
           - tests/integration/dsh-adapter.test.mjs
           - tests/security/dsh-adapter-leakage.test.mjs
           - tests/smoke/P2.sh
+      - task_id: P2-03
+        description: "NexusAgent P2 DSH sandbox artifact event controls"
+        decision_record: docs/planning/task-prompts/P2/P2-03.md
+        files:
+          - platform/adapters/dsh/index.ts
+          - platform/adapters/dsh/providers/dsh-0.1.1-rc.2/index.ts
+          - platform/adapters/dsh/providers/README.md
+          - platform/adapters/dsh/providers/dsh-0.1.1-rc.2/README.md
+          - platform/contracts/execution-request.schema.json
+          - platform/contracts/event-envelope.schema.json
+          - platform/event-bus/index.ts
+          - tests/unit/dsh-execution-policy.test.mjs
+          - tests/integration/dsh-artifact-events.test.mjs
+          - tests/security/dsh-sandbox-credential.test.mjs
+          - tests/smoke/P2.sh

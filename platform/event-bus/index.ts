@@ -13,8 +13,11 @@ export type PlatformEventType =
   | "planning.started"
   | "planning.completed"
   | "execution.started"
+  | "execution.blocked"
+  | "execution.cancelled"
   | "execution.completed"
   | "execution.failed"
+  | "sandbox.denied"
   | "artifact.created"
   | "credential.lease_issued"
   | "audit.recorded";

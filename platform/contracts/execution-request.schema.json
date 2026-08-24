@@ -18,6 +18,7 @@
     "policy",
     "sandbox_policy",
     "network_policy",
+    "resource_budget",
     "artifact_policy",
     "credential_refs"
   ],
@@ -73,6 +74,17 @@
     "network_policy": {
       "type": "string",
       "enum": ["deny_by_default", "approved_destinations_only", "host_sidecar_only"]
+    },
+    "resource_budget": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["timeout_ms", "max_stdout_bytes", "max_stderr_bytes", "max_artifact_bytes"],
+      "properties": {
+        "timeout_ms": { "type": "integer", "minimum": 1 },
+        "max_stdout_bytes": { "type": "integer", "minimum": 0 },
+        "max_stderr_bytes": { "type": "integer", "minimum": 0 },
+        "max_artifact_bytes": { "type": "integer", "minimum": 0 }
+      }
     },
     "artifact_policy": {
       "type": "object",

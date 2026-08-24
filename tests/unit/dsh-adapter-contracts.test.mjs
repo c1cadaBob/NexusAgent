@@ -35,6 +35,7 @@ test('P2 execution request and result schemas are platform-owned contracts', asy
   }
   assert.ok(request.required.includes('sandbox_policy'));
   assert.ok(request.required.includes('network_policy'));
+  assert.ok(request.required.includes('resource_budget'));
   assert.ok(request.required.includes('artifact_policy'));
   assert.ok(request.required.includes('credential_refs'));
   assert.equal(JSON.stringify(request).includes('session_id'), false);

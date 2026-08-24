@@ -27,9 +27,12 @@ required_files=(
   platform/contracts/execution-request.schema.json
   platform/contracts/execution-result.schema.json
   tests/unit/dsh-adapter-contracts.test.mjs
+  tests/unit/dsh-execution-policy.test.mjs
   tests/unit/dsh-provider-registry.test.mjs
   tests/integration/dsh-adapter.test.mjs
+  tests/integration/dsh-artifact-events.test.mjs
   tests/security/dsh-adapter-leakage.test.mjs
+  tests/security/dsh-sandbox-credential.test.mjs
   vendor/MANIFEST.yaml
   vendor/deepseek-harness-master/packages/core/agent-loop/src/agent.ts
   vendor/deepseek-harness-master/packages/core/agent-loop/src/constants.ts
@@ -44,6 +47,7 @@ required_files=(
   docs/planning/open-questions/P2-resolution-plan.md
   docs/planning/task-prompts/P2/P2-01.md
   docs/planning/task-prompts/P2/P2-02.md
+  docs/planning/task-prompts/P2/P2-03.md
   docs/traceability/requirements-matrix.md
   docs/risks/risk-register.md
 )
@@ -68,6 +72,24 @@ for audit_marker in \
   '测试结果' \
   '回滚验证'; do
   printf '%s\n' "$p2_02_audit_block" | rg -q "$audit_marker" || fail "P2-02 audit marker missing: $audit_marker"
+done
+
+p2_03_audit_block="$(sed -n '/^# P2-03 修改记录包$/,/^## 完整提示词$/p' docs/planning/task-prompts/P2/P2-03.md)"
+[[ -n "$p2_03_audit_block" ]] || fail 'P2-03 audit record package is missing'
+if printf '%s\n' "$p2_03_audit_block" | rg -q '\.\.\.'; then
+  fail 'P2-03 audit record package still contains placeholder ellipses'
+fi
+for audit_marker in \
+  '任务与验收条件' \
+  '源码证据' \
+  '基线测试' \
+  '影响面分析' \
+  '修改计划与回滚' \
+  '待确认问题' \
+  '实际变更文件' \
+  '测试结果' \
+  '回滚验证'; do
+  printf '%s\n' "$p2_03_audit_block" | rg -q "$audit_marker" || fail "P2-03 audit marker missing: $audit_marker"
 done
 
 p2_audit_block="$(sed -n '/^# P2-01 修改记录包$/,/^## 完整提示词$/p' docs/planning/task-prompts/P2/P2-01.md)"
@@ -105,6 +127,14 @@ for marker in \
 done
 
 for marker in \
+  'task_id: P2-03' \
+  'NexusAgent P2 DSH sandbox artifact event controls' \
+  'tests/integration/dsh-artifact-events.test.mjs' \
+  'tests/security/dsh-sandbox-credential.test.mjs'; do
+  rg -q "$marker" vendor/MANIFEST.yaml || fail "vendor manifest missing P2-03 marker: $marker"
+done
+
+for marker in \
   'NEXUS_DSH_DEFAULT_PROVIDER_ID' \
   'NEXUS_DSH_PROVIDER_DISABLED' \
   'NEXUS_DSH_EXECUTION_CANCELLED' \
@@ -131,6 +161,14 @@ for marker in \
   'nexus.execution_result.p2.v1'; do
   rg -q "$marker" platform/adapters/dsh/index.ts platform/contracts/execution-request.schema.json platform/contracts/execution-result.schema.json || fail "P2-02 adapter marker missing: $marker"
 done
+for marker in \
+  'resource_budget' \
+  'normalizeDshProviderExecutionResult' \
+  'sandbox.denied' \
+  'artifact_candidates' \
+  'redactExecutionText'; do
+  rg -q "$marker" platform/adapters/dsh/index.ts platform/contracts/execution-request.schema.json platform/event-bus/index.ts platform/contracts/event-envelope.schema.json tests/unit/dsh-execution-policy.test.mjs tests/integration/dsh-artifact-events.test.mjs tests/security/dsh-sandbox-credential.test.mjs || fail "P2-03 sandbox/artifact/event marker missing: $marker"
+done
 
 if rg -qi 'Hermes|OpenClaw|DeepSeek|DSH' docs/contracts/openapi.yaml platform/contracts/platform-error.schema.json product; then
   fail 'public API/error/product surface leaked upstream native naming'
@@ -142,8 +180,11 @@ fi
 node --test \
   tests/unit/dsh-provider-registry.test.mjs \
   tests/unit/dsh-adapter-contracts.test.mjs \
+  tests/unit/dsh-execution-policy.test.mjs \
   tests/integration/dsh-adapter.test.mjs \
-  tests/security/dsh-adapter-leakage.test.mjs
+  tests/integration/dsh-artifact-events.test.mjs \
+  tests/security/dsh-adapter-leakage.test.mjs \
+  tests/security/dsh-sandbox-credential.test.mjs
 
 (
   cd vendor/deepseek-harness-master
@@ -152,4 +193,4 @@ node --test \
     packages/core/agent-loop/tests/nexus-executor-only-provider.spec.ts
 )
 
-echo 'PASS: P2 DSH executor-only provider guard, registry, anti-corruption adapter, smoke checks, and public leakage guard'
+echo 'PASS: P2 DSH executor-only provider guard, registry, anti-corruption adapter, sandbox/artifact/event controls, smoke checks, and public leakage guard'
