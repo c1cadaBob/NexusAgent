@@ -29,6 +29,7 @@
 - [P1 Tenancy、RBAC、Audit 与 Observability](../platform/tenancy/index.ts)：P1-05 基线，覆盖租户边界、角色权限、hash-chain 审计、trace/health/metrics/logs 本地接口和安全拒绝测试。
 - [P1 开发编排与端口基线](architecture/ports.md)：P1-06 基线，覆盖 10 个开发服务、3050-3059 连续服务端口、9250-9259 调试宿主机端口、源码卷、热更新、健康检查和平台错误码一致性 smoke。
 - [P2 DSH executor provider registry](../platform/adapters/dsh/index.ts)：P2-01 基线，固定 `dsh-0.1.1-rc.2` 默认 provider，覆盖 provider 启用/禁用、默认切换、回滚、native loop 阻断和 `tests/smoke/P2.sh`。
+- [P2 DSH 防腐适配器](../platform/adapters/dsh/index.ts)：P2-02 基线，覆盖平台 `ExecutionRequest` / `ExecutionResult` schema、`DshExecutorAdapter`、provider 内部映射、contract fixture、Coordinator/Policy-Gate 集成和原生字段清洗测试。
 - [服务功能与整合蓝图](architecture/service-blueprint.md)：P0-07 基线，覆盖十个基础服务的功能、技术栈、输入输出、复用边界、参考项目和 P1 工作包。
 - [DSH 版本兼容与替换策略](architecture/dsh-versioning-and-replacement.md)
 - [上游版本适配与社区插件复用桥接策略](architecture/upstream-versioning-and-plugin-bridge.md)

@@ -1,0 +1,54 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://nexusagent.local/contracts/execution-result.schema.json",
+  "title": "NexusAgent ExecutionResult",
+  "description": "Internal platform executor result. It carries platform events, artifact references, and platform errors without provider-native URLs, paths, sessions, or error codes.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "tenant_id",
+    "task_id",
+    "attempt_id",
+    "execution_id",
+    "trace_id",
+    "provider_id",
+    "execution_outcome",
+    "monotonic_ms",
+    "completed_monotonic_ms",
+    "events",
+    "artifacts",
+    "output"
+  ],
+  "properties": {
+    "schema_version": { "const": "nexus.execution_result.p2.v1" },
+    "tenant_id": { "$ref": "common-identifiers.schema.json#/$defs/tenant_id" },
+    "task_id": { "$ref": "common-identifiers.schema.json#/$defs/task_id" },
+    "attempt_id": { "$ref": "common-identifiers.schema.json#/$defs/attempt_id" },
+    "execution_id": { "$ref": "common-identifiers.schema.json#/$defs/execution_id" },
+    "trace_id": { "$ref": "common-identifiers.schema.json#/$defs/trace_id" },
+    "provider_id": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9._-]{0,127}$"
+    },
+    "execution_outcome": {
+      "type": "string",
+      "enum": ["accepted", "completed", "failed", "blocked", "cancelled"]
+    },
+    "monotonic_ms": { "$ref": "common-identifiers.schema.json#/$defs/monotonic_ms" },
+    "completed_monotonic_ms": { "$ref": "common-identifiers.schema.json#/$defs/monotonic_ms" },
+    "events": {
+      "type": "array",
+      "items": { "$ref": "execution-event.schema.json#/$defs/p2ProviderExecutionEvent" }
+    },
+    "artifacts": {
+      "type": "array",
+      "items": { "$ref": "artifact-reference.schema.json" }
+    },
+    "output": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "error": { "$ref": "platform-error.schema.json" }
+  }
+}

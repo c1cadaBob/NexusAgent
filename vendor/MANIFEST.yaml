@@ -98,3 +98,17 @@ sources:
           - platform/adapters/dsh/index.ts
           - tests/unit/dsh-provider-registry.test.mjs
           - tests/smoke/P2.sh
+      - task_id: P2-02
+        description: "NexusAgent P2 DSH anti-corruption adapter"
+        decision_record: docs/planning/task-prompts/P2/P2-02.md
+        files:
+          - platform/adapters/dsh/index.ts
+          - platform/adapters/dsh/providers/dsh-0.1.1-rc.2/index.ts
+          - platform/adapters/dsh/providers/README.md
+          - platform/adapters/dsh/providers/dsh-0.1.1-rc.2/README.md
+          - platform/contracts/execution-request.schema.json
+          - platform/contracts/execution-result.schema.json
+          - tests/unit/dsh-adapter-contracts.test.mjs
+          - tests/integration/dsh-adapter.test.mjs
+          - tests/security/dsh-adapter-leakage.test.mjs
+          - tests/smoke/P2.sh

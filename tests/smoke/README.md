@@ -4,4 +4,4 @@
 
 - `P0.sh`：检查仓库结构、vendor manifest、任务提示词、P0 决策记录和公共契约基线。
 - `P1.sh`：检查平台 contracts、Coordinator/Policy-Gate、数据服务、开发 Compose、端口和平台错误码。
-- `P2.sh`：检查 DSH executor-only provider guard、provider registry、vendor patch 登记、P2 审计记录和公共泄漏防护。
+- `P2.sh`：检查 DSH executor-only provider guard、provider registry、anti-corruption adapter、vendor patch 登记、P2 审计记录和公共泄漏防护。

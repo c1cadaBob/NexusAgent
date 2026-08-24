@@ -1,6 +1,6 @@
 # DSH Provider Directory
 
-本目录只放 DSH executor-only provider 的版本隔离实现和验证材料。P2-01 已固定当前 `dsh-0.1.1-rc.2` 为基线 provider，并在 `platform/adapters/dsh/index.ts` 提供最小 provider registry、启用/禁用、默认选择和回滚语义。
+本目录只放 DSH executor-only provider 的版本隔离实现和验证材料。P2-01 已固定当前 `dsh-0.1.1-rc.2` 为基线 provider，并在 `platform/adapters/dsh/index.ts` 提供最小 provider registry、启用/禁用、默认选择和回滚语义。P2-02 已新增平台 `ExecutionRequest` / `ExecutionResult` 防腐映射和 provider contract fixture，provider 外部只能看到平台 schema。
 
 必须遵守：
 
@@ -9,8 +9,9 @@
 - 每个 provider 版本都必须保留上一版回滚目标，并通过同一组平台 contract fixture。
 - 禁止 DSH 原生类型、错误码、URL、session、路径或 tool-call 对象进入产品层。
 
-P2-01 验证入口：
+P2 验证入口：
 
 - `node --test tests/unit/dsh-provider-registry.test.mjs`
+- `node --test tests/unit/dsh-adapter-contracts.test.mjs tests/integration/dsh-adapter.test.mjs tests/security/dsh-adapter-leakage.test.mjs`
 - `corepack pnpm exec vitest run packages/core/agent-loop/tests/nexus-executor-only-experiment.spec.ts packages/core/agent-loop/tests/nexus-executor-only-provider.spec.ts`
 - `bash tests/smoke/P2.sh`
