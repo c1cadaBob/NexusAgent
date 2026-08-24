@@ -21,18 +21,26 @@ required_files=(
   platform/adapters/hermes/index.ts
   platform/adapters/hermes/providers/README.md
   platform/adapters/hermes/providers/hermes-0.20.5/README.md
+  platform/memory-gateway/index.ts
   tests/unit/hermes-provider-registry.test.mjs
+  tests/unit/memory-gateway-p3.test.mjs
+  tests/integration/hermes-memory-gateway-adapter.test.mjs
+  tests/security/hermes-memory-isolation.test.mjs
   vendor/hermes-agent-main/agent/nexus_planner_only_experiment.py
+  vendor/hermes-agent-main/agent/nexus_memory_gateway_proxy.py
   vendor/hermes-agent-main/agent/conversation_loop.py
   vendor/hermes-agent-main/agent/tool_executor.py
   vendor/hermes-agent-main/hermes_cli/loops.py
   vendor/hermes-agent-main/hermes_cli/gateway.py
   vendor/hermes-agent-main/tests/agent/test_nexus_planner_only_experiment.py
+  vendor/hermes-agent-main/tests/tools/test_nexus_memory_gateway_proxy.py
   vendor/hermes-agent-main/tests/hermes_cli/test_nexus_planner_only_gateway.py
   vendor/hermes-agent-main/tests/hermes_cli/test_nexus_planner_only_loop.py
+  docs/architecture/hermes-memory-gateway-migration.md
   docs/architecture/upstream-versioning-and-plugin-bridge.md
   docs/planning/open-questions/P3-resolution-plan.md
   docs/planning/task-prompts/P3/P3-01.md
+  docs/planning/task-prompts/P3/P3-02.md
   docs/traceability/requirements-matrix.md
   docs/risks/risk-register.md
   docs/README.md
@@ -40,7 +48,7 @@ required_files=(
 )
 
 for file in "${required_files[@]}"; do
-  [[ -f "$file" ]] || fail "missing P3-01 required file: $file"
+  [[ -f "$file" ]] || fail "missing P3 required file: $file"
 done
 
 p3_01_audit_block="$(sed -n '/^# P3-01 修改记录包$/,/^## 完整提示词$/p' docs/planning/task-prompts/P3/P3-01.md)"
@@ -61,12 +69,38 @@ for audit_marker in \
   printf '%s\n' "$p3_01_audit_block" | rg -q "$audit_marker" || fail "P3-01 audit marker missing: $audit_marker"
 done
 
+p3_02_audit_block="$(sed -n '/^# P3-02 修改记录包$/,/^## 完整提示词$/p' docs/planning/task-prompts/P3/P3-02.md)"
+[[ -n "$p3_02_audit_block" ]] || fail 'P3-02 audit record package is missing'
+if printf '%s\n' "$p3_02_audit_block" | rg -q '\.\.\.'; then
+  fail 'P3-02 audit record package still contains placeholder ellipses'
+fi
+for audit_marker in \
+  '任务与验收条件' \
+  '源码证据' \
+  '基线测试' \
+  '影响面分析' \
+  '修改计划与回滚' \
+  '待确认问题' \
+  '实际变更文件' \
+  '测试结果' \
+  '回滚验证'; do
+  printf '%s\n' "$p3_02_audit_block" | rg -q "$audit_marker" || fail "P3-02 audit marker missing: $audit_marker"
+done
+
 for marker in \
   'task_id: P3-01' \
   'NexusAgent P3 Hermes planner-only provider boundary hardening' \
   'test_nexus_planner_only_gateway.py' \
   'platform/adapters/hermes/index.ts'; do
   rg -q "$marker" vendor/MANIFEST.yaml || fail "vendor manifest missing P3-01 marker: $marker"
+done
+
+for marker in \
+  'task_id: P3-02' \
+  'NexusAgent P3 Hermes Memory Gateway proxy' \
+  'nexus_memory_gateway_proxy.py' \
+  'hermes-memory-gateway-migration.md'; do
+  rg -q "$marker" vendor/MANIFEST.yaml || fail "vendor manifest missing P3-02 marker: $marker"
 done
 
 for marker in \
@@ -87,6 +121,16 @@ for marker in \
   rg -q "$marker" platform/adapters/hermes/index.ts tests/unit/hermes-provider-registry.test.mjs || fail "Hermes provider registry marker missing: $marker"
 done
 
+for marker in \
+  'HermesMemoryGatewayAdapter' \
+  'nexus.hermes_memory_proxy.p3.v1' \
+  'nexus.memory_snapshot.p3.v1' \
+  'writeFromMemoryProxy' \
+  'plannerSnapshot' \
+  'NEXUS_HERMES_MEMORY_SCOPE_JSON'; do
+  rg -q "$marker" platform/adapters/hermes/index.ts platform/memory-gateway/index.ts vendor/hermes-agent-main/agent/nexus_memory_gateway_proxy.py vendor/hermes-agent-main/tools/memory_tool.py tests/unit/memory-gateway-p3.test.mjs tests/integration/hermes-memory-gateway-adapter.test.mjs tests/security/hermes-memory-isolation.test.mjs || fail "Hermes Memory Gateway proxy marker missing: $marker"
+done
+
 rg -q 'build_planner_only_turn_result' vendor/hermes-agent-main/agent/conversation_loop.py || fail 'conversation loop planner-only handoff missing'
 rg -q 'build_blocked_tool_result' vendor/hermes-agent-main/agent/tool_executor.py || fail 'tool executor native tool block missing'
 rg -q 'blocked_loop_output' vendor/hermes-agent-main/hermes_cli/loops.py || fail 'loop planner-only block missing'
@@ -96,13 +140,19 @@ if rg -qi 'Hermes|OpenClaw|DeepSeek|DSH' docs/contracts/openapi.yaml platform/co
   fail 'public API/error/product surface leaked upstream native naming'
 fi
 
-node --test tests/unit/hermes-provider-registry.test.mjs
+node --test \
+  tests/unit/hermes-provider-registry.test.mjs \
+  tests/unit/memory-gateway.test.mjs \
+  tests/unit/memory-gateway-p3.test.mjs \
+  tests/integration/hermes-memory-gateway-adapter.test.mjs \
+  tests/security/hermes-memory-isolation.test.mjs
 
 if python3 -c 'import pytest' >/dev/null 2>&1; then
   (
     cd vendor/hermes-agent-main
     python3 -m pytest \
       tests/agent/test_nexus_planner_only_experiment.py \
+      tests/tools/test_nexus_memory_gateway_proxy.py \
       tests/hermes_cli/test_nexus_planner_only_loop.py \
       tests/hermes_cli/test_nexus_planner_only_gateway.py
   )
@@ -113,6 +163,8 @@ import io
 import json
 import os
 import sys
+import tempfile
+from pathlib import Path
 from types import SimpleNamespace
 
 repo_root = os.getcwd()
@@ -207,7 +259,86 @@ except ValueError as exc:
 else:
     raise AssertionError("unknown planner provider must be rejected")
 assert payload["code"] == "NEXUS_HERMES_PLANNER_ONLY_PROVIDER_UNKNOWN"
+
+os.environ.pop("NEXUS_HERMES_DEFAULT_PROVIDER_ID", None)
+
+from agent.nexus_memory_gateway_proxy import clear_test_memory_gateway_proxy, set_test_memory_gateway_proxy
+from tools.memory_tool import MemoryStore, get_memory_dir, memory_tool
+
+scope = {
+    "tenant_id": "tenant_alpha01",
+    "user_id": "user_alpha01",
+    "agent_id": "agent_alpha01",
+    "conversation_id": "conv_alpha01",
+    "trace_id": "trace_alpha01",
+}
+snapshot = {
+    "schema_version": "nexus.memory_snapshot.p3.v1",
+    "version": 7,
+    "rendered": {
+        "session": "Current planner turn context",
+        "user": "User prefers short updates",
+        "agent_skill": "Use Memory Gateway before vendor files",
+    },
+    "records": [
+        {"layer": "session", "text": "Current planner turn context"},
+        {"layer": "user", "text": "User prefers short updates"},
+        {"layer": "agent_skill", "text": "Use Memory Gateway before vendor files"},
+    ],
+}
+
+with tempfile.TemporaryDirectory() as tmp:
+    os.environ["NEXUS_HERMES_PLANNER_ONLY"] = "1"
+    os.environ["HERMES_HOME"] = str(Path(tmp) / ".hermes")
+    os.environ["NEXUS_HERMES_MEMORY_SCOPE_JSON"] = json.dumps(scope)
+    calls = []
+
+    def proxy(request):
+        calls.append(request)
+        if request["operation"] == "snapshot":
+            return snapshot
+        return {
+            "schema_version": "nexus.hermes_memory_proxy.p3.v1",
+            "operation": "write",
+            "memory_ref": {"memory_id": "memory_alpha01_0001", "layer": "agent_skill", "version": 8},
+        }
+
+    set_test_memory_gateway_proxy(proxy)
+    try:
+        store = MemoryStore()
+        store.load_from_disk()
+        assert store.user_entries == ["User prefers short updates"]
+        assert store.memory_entries == ["Use Memory Gateway before vendor files"]
+        result = json.loads(memory_tool(action="add", target="memory", content="Proxy this fact", store=store))
+        assert result["success"] is True
+        assert calls[-1]["operation"] == "write"
+        assert not (Path(tmp) / ".hermes" / "memories").exists()
+    finally:
+        clear_test_memory_gateway_proxy()
+
+with tempfile.TemporaryDirectory() as tmp:
+    os.environ["NEXUS_HERMES_PLANNER_ONLY"] = "1"
+    os.environ["HERMES_HOME"] = str(Path(tmp) / ".hermes")
+    os.environ.pop("NEXUS_HERMES_MEMORY_SCOPE_JSON", None)
+    store = MemoryStore()
+    store.load_from_disk()
+    result = store.add("memory", "Cannot write without platform scope")
+    assert result["code"] == "NEXUS_HERMES_MEMORY_GATEWAY_SCOPE_REQUIRED"
+    assert not (Path(tmp) / ".hermes" / "memories").exists()
+
+with tempfile.TemporaryDirectory() as tmp:
+    os.environ.pop("NEXUS_HERMES_PLANNER_ONLY", None)
+    os.environ["HERMES_HOME"] = str(Path(tmp) / ".hermes")
+    memory_dir = get_memory_dir()
+    memory_dir.mkdir(parents=True)
+    path = memory_dir / "MEMORY.md"
+    path.write_text("valid entry\nextra raw line without delimiter", encoding="utf-8")
+    store = MemoryStore(memory_char_limit=10)
+    store.load_from_disk()
+    result = store.replace("memory", "valid", "replacement")
+    assert result["success"] is False
+    assert "drift_backup" in result
 PY
 fi
 
-echo 'PASS: P3 Hermes planner-only provider registry, native gateway/tool/loop/memory guards, manifest, audit package, and public leakage guard'
+echo 'PASS: P3 Hermes planner-only provider registry, Memory Gateway proxy, native gateway/tool/loop guards, manifest, audit package, and public leakage guard'

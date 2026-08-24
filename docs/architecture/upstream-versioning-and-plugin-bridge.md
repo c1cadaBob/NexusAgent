@@ -21,7 +21,7 @@ platform/adapters/
 ```
 
 - OpenClaw provider：只承载 gateway-only 能力，优先复用 ClawHub/npm 渠道插件、消息插件、MCP 声明和 manifest 元数据；禁止启动 OpenClaw 原生 Agent、工具执行和独立记忆路径。
-- Hermes provider：只承载 planner-only 能力，优先复用 skills、Agent Plugins v1、MCP 和规划辅助插件；Hermes 工具类插件只能转成平台 `ToolIntent` 或交由 DSH executor 执行，禁止 Hermes 原生工具 Runtime、原生 gateway 和记忆直读。P3-01 已将 `hermes-0.20.5` 固定为默认 planner provider，并提供 provider 启用、禁用和回滚基线。
+- Hermes provider：只承载 planner-only 能力，优先复用 skills、Agent Plugins v1、MCP 和规划辅助插件；Hermes 工具类插件只能转成平台 `ToolIntent` 或交由 DSH executor 执行，禁止 Hermes 原生工具 Runtime、原生 gateway 和记忆直读。P3-01 已将 `hermes-0.20.5` 固定为默认 planner provider，并提供 provider 启用、禁用和回滚基线；P3-02 已把 planner memory 读写代理到内部 Memory Gateway proxy，`MEMORY.md` / `USER.md` 不再作为 planner-only 事实源。
 - DSH provider：沿用 [DSH 版本兼容与替换策略](dsh-versioning-and-replacement.md)，只承载 executor-only 能力，复用 Cordis 工具插件和执行型工具；执行必须经过 Policy-Gate、Credential Center、Artifact Store 和 Event Bus。
 
 每个 provider 都必须支持版本标识、启用/禁用、兼容 fixture、升级门禁和回滚路径。P5 之后的产品 API、SDK 和控制台不能依赖具体 provider 版本。
@@ -71,7 +71,7 @@ provider 占位落点：`platform/adapters/openclaw/providers/openclaw-2026.8.1/
 
 ## 7. 阶段落地
 
-P3-01 已完成 Hermes provider 最小基线：`platform/adapters/hermes/index.ts` 暴露 `HermesProviderRegistry`、`hermes-0.20.5` 默认 provider、`nexus.hermes_provider.p3.v1` contract、禁用/启用、默认切换和 `rollbackDefault()`；vendor guard 在 `NEXUS_HERMES_PLANNER_ONLY=1` 时阻断原生 gateway、tool runtime、recurring loop 和文件记忆直读直写。P3-01 不关闭最终 ExecutionPlan schema、Memory Gateway 生产检索/写入、skills/MCP 白名单执行或完整防腐 adapter，这些继续由 P3-02/P3-03/P3-04 处理。
+P3-01 已完成 Hermes provider 最小基线：`platform/adapters/hermes/index.ts` 暴露 `HermesProviderRegistry`、`hermes-0.20.5` 默认 provider、`nexus.hermes_provider.p3.v1` contract、禁用/启用、默认切换和 `rollbackDefault()`；vendor guard 在 `NEXUS_HERMES_PLANNER_ONLY=1` 时阻断原生 gateway、tool runtime、recurring loop 和文件记忆直读直写。P3-02 已新增 `HermesMemoryGatewayAdapter` 和 vendor proxy helper，固定内部 `nexus.hermes_memory_proxy.p3.v1` / `nexus.memory_snapshot.p3.v1`，只启用 `session`、`user`、`agent_skill` 三层，并用 tests/smoke/P3.sh 验证 trusted invocation、scope 过滤、sanitizer、缺 scope fail-closed 和非 planner-only drift 回归。最终 ExecutionPlan schema、生产存储/检索和 skills/MCP 白名单继续由 P3-03/P3-04/P8 处理。
 
 - P3：实现 Hermes provider 白名单、skills/MCP 发现、planner-only 插件限制和记忆防直读测试。
 - P4：实现 OpenClaw provider 白名单、ClawHub/manifest 扫描、渠道插件复用和 gateway-only 防绕过测试。

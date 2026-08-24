@@ -142,9 +142,9 @@ def test_file_memory_refuses_direct_read_write(monkeypatch, tmp_path):
     assert store.user_entries == []
 
     result = store.add("memory", "persist me")
-    assert result["code"] == "NEXUS_HERMES_PLANNER_ONLY_MEMORY_GATEWAY_REQUIRED"
+    assert result["code"] == "NEXUS_HERMES_MEMORY_GATEWAY_SCOPE_REQUIRED"
     assert not memories_dir.exists()
 
     payload = json.loads(memory_tool(action="add", target="user", content="Alice", store=store))
-    assert payload["code"] == "NEXUS_HERMES_PLANNER_ONLY_MEMORY_GATEWAY_REQUIRED"
+    assert payload["code"] == "NEXUS_HERMES_MEMORY_GATEWAY_SCOPE_REQUIRED"
     assert not memories_dir.exists()

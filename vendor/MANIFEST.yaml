@@ -62,6 +62,21 @@ sources:
           - platform/adapters/hermes/index.ts
           - tests/unit/hermes-provider-registry.test.mjs
           - tests/smoke/P3.sh
+      - task_id: P3-02
+        description: "NexusAgent P3 Hermes Memory Gateway proxy"
+        decision_record: docs/planning/task-prompts/P3/P3-02.md
+        files:
+          - vendor/hermes-agent-main/agent/nexus_memory_gateway_proxy.py
+          - vendor/hermes-agent-main/tools/memory_tool.py
+          - vendor/hermes-agent-main/tests/agent/test_nexus_planner_only_experiment.py
+          - vendor/hermes-agent-main/tests/tools/test_nexus_memory_gateway_proxy.py
+          - platform/memory-gateway/index.ts
+          - platform/adapters/hermes/index.ts
+          - tests/unit/memory-gateway-p3.test.mjs
+          - tests/integration/hermes-memory-gateway-adapter.test.mjs
+          - tests/security/hermes-memory-isolation.test.mjs
+          - docs/architecture/hermes-memory-gateway-migration.md
+          - tests/smoke/P3.sh
   - upstream_name: OpenClaw
     vendor_name: openclaw-main
     internal_role: gateway-only

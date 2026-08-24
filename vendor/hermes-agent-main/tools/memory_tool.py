@@ -37,6 +37,11 @@ from agent.nexus_planner_only_experiment import (
     build_blocked_memory_result,
     is_nexus_hermes_planner_only_enabled,
 )
+from agent.nexus_memory_gateway_proxy import (
+    fail_closed_memory_gateway_result,
+    load_memory_gateway_snapshot,
+    write_memory_gateway,
+)
 from utils import atomic_write_text, is_truthy_value
 from tools.registry import no_cache_check_fn
 
@@ -246,11 +251,26 @@ class MemoryStore:
         stable for the entire session (prefix-cache invariant holds).
         """
         if is_nexus_hermes_planner_only_enabled():
-            self.memory_entries = []
-            self.user_entries = []
+            try:
+                snapshot = load_memory_gateway_snapshot()
+            except Exception as exc:
+                logger.warning("NexusAgent Memory Gateway snapshot failed closed: %s", exc)
+                blocked = fail_closed_memory_gateway_result("snapshot", "memory", exc)
+                placeholder = f"[BLOCKED: {blocked['code']}. Memory Gateway scope is required.]"
+                self.memory_entries = []
+                self.user_entries = []
+                self._system_prompt_snapshot = {
+                    "memory": placeholder,
+                    "user": "",
+                }
+                return
+
+            session_entries = self._entries_from_gateway_snapshot(snapshot, "session")
+            self.memory_entries = self._entries_from_gateway_snapshot(snapshot, "agent_skill")
+            self.user_entries = self._entries_from_gateway_snapshot(snapshot, "user")
             self._system_prompt_snapshot = {
-                "memory": "",
-                "user": "",
+                "memory": self._render_block("memory", session_entries + self.memory_entries),
+                "user": self._render_block("user", self.user_entries),
             }
             return
 
@@ -275,6 +295,28 @@ class MemoryStore:
             "memory": self._render_block("memory", sanitized_memory),
             "user": self._render_block("user", sanitized_user),
         }
+
+    @staticmethod
+    def _entries_from_gateway_snapshot(snapshot: Dict[str, Any], layer: str) -> List[str]:
+        records = snapshot.get("records") if isinstance(snapshot, dict) else None
+        entries: List[str] = []
+        if isinstance(records, list):
+            for record in records:
+                if isinstance(record, dict) and record.get("layer") == layer and record.get("text"):
+                    entries.append(str(record["text"]))
+        if entries:
+            return list(dict.fromkeys(entries))
+        rendered = snapshot.get("rendered") if isinstance(snapshot, dict) else None
+        if isinstance(rendered, dict) and rendered.get(layer):
+            return [part.strip() for part in str(rendered[layer]).split(ENTRY_DELIMITER) if part.strip()]
+        return []
+
+    @staticmethod
+    def _proxy_write(action: str, target: str, **kwargs: Any) -> Dict[str, Any]:
+        try:
+            return write_memory_gateway(action=action, target=target, **kwargs)
+        except Exception as exc:
+            return fail_closed_memory_gateway_result(action, target, exc)
 
     @staticmethod
     def _sanitize_entries_for_snapshot(entries: List[str], filename: str) -> List[str]:
@@ -432,9 +474,6 @@ class MemoryStore:
 
     def add(self, target: str, content: str) -> Dict[str, Any]:
         """Append a new entry. Returns error if it would exceed the char limit."""
-        if is_nexus_hermes_planner_only_enabled():
-            return build_blocked_memory_result("add", target)
-
         content = content.strip()
         if not content:
             return {"success": False, "error": "Content cannot be empty."}
@@ -443,6 +482,9 @@ class MemoryStore:
         scan_error = _scan_memory_content(content)
         if scan_error:
             return {"success": False, "error": scan_error}
+
+        if is_nexus_hermes_planner_only_enabled():
+            return self._proxy_write("add", target, content=content)
 
         with self._file_lock(self._path_for(target)):
             # Re-read from disk under lock to pick up writes from other sessions.
@@ -494,9 +536,6 @@ class MemoryStore:
 
     def replace(self, target: str, old_text: str, new_content: str) -> Dict[str, Any]:
         """Find entry containing old_text substring, replace it with new_content."""
-        if is_nexus_hermes_planner_only_enabled():
-            return build_blocked_memory_result("replace", target)
-
         old_text = old_text.strip()
         new_content = new_content.strip()
         if not old_text:
@@ -508,6 +547,9 @@ class MemoryStore:
         scan_error = _scan_memory_content(new_content)
         if scan_error:
             return {"success": False, "error": scan_error}
+
+        if is_nexus_hermes_planner_only_enabled():
+            return self._proxy_write("replace", target, content=new_content, old_text=old_text)
 
         with self._file_lock(self._path_for(target)):
             bak = self._reload_target(target)
@@ -568,12 +610,12 @@ class MemoryStore:
 
     def remove(self, target: str, old_text: str) -> Dict[str, Any]:
         """Remove the entry containing old_text substring."""
-        if is_nexus_hermes_planner_only_enabled():
-            return build_blocked_memory_result("remove", target)
-
         old_text = old_text.strip()
         if not old_text:
             return {"success": False, "error": "old_text cannot be empty."}
+
+        if is_nexus_hermes_planner_only_enabled():
+            return self._proxy_write("remove", target, old_text=old_text)
 
         with self._file_lock(self._path_for(target)):
             bak = self._reload_target(target)
@@ -624,9 +666,6 @@ class MemoryStore:
         the net result would exceed the char limit, NOTHING is written and an
         error is returned describing the first failure plus the live state.
         """
-        if is_nexus_hermes_planner_only_enabled():
-            return build_blocked_memory_result("batch", target)
-
         if not operations:
             return {"success": False, "error": "operations list is empty."}
 
@@ -639,6 +678,9 @@ class MemoryStore:
                 scan_error = _scan_memory_content(new_content)
                 if scan_error:
                     return {"success": False, "error": f"Operation {i + 1}: {scan_error}"}
+
+        if is_nexus_hermes_planner_only_enabled():
+            return self._proxy_write("batch", target, operations=operations)
 
         with self._file_lock(self._path_for(target)):
             bak = self._reload_target(target)
@@ -1143,12 +1185,6 @@ def memory_tool(
 
     Returns JSON string with results.
     """
-    if is_nexus_hermes_planner_only_enabled():
-        return json.dumps(
-            build_blocked_memory_result(action or "unknown", target or "memory"),
-            ensure_ascii=False,
-        )
-
     if store is None:
         return tool_error("Memory is not available. It may be disabled in config or this environment.", success=False)
 
@@ -1170,9 +1206,10 @@ def memory_tool(
     if operations:
         if not isinstance(operations, list):
             return tool_error("operations must be a list of {action, content?, old_text?} objects.", success=False)
-        gate_result = _apply_batch_write_gate(target, operations)
-        if gate_result is not None:
-            return gate_result
+        if not is_nexus_hermes_planner_only_enabled():
+            gate_result = _apply_batch_write_gate(target, operations)
+            if gate_result is not None:
+                return gate_result
         result = store.apply_batch(target, operations)
         return json.dumps(result, ensure_ascii=False)
 
@@ -1195,9 +1232,10 @@ def memory_tool(
 
     # Approval gate: when on, stages the write (background/gateway) or prompts
     # inline (interactive CLI); when off (default) passes straight through.
-    gate_result = _apply_write_gate(action, target, content, old_text)
-    if gate_result is not None:
-        return gate_result
+    if not is_nexus_hermes_planner_only_enabled():
+        gate_result = _apply_write_gate(action, target, content, old_text)
+        if gate_result is not None:
+            return gate_result
 
     if action == "add":
         result = store.add(target, content)
@@ -1286,8 +1324,6 @@ def apply_memory_pending(payload: Dict[str, Any], store: "MemoryStore") -> Dict[
     """
     action = payload.get("action")
     target = payload.get("target", "memory")
-    if is_nexus_hermes_planner_only_enabled():
-        return build_blocked_memory_result(action or "unknown", target)
 
     target_error = _memory_target_error(store, target)
     if target_error is not None:
@@ -1435,5 +1471,3 @@ registry.register(
     emoji="🧠",
     dynamic_schema_overrides=_build_memory_schema_overrides,
 )
-
-
