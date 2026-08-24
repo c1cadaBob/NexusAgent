@@ -2,83 +2,186 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://nexusagent.local/contracts/execution-plan.schema.json",
   "title": "NexusAgent ExecutionPlan",
-  "description": "P0 experimental schema for the Hermes planner-only proof. P3 will harden this into the production platform contract.",
+  "description": "P3 strict platform planner contract. Current planner providers must emit nexus.execution_plan.p3.v1 only. Legacy marker retained for P0 evidence: nexus.execution_plan.p0.v1.",
   "type": "object",
   "additionalProperties": false,
   "required": [
     "schema_version",
-    "task",
+    "tenant_id",
+    "user_id",
+    "agent_id",
+    "task_id",
+    "attempt_id",
+    "execution_id",
+    "conversation_id",
+    "trace_id",
+    "objective",
     "steps",
     "tool_intents",
-    "memory_context",
+    "budget",
+    "dependencies",
     "risks",
+    "memory_context",
     "trace"
   ],
   "properties": {
-    "schema_version": {
-      "const": "nexus.execution_plan.p0.v1"
-    },
-    "task": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["objective"],
-      "properties": {
-        "task_id": {"type": ["string", "null"]},
-        "conversation_id": {"type": ["string", "null"]},
-        "trace_id": {"type": ["string", "null"]},
-        "objective": {"type": "string", "minLength": 1}
-      }
-    },
+    "schema_version": { "const": "nexus.execution_plan.p3.v1" },
+    "tenant_id": { "$ref": "common-identifiers.schema.json#/$defs/tenant_id" },
+    "user_id": { "$ref": "common-identifiers.schema.json#/$defs/user_id" },
+    "agent_id": { "$ref": "common-identifiers.schema.json#/$defs/agent_id" },
+    "task_id": { "$ref": "common-identifiers.schema.json#/$defs/task_id" },
+    "attempt_id": { "$ref": "common-identifiers.schema.json#/$defs/attempt_id" },
+    "execution_id": { "$ref": "common-identifiers.schema.json#/$defs/execution_id" },
+    "conversation_id": { "$ref": "common-identifiers.schema.json#/$defs/conversation_id" },
+    "trace_id": { "$ref": "common-identifiers.schema.json#/$defs/trace_id" },
+    "objective": { "type": "string", "minLength": 1, "maxLength": 1000 },
     "steps": {
       "type": "array",
       "minItems": 1,
-      "items": {
-        "type": "object",
-        "additionalProperties": false,
-        "required": ["step_id", "title", "intent", "status", "depends_on"],
-        "properties": {
-          "step_id": {"type": "string", "minLength": 1},
-          "title": {"type": "string", "minLength": 1},
-          "intent": {"type": "string", "minLength": 1},
-          "status": {"enum": ["planned", "blocked", "complete"]},
-          "depends_on": {
-            "type": "array",
-            "items": {"type": "string"}
+      "items": { "$ref": "#/$defs/executionPlanStep" }
+    },
+    "tool_intents": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/toolIntent" }
+    },
+    "budget": { "$ref": "#/$defs/budget" },
+    "dependencies": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/dependency" }
+    },
+    "risks": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/risk" }
+    },
+    "memory_context": { "$ref": "#/$defs/memoryContext" },
+    "trace": { "$ref": "#/$defs/trace" }
+  },
+  "$defs": {
+    "legacy_p0_marker": {
+      "description": "Historical P0 marker retained for smoke/history only; not valid for current provider output.",
+      "const": "nexus.execution_plan.p0.v1"
+    },
+    "executionPlanStep": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["step_id", "title", "intent", "status", "depends_on", "expected_output"],
+      "properties": {
+        "step_id": { "type": "string", "pattern": "^step_[A-Za-z0-9][A-Za-z0-9_-]{2,63}$" },
+        "title": { "type": "string", "minLength": 1, "maxLength": 160 },
+        "intent": { "type": "string", "pattern": "^[a-z][a-z0-9_.-]{2,127}$" },
+        "status": { "enum": ["planned", "blocked"] },
+        "depends_on": {
+          "type": "array",
+          "items": { "type": "string", "pattern": "^step_[A-Za-z0-9][A-Za-z0-9_-]{2,63}$" }
+        },
+        "expected_output": { "type": "string", "minLength": 1, "maxLength": 240 }
+      }
+    },
+    "toolIntent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["tool_intent_id", "step_id", "capability", "executor_policy", "credential_refs", "artifact_expectations"],
+      "properties": {
+        "tool_intent_id": { "type": "string", "pattern": "^tool_intent_[A-Za-z0-9][A-Za-z0-9_-]{2,63}$" },
+        "step_id": { "type": "string", "pattern": "^step_[A-Za-z0-9][A-Za-z0-9_-]{2,63}$" },
+        "capability": { "type": "string", "pattern": "^[a-z][a-z0-9_.-]{2,127}$" },
+        "executor_policy": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["mode", "require_policy_gate", "allow_direct_execution", "artifact_store"],
+          "properties": {
+            "mode": { "const": "platform_executor_required" },
+            "require_policy_gate": { "const": true },
+            "allow_direct_execution": { "const": false },
+            "artifact_store": { "const": "required" }
+          }
+        },
+        "credential_refs": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["credential_ref", "purpose"],
+            "properties": {
+              "credential_ref": { "type": "string", "pattern": "^cred_[A-Za-z0-9][A-Za-z0-9_-]{2,127}$" },
+              "purpose": { "const": "executor_tool" }
+            }
+          }
+        },
+        "artifact_expectations": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["kind", "store", "required"],
+            "properties": {
+              "kind": { "type": "string", "enum": ["execution_result", "structured_output", "diagnostic"] },
+              "store": { "const": "artifact_store" },
+              "required": { "type": "boolean" }
+            }
           }
         }
       }
     },
-    "tool_intents": {
-      "type": "array",
-      "items": {"type": "object"}
-    },
-    "memory_context": {
+    "budget": {
       "type": "object",
-      "additionalProperties": true,
-      "required": ["mode", "direct_file_memory"],
+      "additionalProperties": false,
+      "required": ["estimated_units", "max_execution_steps", "requires_approval"],
       "properties": {
-        "mode": {"const": "memory_gateway_required"},
-        "direct_file_memory": {"const": "blocked"},
-        "forbidden_paths": {
-          "type": "array",
-          "items": {"enum": ["MEMORY.md", "USER.md"]}
-        }
+        "estimated_units": { "type": "integer", "minimum": 1 },
+        "max_execution_steps": { "type": "integer", "minimum": 1 },
+        "requires_approval": { "type": "boolean" }
       }
     },
-    "risks": {
-      "type": "array",
-      "items": {"type": "object"}
+    "dependency": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["step_id", "depends_on_step_id", "relation"],
+      "properties": {
+        "step_id": { "type": "string", "pattern": "^step_[A-Za-z0-9][A-Za-z0-9_-]{2,63}$" },
+        "depends_on_step_id": { "type": "string", "pattern": "^step_[A-Za-z0-9][A-Za-z0-9_-]{2,63}$" },
+        "relation": { "const": "after" }
+      }
+    },
+    "risk": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["risk_id", "severity", "mitigation"],
+      "properties": {
+        "risk_id": { "type": "string", "pattern": "^risk_[A-Za-z0-9][A-Za-z0-9_-]{2,63}$" },
+        "severity": { "enum": ["low", "medium", "high", "critical"] },
+        "mitigation": { "type": "string", "minLength": 1, "maxLength": 240 }
+      }
+    },
+    "memoryContext": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mode", "layers", "snapshot_version", "direct_memory_access"],
+      "properties": {
+        "mode": { "const": "memory_gateway_snapshot" },
+        "layers": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "enum": ["session", "user", "agent_skill"] }
+        },
+        "snapshot_version": { "type": "integer", "minimum": 0 },
+        "direct_memory_access": { "const": "blocked" }
+      }
     },
     "trace": {
       "type": "object",
-      "additionalProperties": true,
-      "required": ["source", "planner_only", "native_tool_runtime", "native_loop_runtime", "native_file_memory"],
+      "additionalProperties": false,
+      "required": ["source", "planner_mode", "provider_binding", "tool_runtime", "memory_runtime", "gateway_runtime"],
       "properties": {
-        "source": {"type": "string"},
-        "planner_only": {"const": true},
-        "native_tool_runtime": {"const": "blocked"},
-        "native_loop_runtime": {"const": "blocked"},
-        "native_file_memory": {"const": "blocked"}
+        "source": { "type": "string", "enum": ["conversation_loop", "provider_fixture", "adapter_validation"] },
+        "planner_mode": { "const": "planner_only" },
+        "provider_binding": { "const": "planner_provider_default" },
+        "tool_runtime": { "const": "platform_executor_required" },
+        "memory_runtime": { "const": "memory_gateway_required" },
+        "gateway_runtime": { "const": "blocked" }
       }
     }
   }

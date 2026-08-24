@@ -77,6 +77,19 @@ sources:
           - tests/security/hermes-memory-isolation.test.mjs
           - docs/architecture/hermes-memory-gateway-migration.md
           - tests/smoke/P3.sh
+      - task_id: P3-03
+        description: "NexusAgent P3 strict ExecutionPlan contract"
+        decision_record: docs/planning/task-prompts/P3/P3-03.md
+        schema_version: nexus.execution_plan.p3.v1
+        files:
+          - vendor/hermes-agent-main/agent/nexus_planner_only_experiment.py
+          - vendor/hermes-agent-main/tests/agent/test_nexus_planner_only_experiment.py
+          - platform/contracts/execution-plan.schema.json
+          - platform/adapters/hermes/index.ts
+          - tests/unit/hermes-execution-plan-contract.test.mjs
+          - tests/integration/hermes-execution-plan-adapter.test.mjs
+          - tests/security/hermes-execution-plan-leakage.test.mjs
+          - tests/smoke/P3.sh
   - upstream_name: OpenClaw
     vendor_name: openclaw-main
     internal_role: gateway-only

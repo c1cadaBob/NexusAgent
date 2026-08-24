@@ -17,19 +17,40 @@ def test_execution_plan_shape_and_turn_result(monkeypatch):
 
     plan = build_execution_plan(
         "ship the platform task",
-        task_id="task-123",
-        conversation_id="conv-456",
-        trace_id="trace-789",
+        tenant_id="tenant_alpha01",
+        user_id="user_alpha01",
+        agent_id="agent_alpha01",
+        task_id="task_alpha01",
+        attempt_id="attempt_alpha01",
+        execution_id="exec_alpha01",
+        conversation_id="conv_alpha01",
+        trace_id="trace_alpha01",
     )
     validate_execution_plan_shape(plan)
-    assert plan["schema_version"] == "nexus.execution_plan.p0.v1"
-    assert plan["task"]["objective"] == "ship the platform task"
-    assert plan["memory_context"]["direct_file_memory"] == "blocked"
+    assert plan["schema_version"] == "nexus.execution_plan.p3.v1"
+    assert plan["objective"] == "ship the platform task"
+    assert plan["tenant_id"] == "tenant_alpha01"
+    assert plan["memory_context"]["mode"] == "memory_gateway_snapshot"
+    assert plan["memory_context"]["direct_memory_access"] == "blocked"
+    assert plan["trace"]["provider_binding"] == "planner_provider_default"
+    assert "final_response" not in plan
+    assert "reasoning" not in plan
 
     result = build_planner_only_turn_result(
-        SimpleNamespace(session_id="conv-456", trace_id="trace-789", model="", provider=""),
+        SimpleNamespace(
+            tenant_id="tenant_alpha01",
+            user_id="user_alpha01",
+            agent_id="agent_alpha01",
+            task_id="task_alpha01",
+            attempt_id="attempt_alpha01",
+            execution_id="exec_alpha01",
+            conversation_id="conv_alpha01",
+            trace_id="trace_alpha01",
+            model="",
+            provider="",
+        ),
         "ship the platform task",
-        task_id="task-123",
+        task_id="task_alpha01",
     )
     assert result["final_response"] == ""
     assert result["api_calls"] == 0
@@ -37,6 +58,30 @@ def test_execution_plan_shape_and_turn_result(monkeypatch):
     assert result["execution_plan"] == plan
     assert result["messages"][-1]["content"] == ""
     assert result["messages"][-1]["nexus_execution_plan"] == plan
+
+
+def test_execution_plan_missing_platform_context_fails_closed(monkeypatch):
+    monkeypatch.setenv("NEXUS_HERMES_PLANNER_ONLY", "1")
+
+    from agent.nexus_planner_only_experiment import build_execution_plan
+
+    try:
+        build_execution_plan(
+            "ship without context",
+            tenant_id="tenant_alpha01",
+            user_id="user_alpha01",
+            agent_id="agent_alpha01",
+            task_id="task_alpha01",
+            attempt_id="attempt_alpha01",
+            execution_id="exec_alpha01",
+            conversation_id="conv_alpha01",
+        )
+    except ValueError as exc:
+        payload = json.loads(str(exc))
+    else:
+        raise AssertionError("missing trace_id must fail closed")
+    assert payload["code"] == "PLATFORM_SCHEMA_VALIDATION_FAILED"
+    assert payload["details"]["field"] == "trace_id"
 
 
 def test_provider_metadata_and_disabled_guard(monkeypatch):
@@ -55,6 +100,7 @@ def test_provider_metadata_and_disabled_guard(monkeypatch):
     assert metadata["role"] == "planner-only"
     assert metadata["status"] == "enabled"
     assert metadata["contract_version"] == HERMES_PROVIDER_CONTRACT_VERSION
+    assert metadata["schema_versions"] == ["nexus.execution_plan.p3.v1"]
     assert "native-gateway-block" in metadata["capabilities"]
     assert "vendor_path" not in provider_status_view()
 

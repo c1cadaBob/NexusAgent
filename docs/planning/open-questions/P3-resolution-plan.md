@@ -10,6 +10,10 @@ P3-01 已完成 Hermes planner-only provider 最小边界：`vendor/MANIFEST.yam
 
 P3-02 已完成 Hermes Memory Gateway 最小代理化证据：`platform/memory-gateway/index.ts` 增加平台中性的三层 planner snapshot、`nexus.memory_snapshot.p3.v1`、`expected_version` 冲突检测和 snapshot sanitizer；`platform/adapters/hermes/index.ts` 新增内部 `nexus.hermes_memory_proxy.p3.v1` 与 `HermesMemoryGatewayAdapter`，只接受 Coordinator/Policy-Gate trusted invocation、memory route 和 enabled provider；`vendor/hermes-agent-main/agent/nexus_memory_gateway_proxy.py` 与 `tools/memory_tool.py` 让 planner-only snapshot/write 通过 platform proxy，缺平台 scope 时 fail closed 且不创建 `memories/`。`OQ-MEMORY-001` 已补三层最小关闭证据和冲突检测证据，但保留期、生产存储和正式检索策略仍未完全关闭；`OQ-MEMORY-002` 继续保持 `自动确认`，由 P3-03/P8 复核 PostgreSQL/pgvector、Qdrant 或企业标准。
 
+## P3-03 同步状态
+
+P3-03 已按“严格计划”默认路线落地 ExecutionPlan 标准化：当前 planner provider 输出 `nexus.execution_plan.p3.v1`，必须包含完整平台 ID、objective、steps、ToolIntent、budget、dependencies、risks、memory_context 和平台中性 trace；`explanation`、`reasoning`、自然语言 `final_response`、原生 URL/session/path/error/raw credential 和原生记忆文件名全部 fail closed。`platform/contracts/execution-plan.schema.json` 保留 `nexus.execution_plan.p0.v1` 仅作 P0 smoke/history marker；当前 provider registry、vendor helper 和 P3 smoke 均要求 P3 schema。该任务关闭“planner 输出是否允许模型解释字段”的 P3 最小证据，结论为严格禁止；skills tap、Agent Plugins v1 和 MCP server 的租户级/管理员级启用策略仍由 P3-04/P6/P8 继续关闭。
+
 ## OQ-UPSTREAM-001：Hermes 真实 remote、release commit 和 fork 分支
 
 推荐处理：优先确认官方 remote/tag；如果当前快照来自 fork，则记录 fork remote、base commit、差异摘要和本地补丁。若仍无法确认来源，允许 P3 暂用本地快照，但必须保留来源不完整风险，禁止自动升级。
