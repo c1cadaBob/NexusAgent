@@ -51,6 +51,17 @@ sources:
           - vendor/hermes-agent-main/hermes_cli/loops.py
           - vendor/hermes-agent-main/tests/agent/test_nexus_planner_only_experiment.py
           - vendor/hermes-agent-main/tests/hermes_cli/test_nexus_planner_only_loop.py
+      - task_id: P3-01
+        description: "NexusAgent P3 Hermes planner-only provider boundary hardening"
+        decision_record: docs/planning/task-prompts/P3/P3-01.md
+        files:
+          - vendor/hermes-agent-main/agent/nexus_planner_only_experiment.py
+          - vendor/hermes-agent-main/hermes_cli/gateway.py
+          - vendor/hermes-agent-main/tests/agent/test_nexus_planner_only_experiment.py
+          - vendor/hermes-agent-main/tests/hermes_cli/test_nexus_planner_only_gateway.py
+          - platform/adapters/hermes/index.ts
+          - tests/unit/hermes-provider-registry.test.mjs
+          - tests/smoke/P3.sh
   - upstream_name: OpenClaw
     vendor_name: openclaw-main
     internal_role: gateway-only

@@ -2,6 +2,10 @@
 
 > 阶段目标：把 Hermes 固化为 planner-only provider，并把记忆读写、skills/MCP 和规划输出全部平台化。P3 不允许 Hermes 直接执行工具、直接读写原生记忆文件或向产品层返回最终自然语言回复。
 
+## P3-01 同步状态
+
+P3-01 已完成 Hermes planner-only provider 最小边界：`vendor/MANIFEST.yaml` 登记 `P3-01` 本地补丁，`platform/adapters/hermes/index.ts` 固定 `hermes-0.20.5` 默认 provider 并支持启用、禁用、默认切换和回滚；`vendor/hermes-agent-main/hermes_cli/gateway.py` 在 `NEXUS_HERMES_PLANNER_ONLY=1` 时返回平台化 blocked payload，阻断原生 gateway 启动。`OQ-UPSTREAM-001`、`OQ-MEMORY-001`、`OQ-MEMORY-002` 仍保持 `自动确认`：P3-01 只提供 provider baseline 和原生启动面阻断，不补真实 upstream remote、最终 Memory Gateway 存储/检索策略或正式 ExecutionPlan schema。
+
 ## OQ-UPSTREAM-001：Hermes 真实 remote、release commit 和 fork 分支
 
 推荐处理：优先确认官方 remote/tag；如果当前快照来自 fork，则记录 fork remote、base commit、差异摘要和本地补丁。若仍无法确认来源，允许 P3 暂用本地快照，但必须保留来源不完整风险，禁止自动升级。

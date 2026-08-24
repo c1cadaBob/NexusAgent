@@ -66,6 +66,10 @@ from hermes_cli.setup import (
     prompt_yes_no,
 )
 from hermes_cli.colors import Colors, color
+from agent.nexus_planner_only_experiment import (
+    build_blocked_gateway_result,
+    is_nexus_hermes_planner_only_enabled,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -5744,6 +5748,11 @@ def run_gateway(verbose: int = 0, quiet: bool = False, replace: bool = False, fo
         force: Skip the supervised-gateway conflict guard and start even when a
                systemd/launchd service is already supervising this profile.
     """
+    if is_nexus_hermes_planner_only_enabled():
+        blocked = build_blocked_gateway_result()
+        print(json.dumps(blocked, ensure_ascii=False, sort_keys=True))
+        return blocked
+
     _guard_official_docker_root_gateway()
     _guard_named_profile_under_multiplexer(force=force)
     _guard_supervised_gateway_conflict(force=force)

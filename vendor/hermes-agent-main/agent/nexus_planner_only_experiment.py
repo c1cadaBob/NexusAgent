@@ -14,11 +14,19 @@ from collections.abc import Mapping
 from typing import Any, Dict, List, Optional
 
 NEXUS_HERMES_PLANNER_ONLY_ENV = "NEXUS_HERMES_PLANNER_ONLY"
+NEXUS_HERMES_DEFAULT_PROVIDER_ID_ENV = "NEXUS_HERMES_DEFAULT_PROVIDER_ID"
+NEXUS_HERMES_DISABLED_PROVIDER_IDS_ENV = "NEXUS_HERMES_DISABLED_PROVIDER_IDS"
+NEXUS_HERMES_ROLLBACK_PROVIDER_ID_ENV = "NEXUS_HERMES_ROLLBACK_PROVIDER_ID"
 EXECUTION_PLAN_SCHEMA_VERSION = "nexus.execution_plan.p0.v1"
+HERMES_BASELINE_PROVIDER_ID = "hermes-0.20.5"
+HERMES_PROVIDER_CONTRACT_VERSION = "nexus.hermes_provider.p3.v1"
 PLANNER_ONLY_TURN_EXIT_REASON = "nexus_planner_only_handoff"
 BLOCKED_NATIVE_TOOL_CODE = "NEXUS_HERMES_PLANNER_ONLY_NATIVE_TOOL_BLOCKED"
 BLOCKED_MEMORY_CODE = "NEXUS_HERMES_PLANNER_ONLY_MEMORY_GATEWAY_REQUIRED"
 BLOCKED_LOOP_CODE = "NEXUS_HERMES_PLANNER_ONLY_LOOP_BLOCKED"
+BLOCKED_GATEWAY_CODE = "NEXUS_HERMES_PLANNER_ONLY_GATEWAY_BLOCKED"
+PROVIDER_DISABLED_CODE = "NEXUS_HERMES_PLANNER_ONLY_PROVIDER_DISABLED"
+PROVIDER_UNKNOWN_CODE = "NEXUS_HERMES_PLANNER_ONLY_PROVIDER_UNKNOWN"
 
 _TRUTHY = {"1", "true", "yes", "on"}
 
@@ -27,6 +35,99 @@ def is_nexus_hermes_planner_only_enabled() -> bool:
     """Return True when the P0 planner-only experiment is explicitly enabled."""
 
     return str(os.environ.get(NEXUS_HERMES_PLANNER_ONLY_ENV, "")).strip().lower() in _TRUTHY
+
+
+def _current_provider_id() -> str:
+    provider_id = str(os.environ.get(NEXUS_HERMES_DEFAULT_PROVIDER_ID_ENV, HERMES_BASELINE_PROVIDER_ID)).strip()
+    return provider_id or HERMES_BASELINE_PROVIDER_ID
+
+
+def _disabled_provider_ids() -> set[str]:
+    raw = str(os.environ.get(NEXUS_HERMES_DISABLED_PROVIDER_IDS_ENV, ""))
+    return {item.strip() for item in raw.split(",") if item.strip()}
+
+
+def _rollback_provider_id() -> Optional[str]:
+    provider_id = str(os.environ.get(NEXUS_HERMES_ROLLBACK_PROVIDER_ID_ENV, "")).strip()
+    return provider_id or None
+
+
+def _known_provider_ids() -> set[str]:
+    provider_ids = {HERMES_BASELINE_PROVIDER_ID}
+    rollback = _rollback_provider_id()
+    if rollback:
+        provider_ids.add(rollback)
+    return provider_ids
+
+
+def baseline_provider_metadata(provider_id: Optional[str] = None) -> Dict[str, Any]:
+    """Return sanitized P3 planner provider metadata for platform-side checks."""
+
+    resolved_provider_id = provider_id or HERMES_BASELINE_PROVIDER_ID
+    disabled = resolved_provider_id in _disabled_provider_ids()
+    metadata: Dict[str, Any] = {
+        "provider_id": resolved_provider_id,
+        "version": "0.20.5",
+        "role": "planner-only",
+        "status": "disabled" if disabled else "enabled",
+        "contract_version": HERMES_PROVIDER_CONTRACT_VERSION,
+        "schema_versions": [EXECUTION_PLAN_SCHEMA_VERSION],
+        "capabilities": [
+            "execution-plan",
+            "memory-gateway-required",
+            "native-gateway-block",
+            "native-loop-block",
+            "native-tool-block",
+            "provider-disable",
+            "provider-rollback",
+        ],
+    }
+    rollback_provider_id = _rollback_provider_id()
+    if rollback_provider_id:
+        metadata["rollback_provider_id"] = rollback_provider_id
+    return metadata
+
+
+def provider_status_view(provider_id: Optional[str] = None) -> Dict[str, Any]:
+    """Expose a provider status view without native URLs, sessions, or paths."""
+
+    resolved_provider_id = provider_id or _current_provider_id()
+    return baseline_provider_metadata(resolved_provider_id)
+
+
+def assert_nexus_hermes_provider_available(provider_id: Optional[str] = None) -> Dict[str, Any]:
+    """Validate the selected P3 planner provider before planning work starts."""
+
+    resolved_provider_id = provider_id or _current_provider_id()
+    if resolved_provider_id not in _known_provider_ids():
+        raise ValueError(
+            json.dumps(
+                {
+                    "success": False,
+                    "code": PROVIDER_UNKNOWN_CODE,
+                    "error": "Hermes planner provider is not registered with NexusAgent.",
+                    "provider_id": resolved_provider_id,
+                },
+                ensure_ascii=False,
+                sort_keys=True,
+            )
+        )
+    status = provider_status_view(resolved_provider_id)
+    if status["status"] != "enabled":
+        raise ValueError(
+            json.dumps(
+                {
+                    "success": False,
+                    "code": PROVIDER_DISABLED_CODE,
+                    "error": "Hermes planner provider is disabled by NexusAgent platform configuration.",
+                    "provider_id": resolved_provider_id,
+                    "rollback_provider_id": status.get("rollback_provider_id"),
+                },
+                ensure_ascii=False,
+                sort_keys=True,
+            )
+        )
+    return status
 
 
 def _stringify_content(value: Any) -> str:
@@ -107,6 +208,7 @@ def build_execution_plan(
 ) -> Dict[str, Any]:
     """Build the minimal platform-facing ExecutionPlan used by the P0 proof."""
 
+    provider = assert_nexus_hermes_provider_available()
     objective = _truncate(_stringify_content(user_message), 1000) or "(empty input)"
     plan = {
         "schema_version": EXECUTION_PLAN_SCHEMA_VERSION,
@@ -155,8 +257,11 @@ def build_execution_plan(
         "trace": {
             "source": source,
             "planner_only": True,
+            "provider_id": provider["provider_id"],
+            "provider_contract_version": HERMES_PROVIDER_CONTRACT_VERSION,
             "native_tool_runtime": "blocked",
             "native_loop_runtime": "blocked",
+            "native_gateway_runtime": "blocked",
             "native_file_memory": "blocked",
         },
     }
@@ -276,3 +381,25 @@ def blocked_loop_output() -> Dict[str, Any]:
         "code": BLOCKED_LOOP_CODE,
     }
 
+
+def build_blocked_gateway_result(source: str = "gateway.run") -> Dict[str, Any]:
+    """Return the shared gateway disabled response for planner-only mode."""
+
+    provider = provider_status_view()
+    return {
+        "success": False,
+        "code": BLOCKED_GATEWAY_CODE,
+        "error": (
+            "NexusAgent planner-only mode blocks the native Hermes gateway; "
+            "use the platform channel gateway and Coordinator instead."
+        ),
+        "provider": provider,
+        "trace": {
+            "source": source,
+            "planner_only": True,
+            "native_gateway_runtime": "blocked",
+            "native_tool_runtime": "blocked",
+            "native_loop_runtime": "blocked",
+            "native_file_memory": "blocked",
+        },
+    }

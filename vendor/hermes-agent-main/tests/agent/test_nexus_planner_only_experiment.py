@@ -39,6 +39,48 @@ def test_execution_plan_shape_and_turn_result(monkeypatch):
     assert result["messages"][-1]["nexus_execution_plan"] == plan
 
 
+def test_provider_metadata_and_disabled_guard(monkeypatch):
+    monkeypatch.setenv("NEXUS_HERMES_PLANNER_ONLY", "1")
+
+    from agent.nexus_planner_only_experiment import (
+        HERMES_BASELINE_PROVIDER_ID,
+        HERMES_PROVIDER_CONTRACT_VERSION,
+        assert_nexus_hermes_provider_available,
+        baseline_provider_metadata,
+        provider_status_view,
+    )
+
+    metadata = baseline_provider_metadata()
+    assert metadata["provider_id"] == HERMES_BASELINE_PROVIDER_ID
+    assert metadata["role"] == "planner-only"
+    assert metadata["status"] == "enabled"
+    assert metadata["contract_version"] == HERMES_PROVIDER_CONTRACT_VERSION
+    assert "native-gateway-block" in metadata["capabilities"]
+    assert "vendor_path" not in provider_status_view()
+
+    assert assert_nexus_hermes_provider_available()["provider_id"] == HERMES_BASELINE_PROVIDER_ID
+
+    monkeypatch.setenv("NEXUS_HERMES_DISABLED_PROVIDER_IDS", HERMES_BASELINE_PROVIDER_ID)
+    try:
+        assert_nexus_hermes_provider_available()
+    except ValueError as exc:
+        payload = json.loads(str(exc))
+    else:
+        raise AssertionError("disabled planner provider must be rejected")
+    assert payload["code"] == "NEXUS_HERMES_PLANNER_ONLY_PROVIDER_DISABLED"
+    assert payload["provider_id"] == HERMES_BASELINE_PROVIDER_ID
+
+    monkeypatch.delenv("NEXUS_HERMES_DISABLED_PROVIDER_IDS")
+    monkeypatch.setenv("NEXUS_HERMES_DEFAULT_PROVIDER_ID", "hermes-unknown")
+    try:
+        assert_nexus_hermes_provider_available()
+    except ValueError as exc:
+        payload = json.loads(str(exc))
+    else:
+        raise AssertionError("unknown planner provider must be rejected")
+    assert payload["code"] == "NEXUS_HERMES_PLANNER_ONLY_PROVIDER_UNKNOWN"
+
+
 def test_tool_executor_blocks_native_tool_calls(monkeypatch):
     monkeypatch.setenv("NEXUS_HERMES_PLANNER_ONLY", "1")
 
@@ -106,4 +148,3 @@ def test_file_memory_refuses_direct_read_write(monkeypatch, tmp_path):
     payload = json.loads(memory_tool(action="add", target="user", content="Alice", store=store))
     assert payload["code"] == "NEXUS_HERMES_PLANNER_ONLY_MEMORY_GATEWAY_REQUIRED"
     assert not memories_dir.exists()
-
