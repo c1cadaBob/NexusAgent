@@ -48,6 +48,7 @@ required_files=(
   docs/architecture/hermes-memory-gateway-migration.md
   docs/architecture/upstream-versioning-and-plugin-bridge.md
   docs/planning/open-questions/P3-resolution-plan.md
+  docs/planning/phase-gates/P3-gate-review.md
   docs/planning/task-prompts/P3/P3-01.md
   docs/planning/task-prompts/P3/P3-02.md
   docs/planning/task-prompts/P3/P3-03.md
@@ -164,6 +165,16 @@ for marker in \
   'platform/adapters/hermes/plugin-bridge.ts' \
   'hermes-plugin-bypass.test.mjs'; do
   rg -q "$marker" vendor/MANIFEST.yaml || fail "vendor manifest missing P3-04 marker: $marker"
+done
+
+for marker in \
+  'P3 阶段门禁报告' \
+  'P3-01 至 P3-04' \
+  'OQ-UPSTREAM-001' \
+  'OQ-MEMORY-002' \
+  'OQ-PLUGIN-001' \
+  'bash tests/smoke/P3.sh'; do
+  rg -q "$marker" docs/planning/phase-gates/P3-gate-review.md || fail "P3 phase gate report marker missing: $marker"
 done
 
 for marker in \

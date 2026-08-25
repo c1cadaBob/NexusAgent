@@ -18,6 +18,7 @@
 - [P0 阶段门禁报告](planning/phase-gates/P0-gate-review.md)：P0 门禁收口，关闭 4 个 P0 到期 `OQ-*`，并列明仍为 `自动确认` 的后续阶段问题。
 - [P1 阶段门禁报告](planning/phase-gates/P1-gate-review.md)：P1 门禁收口，确认 P1-01 至 P1-06 完成，列明仍为 `自动确认` 的 P1/P8 基础设施和 API 问题及后续承接任务。
 - [P2 阶段门禁报告](planning/phase-gates/P2-gate-review.md)：P2 门禁收口，确认 P2-01 至 P2-04 完成，列明 DSH provider、sandbox、artifact、防绕过和回滚证据，以及仍为 `自动确认` 的 P2/P6/P8 问题。
+- [P3 阶段门禁报告](planning/phase-gates/P3-gate-review.md)：P3 门禁收口，确认 P3-01 至 P3-04 完成，列明 Hermes planner-only、Memory Gateway、ExecutionPlan、Plugin Bridge 最小证据，以及仍为 `自动确认` 的 P3/P5/P6/P8 问题。
 - [AI 排期提示词模板](planning/ai-schedule-prompt-template.md)
 - [任务实施规划提示词索引](planning/task-prompts/README.md)
 - [子 Agent 角色记忆](agents/README.md)：P0-01 基线，固化长期协作角色、只读上游边界、交接格式和各角色常读资料，避免上下文压缩或交接后遗忘项目约束。
@@ -61,6 +62,7 @@
 - P1 阶段门禁的 [阶段门禁报告](planning/phase-gates/P1-gate-review.md) 已确认 P1-01 至 P1-06 全部完成并通过 P1 smoke；P1 相关 `OQ-INFRA-*`、`OQ-API-001` 和 `OQ-DEPLOY-001` 仍保持 `自动确认`，已映射到 P5/P6/P8 后续任务继续关闭。
 - P2 阶段门禁的 [阶段门禁报告](planning/phase-gates/P2-gate-review.md) 已确认 P2-01 至 P2-04 全部完成并通过 P2 smoke；P2 相关 `OQ-UPSTREAM-003`、`OQ-DSH-001` 和 `OQ-DSH-002` 仍保持 `自动确认`，已映射到 P6/P8 后续故障注入、生产 sandbox、sidecar 权限和上游追踪任务继续关闭。
 - P3-01 已完成 Hermes planner-only provider 最小基线并通过 `tests/smoke/P3.sh` 纳入门禁；P3-02 已把 planner-only 记忆读取和受控写入代理到 Memory Gateway，验证三层 scope、sanitizer、缺 scope fail-closed 和原生文件 drift 回归；P3-03 已把当前 planner 输出升级为严格 `nexus.execution_plan.p3.v1` 并禁止解释字段、自然语言 final response 和原生 URL/session/path/error/raw credential；P3-04 已补 Hermes planner+memory 组合验证、Memory Gateway 防直读、防原生端口静态隔离和 Plugin Bridge 最小 approved skill/MCP planner hint 准入。P3 相关 `OQ-UPSTREAM-001`、`OQ-MEMORY-002` 和 `OQ-PLUGIN-001` 仍保持 `自动确认`，最终 upstream 来源、生产 Memory Gateway 存储/检索和完整插件治理继续由 P5/P6/P8 关闭。
+- P3 阶段门禁的 [阶段门禁报告](planning/phase-gates/P3-gate-review.md) 已确认 P3-01 至 P3-04 全部完成并通过 P0-P3 smoke；P3 相关自动确认问题已映射到 P5/P6/P8 后续插件治理、生产 Memory、sidecar/OS 隔离和上游追踪任务继续关闭。
 - 每个阶段结束前必须回扫当前阶段及其之前阶段的未处理问题、任务修改记录包、风险登记册和需求追踪矩阵；如果仍有未处理或未同步问题，必须先修复或创建后续实时规划提示词，再判断是否允许进入下一阶段。
 
 所有文档使用 UTC 时间、平台统一标识和平台层术语。Hermes、OpenClaw、DSH 只在内部实现、适配器、风险和源码追踪语境中出现。
