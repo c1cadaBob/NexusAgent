@@ -19,6 +19,7 @@ trap cleanup_vendor_python_dirs EXIT
 
 required_files=(
   platform/adapters/hermes/index.ts
+  platform/adapters/hermes/plugin-bridge.ts
   platform/adapters/hermes/providers/README.md
   platform/adapters/hermes/providers/hermes-0.20.5/README.md
   platform/contracts/execution-plan.schema.json
@@ -26,8 +27,12 @@ required_files=(
   tests/unit/hermes-provider-registry.test.mjs
   tests/unit/hermes-execution-plan-contract.test.mjs
   tests/unit/memory-gateway-p3.test.mjs
+  tests/integration/hermes-adapter.test.mjs
   tests/integration/hermes-execution-plan-adapter.test.mjs
   tests/integration/hermes-memory-gateway-adapter.test.mjs
+  tests/security/hermes-memory-bypass.test.mjs
+  tests/security/hermes-network-isolation.test.mjs
+  tests/security/hermes-plugin-bypass.test.mjs
   tests/security/hermes-execution-plan-leakage.test.mjs
   tests/security/hermes-memory-isolation.test.mjs
   vendor/hermes-agent-main/agent/nexus_planner_only_experiment.py
@@ -46,6 +51,7 @@ required_files=(
   docs/planning/task-prompts/P3/P3-01.md
   docs/planning/task-prompts/P3/P3-02.md
   docs/planning/task-prompts/P3/P3-03.md
+  docs/planning/task-prompts/P3/P3-04.md
   docs/traceability/requirements-matrix.md
   docs/risks/risk-register.md
   docs/README.md
@@ -110,6 +116,24 @@ for audit_marker in \
   printf '%s\n' "$p3_03_audit_block" | rg -q "$audit_marker" || fail "P3-03 audit marker missing: $audit_marker"
 done
 
+p3_04_audit_block="$(sed -n '/^# P3-04 修改记录包$/,/^## 完整提示词$/p' docs/planning/task-prompts/P3/P3-04.md)"
+[[ -n "$p3_04_audit_block" ]] || fail 'P3-04 audit record package is missing'
+if printf '%s\n' "$p3_04_audit_block" | rg -q '\.\.\.'; then
+  fail 'P3-04 audit record package still contains placeholder ellipses'
+fi
+for audit_marker in \
+  '任务与验收条件' \
+  '源码证据' \
+  '基线测试' \
+  '影响面分析' \
+  '修改计划与回滚' \
+  '待确认问题' \
+  '实际变更文件' \
+  '测试结果' \
+  '回滚验证'; do
+  printf '%s\n' "$p3_04_audit_block" | rg -q "$audit_marker" || fail "P3-04 audit marker missing: $audit_marker"
+done
+
 for marker in \
   'task_id: P3-01' \
   'NexusAgent P3 Hermes planner-only provider boundary hardening' \
@@ -132,6 +156,14 @@ for marker in \
   'nexus.execution_plan.p3.v1' \
   'hermes-execution-plan-contract.test.mjs'; do
   rg -q "$marker" vendor/MANIFEST.yaml || fail "vendor manifest missing P3-03 marker: $marker"
+done
+
+for marker in \
+  'task_id: P3-04' \
+  'NexusAgent P3 Hermes integration direct-read and Plugin Bridge guard' \
+  'platform/adapters/hermes/plugin-bridge.ts' \
+  'hermes-plugin-bypass.test.mjs'; do
+  rg -q "$marker" vendor/MANIFEST.yaml || fail "vendor manifest missing P3-04 marker: $marker"
 done
 
 for marker in \
@@ -172,6 +204,24 @@ for marker in \
   rg -q "$marker" platform/adapters/hermes/index.ts platform/memory-gateway/index.ts vendor/hermes-agent-main/agent/nexus_memory_gateway_proxy.py vendor/hermes-agent-main/tools/memory_tool.py tests/unit/memory-gateway-p3.test.mjs tests/integration/hermes-memory-gateway-adapter.test.mjs tests/security/hermes-memory-isolation.test.mjs || fail "Hermes Memory Gateway proxy marker missing: $marker"
 done
 
+for marker in \
+  'nexus.hermes_plugin_bridge.p3.v1' \
+  'HERMES_PLUGIN_BRIDGE_SCHEMA_VERSION' \
+  'discoverHermesPlannerCapabilities' \
+  'tool_intent_only' \
+  'HermesPluginBridgeError'; do
+  rg -q "$marker" platform/adapters/hermes/plugin-bridge.ts tests/security/hermes-plugin-bypass.test.mjs || fail "Hermes Plugin Bridge marker missing: $marker"
+done
+
+for marker in \
+  'hermes-adapter' \
+  'memory-gateway' \
+  '127.0.0.1' \
+  'native_session[A-Za-z0-9_-]*' \
+  'secret[-_ ]?token'; do
+  rg -q "$marker" platform/adapters/hermes/index.ts deploy/docker-compose.dev.yml tests/security/hermes-memory-bypass.test.mjs tests/security/hermes-network-isolation.test.mjs || fail "Hermes P3-04 bypass/isolation marker missing: $marker"
+done
+
 rg -q 'build_planner_only_turn_result' vendor/hermes-agent-main/agent/conversation_loop.py || fail 'conversation loop planner-only handoff missing'
 rg -q 'build_blocked_tool_result' vendor/hermes-agent-main/agent/tool_executor.py || fail 'tool executor native tool block missing'
 rg -q 'blocked_loop_output' vendor/hermes-agent-main/hermes_cli/loops.py || fail 'loop planner-only block missing'
@@ -186,8 +236,12 @@ node --test \
   tests/unit/hermes-execution-plan-contract.test.mjs \
   tests/unit/memory-gateway.test.mjs \
   tests/unit/memory-gateway-p3.test.mjs \
+  tests/integration/hermes-adapter.test.mjs \
   tests/integration/hermes-execution-plan-adapter.test.mjs \
   tests/integration/hermes-memory-gateway-adapter.test.mjs \
+  tests/security/hermes-memory-bypass.test.mjs \
+  tests/security/hermes-network-isolation.test.mjs \
+  tests/security/hermes-plugin-bypass.test.mjs \
   tests/security/hermes-execution-plan-leakage.test.mjs \
   tests/security/hermes-memory-isolation.test.mjs
 

@@ -90,6 +90,20 @@ sources:
           - tests/integration/hermes-execution-plan-adapter.test.mjs
           - tests/security/hermes-execution-plan-leakage.test.mjs
           - tests/smoke/P3.sh
+      - task_id: P3-04
+        description: "NexusAgent P3 Hermes integration direct-read and Plugin Bridge guard"
+        decision_record: docs/planning/task-prompts/P3/P3-04.md
+        schema_version: nexus.hermes_plugin_bridge.p3.v1
+        files:
+          - platform/adapters/hermes/index.ts
+          - platform/adapters/hermes/plugin-bridge.ts
+          - tests/integration/hermes-adapter.test.mjs
+          - tests/security/hermes-memory-bypass.test.mjs
+          - tests/security/hermes-network-isolation.test.mjs
+          - tests/security/hermes-plugin-bypass.test.mjs
+          - tests/smoke/P3.sh
+          - docs/architecture/hermes-memory-gateway-migration.md
+          - docs/architecture/upstream-versioning-and-plugin-bridge.md
   - upstream_name: OpenClaw
     vendor_name: openclaw-main
     internal_role: gateway-only

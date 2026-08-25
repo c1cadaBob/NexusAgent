@@ -1318,7 +1318,7 @@ function assertMemoryPolicyDecisionShape(invocation: CoordinatorAdapterInvocatio
 
 function assertNoNativeMemoryProxyPayload(value: unknown): void {
   const forbiddenKeys = /^(?:credential_material|raw_credential|api_key|password|token|native_session_id|native_error|native_path|file_path|path|url|session_id)$/i;
-  const forbiddenStrings = /MEMORY\.md|USER\.md|https?:\/\/|\b(?:native_session|native_error)\b|\/(?:tmp|var|workspace|opt)\//i;
+  const forbiddenStrings = /MEMORY\.md|USER\.md|https?:\/\/|\.\.\/|\b(?:native_session[A-Za-z0-9_-]*|native_error[A-Za-z0-9_-]*|credential_material|raw_credential|api[_-]?key|password|secret[-_ ]?token|bearer\s+[A-Za-z0-9._-]+)\b|\/(?:tmp|var|workspace|opt)\//i;
   const visit = (candidate: unknown): void => {
     if (Array.isArray(candidate)) {
       for (const item of candidate) visit(item);
@@ -1381,3 +1381,5 @@ function sanitizeDetails(value: Record<string, unknown>): Record<string, unknown
   });
   return JSON.parse(raw) as Record<string, unknown>;
 }
+
+export * from "./plugin-bridge.ts";

@@ -36,6 +36,7 @@
 - [P3 Hermes planner provider registry](../platform/adapters/hermes/index.ts)：P3-01 基线，固定 `hermes-0.20.5` 默认 planner-only provider，覆盖 provider 启用/禁用、默认切换、回滚、原生 gateway 阻断和 `tests/smoke/P3.sh`。
 - [P3 Hermes Memory Gateway 代理化](architecture/hermes-memory-gateway-migration.md)：P3-02 基线，覆盖内部 memory proxy schema、三层 planner scope、snapshot sanitizer、`expected_version` conflict、vendor proxy helper 和缺 scope fail-closed。
 - [P3 Hermes ExecutionPlan 标准化](../platform/contracts/execution-plan.schema.json)：P3-03 基线，覆盖严格 `nexus.execution_plan.p3.v1`、平台 ID、steps、ToolIntent、budget、dependencies、risks、memory_context、planner adapter validator 和泄漏负向测试；P0 marker 仅作为历史证据保留。
+- [P3 Hermes 集成、防直读与 Plugin Bridge guard](../platform/adapters/hermes/plugin-bridge.ts)：P3-04 基线，覆盖 planner+memory 组合 adapter、Memory Gateway 防直读、防原生端口静态隔离和 approved skill/MCP 到 sanitized planner hint 的最小准入验证。
 - [服务功能与整合蓝图](architecture/service-blueprint.md)：P0-07 基线，覆盖十个基础服务的功能、技术栈、输入输出、复用边界、参考项目和 P1 工作包。
 - [DSH 版本兼容与替换策略](architecture/dsh-versioning-and-replacement.md)
 - [上游版本适配与社区插件复用桥接策略](architecture/upstream-versioning-and-plugin-bridge.md)
@@ -59,7 +60,7 @@
 - P0 阶段门禁的 [阶段门禁报告](planning/phase-gates/P0-gate-review.md) 已关闭 `OQ-UPSTREAM-004`、`OQ-SCHEDULE-001`、`OQ-SCHEDULE-002`、`OQ-CHANNEL-001`；其余 19 个问题仍为 `自动确认`，按 P1-P8 后续最晚确认阶段继续关闭。
 - P1 阶段门禁的 [阶段门禁报告](planning/phase-gates/P1-gate-review.md) 已确认 P1-01 至 P1-06 全部完成并通过 P1 smoke；P1 相关 `OQ-INFRA-*`、`OQ-API-001` 和 `OQ-DEPLOY-001` 仍保持 `自动确认`，已映射到 P5/P6/P8 后续任务继续关闭。
 - P2 阶段门禁的 [阶段门禁报告](planning/phase-gates/P2-gate-review.md) 已确认 P2-01 至 P2-04 全部完成并通过 P2 smoke；P2 相关 `OQ-UPSTREAM-003`、`OQ-DSH-001` 和 `OQ-DSH-002` 仍保持 `自动确认`，已映射到 P6/P8 后续故障注入、生产 sandbox、sidecar 权限和上游追踪任务继续关闭。
-- P3-01 已完成 Hermes planner-only provider 最小基线并通过 `tests/smoke/P3.sh` 纳入门禁；P3-02 已把 planner-only 记忆读取和受控写入代理到 Memory Gateway，验证三层 scope、sanitizer、缺 scope fail-closed 和原生文件 drift 回归；P3-03 已把当前 planner 输出升级为严格 `nexus.execution_plan.p3.v1` 并禁止解释字段、自然语言 final response 和原生 URL/session/path/error/raw credential；P3 相关 `OQ-UPSTREAM-001`、`OQ-MEMORY-001` 和 `OQ-MEMORY-002` 仍保持 `自动确认`，最终 upstream 来源、生产 Memory Gateway 存储/检索和插件白名单继续由 P3-04/P8 关闭。
+- P3-01 已完成 Hermes planner-only provider 最小基线并通过 `tests/smoke/P3.sh` 纳入门禁；P3-02 已把 planner-only 记忆读取和受控写入代理到 Memory Gateway，验证三层 scope、sanitizer、缺 scope fail-closed 和原生文件 drift 回归；P3-03 已把当前 planner 输出升级为严格 `nexus.execution_plan.p3.v1` 并禁止解释字段、自然语言 final response 和原生 URL/session/path/error/raw credential；P3-04 已补 Hermes planner+memory 组合验证、Memory Gateway 防直读、防原生端口静态隔离和 Plugin Bridge 最小 approved skill/MCP planner hint 准入。P3 相关 `OQ-UPSTREAM-001`、`OQ-MEMORY-002` 和 `OQ-PLUGIN-001` 仍保持 `自动确认`，最终 upstream 来源、生产 Memory Gateway 存储/检索和完整插件治理继续由 P5/P6/P8 关闭。
 - 每个阶段结束前必须回扫当前阶段及其之前阶段的未处理问题、任务修改记录包、风险登记册和需求追踪矩阵；如果仍有未处理或未同步问题，必须先修复或创建后续实时规划提示词，再判断是否允许进入下一阶段。
 
 所有文档使用 UTC 时间、平台统一标识和平台层术语。Hermes、OpenClaw、DSH 只在内部实现、适配器、风险和源码追踪语境中出现。

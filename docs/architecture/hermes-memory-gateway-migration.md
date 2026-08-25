@@ -1,6 +1,6 @@
 # Hermes Memory Gateway 迁移与恢复说明
 
-> 文档状态：P3-02 最小代理化基线。本文只记录 P3 内部 Memory Gateway proxy 语义，不开放公共 API，不声明生产数据库、向量检索、跨进程 sidecar 或 OS 级文件隔离已经完成。
+> 文档状态：P3-04 最小代理化与防直读验证基线。本文只记录 P3 内部 Memory Gateway proxy 语义、adapter 防直读测试和 dev/prod 静态隔离，不开放公共 API，不声明生产数据库、向量检索、跨进程 sidecar 或 OS 级文件隔离已经完成。
 
 ## 1. P3-02 结论
 
@@ -8,6 +8,8 @@
 - 受控写入 `add`、`replace`、`remove`、`batch` 通过 proxy 投影为平台 `snapshot | query | write` 语义；缺少平台 scope 或 proxy 不可用时 fail closed，且不创建 `memories/` 文件目录。
 - P3-02 只启用 `session`、`user`、`agent_skill` 三层；`organization` 和 `audit_snapshot` 继续留给 P7/P8。
 - `expected_version` 用于最小冲突检测；真实事务存储、保留期、检索排序和向量化留给 P3-03/P8。
+
+P3-04 追加验证：`tests/security/hermes-memory-bypass.test.mjs` 覆盖直接文件路径、路径穿越、原生 URL/session/error、raw credential、api key、password 和 token-like payload fail closed；`tests/security/hermes-network-isolation.test.mjs` 静态确认 `hermes-adapter` 与 `memory-gateway` dev 端口只绑定 loopback，生产 Compose 不包含 dev-only debug、hot reload 或原生 gateway 配置。
 
 ## 2. 平台请求形态
 
@@ -37,4 +39,6 @@
 - `tests/unit/memory-gateway-p3.test.mjs` 覆盖三层 scope、snapshot sanitizer、`expected_version` conflict 和 native field 拒绝。
 - `tests/integration/hermes-memory-gateway-adapter.test.mjs` 覆盖 Coordinator + Policy-Gate trusted invocation、snapshot/query/write 和 disabled provider fail closed。
 - `tests/security/hermes-memory-isolation.test.mjs` 覆盖越权 memory、原生路径、native session/error 和 secret-like 内容不进入 planner snapshot/result/event。
+- `tests/security/hermes-memory-bypass.test.mjs` 覆盖文件路径、路径穿越、原生 URL/session/error、raw credential、api key/password/token-like payload 直接进入 Memory proxy 时 fail closed，同时保留平台 proxy 正向路径。
+- `tests/security/hermes-network-isolation.test.mjs` 覆盖 dev compose loopback-only 暴露与生产 compose 无 Hermes dev-only 端口、debug 或 hot reload。
 - `vendor/hermes-agent-main/tests/tools/test_nexus_memory_gateway_proxy.py` 覆盖 vendor proxy 读取、写入、缺 scope fail closed 和非 planner-only drift 回归。

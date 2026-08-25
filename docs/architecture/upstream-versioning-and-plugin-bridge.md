@@ -21,7 +21,7 @@ platform/adapters/
 ```
 
 - OpenClaw provider：只承载 gateway-only 能力，优先复用 ClawHub/npm 渠道插件、消息插件、MCP 声明和 manifest 元数据；禁止启动 OpenClaw 原生 Agent、工具执行和独立记忆路径。
-- Hermes provider：只承载 planner-only 能力，优先复用 skills、Agent Plugins v1、MCP 和规划辅助插件；Hermes 工具类插件只能转成平台 `ToolIntent` 或交由 DSH executor 执行，禁止 Hermes 原生工具 Runtime、原生 gateway 和记忆直读。P3-01 已将 `hermes-0.20.5` 固定为默认 planner provider，并提供 provider 启用、禁用和回滚基线；P3-02 已把 planner memory 读写代理到内部 Memory Gateway proxy，`MEMORY.md` / `USER.md` 不再作为 planner-only 事实源；P3-03 已把当前计划输出升级为严格 `nexus.execution_plan.p3.v1`，只允许结构化 steps、ToolIntent、budget、dependencies、risks、memory_context 和平台 trace，解释字段与自然语言 final response 均禁止。
+- Hermes provider：只承载 planner-only 能力，优先复用 skills、Agent Plugins v1、MCP 和规划辅助插件；Hermes 工具类插件只能转成平台 `ToolIntent` 或交由 DSH executor 执行，禁止 Hermes 原生工具 Runtime、原生 gateway 和记忆直读。P3-01 已将 `hermes-0.20.5` 固定为默认 planner provider，并提供 provider 启用、禁用和回滚基线；P3-02 已把 planner memory 读写代理到内部 Memory Gateway proxy，`MEMORY.md` / `USER.md` 不再作为 planner-only 事实源；P3-03 已把当前计划输出升级为严格 `nexus.execution_plan.p3.v1`，只允许结构化 steps、ToolIntent、budget、dependencies、risks、memory_context 和平台 trace，解释字段与自然语言 final response 均禁止；P3-04 已新增内部 `nexus.hermes_plugin_bridge.p3.v1` 最小准入 guard，批准的 skill/MCP 只投影为 sanitized planner hint。
 - DSH provider：沿用 [DSH 版本兼容与替换策略](dsh-versioning-and-replacement.md)，只承载 executor-only 能力，复用 Cordis 工具插件和执行型工具；执行必须经过 Policy-Gate、Credential Center、Artifact Store 和 Event Bus。
 
 每个 provider 都必须支持版本标识、启用/禁用、兼容 fixture、升级门禁和回滚路径。P5 之后的产品 API、SDK 和控制台不能依赖具体 provider 版本。
@@ -71,7 +71,7 @@ provider 占位落点：`platform/adapters/openclaw/providers/openclaw-2026.8.1/
 
 ## 7. 阶段落地
 
-P3-01 已完成 Hermes provider 最小基线：`platform/adapters/hermes/index.ts` 暴露 `HermesProviderRegistry`、`hermes-0.20.5` 默认 provider、`nexus.hermes_provider.p3.v1` contract、禁用/启用、默认切换和 `rollbackDefault()`；vendor guard 在 `NEXUS_HERMES_PLANNER_ONLY=1` 时阻断原生 gateway、tool runtime、recurring loop 和文件记忆直读直写。P3-02 已新增 `HermesMemoryGatewayAdapter` 和 vendor proxy helper，固定内部 `nexus.hermes_memory_proxy.p3.v1` / `nexus.memory_snapshot.p3.v1`，只启用 `session`、`user`、`agent_skill` 三层，并用 tests/smoke/P3.sh 验证 trusted invocation、scope 过滤、sanitizer、缺 scope fail-closed 和非 planner-only drift 回归。P3-03 已冻结当前内部 `ExecutionPlan` 为 `nexus.execution_plan.p3.v1`，保留 P0 marker 仅作历史证据，并新增 validator/fixture/planner adapter 和泄漏负向测试。生产存储/检索、skills/MCP 白名单和完整插件准入继续由 P3-04/P8 处理。
+P3-01 已完成 Hermes provider 最小基线：`platform/adapters/hermes/index.ts` 暴露 `HermesProviderRegistry`、`hermes-0.20.5` 默认 provider、`nexus.hermes_provider.p3.v1` contract、禁用/启用、默认切换和 `rollbackDefault()`；vendor guard 在 `NEXUS_HERMES_PLANNER_ONLY=1` 时阻断原生 gateway、tool runtime、recurring loop 和文件记忆直读直写。P3-02 已新增 `HermesMemoryGatewayAdapter` 和 vendor proxy helper，固定内部 `nexus.hermes_memory_proxy.p3.v1` / `nexus.memory_snapshot.p3.v1`，只启用 `session`、`user`、`agent_skill` 三层，并用 tests/smoke/P3.sh 验证 trusted invocation、scope 过滤、sanitizer、缺 scope fail-closed 和非 planner-only drift 回归。P3-03 已冻结当前内部 `ExecutionPlan` 为 `nexus.execution_plan.p3.v1`，保留 P0 marker 仅作历史证据，并新增 validator/fixture/planner adapter 和泄漏负向测试。P3-04 已新增 `platform/adapters/hermes/plugin-bridge.ts`，用最小 discovery/admission guard 验证 approved skill/MCP 可被平台发现，unapproved/disabled/native tool/direct memory/MCP secret 候选 fail closed，并用静态 compose 测试覆盖 Hermes/Memory dev 端口隔离。生产存储/检索、完整插件治理 API、真实侧车绑定和升级兼容矩阵继续由 P5/P6/P8 处理。
 
 - P3：实现 Hermes provider 白名单、skills/MCP 发现、planner-only 插件限制和记忆防直读测试。
 - P4：实现 OpenClaw provider 白名单、ClawHub/manifest 扫描、渠道插件复用和 gateway-only 防绕过测试。

@@ -14,6 +14,10 @@ P3-02 已完成 Hermes Memory Gateway 最小代理化证据：`platform/memory-g
 
 P3-03 已按“严格计划”默认路线落地 ExecutionPlan 标准化：当前 planner provider 输出 `nexus.execution_plan.p3.v1`，必须包含完整平台 ID、objective、steps、ToolIntent、budget、dependencies、risks、memory_context 和平台中性 trace；`explanation`、`reasoning`、自然语言 `final_response`、原生 URL/session/path/error/raw credential 和原生记忆文件名全部 fail closed。`platform/contracts/execution-plan.schema.json` 保留 `nexus.execution_plan.p0.v1` 仅作 P0 smoke/history marker；当前 provider registry、vendor helper 和 P3 smoke 均要求 P3 schema。该任务关闭“planner 输出是否允许模型解释字段”的 P3 最小证据，结论为严格禁止；skills tap、Agent Plugins v1 和 MCP server 的租户级/管理员级启用策略仍由 P3-04/P6/P8 继续关闭。
 
+## P3-04 同步状态
+
+P3-04 已按“平台管理员白名单批准、租户不可自助安装”的最小路线补齐 Hermes 集成、防直读、防原生端口和 Plugin Bridge 准入证据：`tests/integration/hermes-adapter.test.mjs` 组合验证 `HermesExecutionPlanAdapter` 与 `HermesMemoryGatewayAdapter` 必须经 Coordinator/Policy-Gate trusted invocation；`tests/security/hermes-memory-bypass.test.mjs` 验证 `MEMORY.md`、`USER.md`、路径穿越、原生 URL/session/error、raw credential、api key、password 和 token-like payload 均 fail closed；`tests/security/hermes-network-isolation.test.mjs` 静态确认 Hermes adapter 与 Memory Gateway dev 端口只绑定 loopback，生产 Compose 不含 dev-only debug/hot reload；`platform/adapters/hermes/plugin-bridge.ts` 与 `tests/security/hermes-plugin-bypass.test.mjs` 验证 approved skill/MCP 可被发现为 sanitized planner hint，未批准/禁用插件、原生工具执行、直接记忆读取和 MCP env secret 均 fail closed。`OQ-PLUGIN-001` 仍保持自动确认，完整管理员 API、控制台、许可证审核、真实 sidecar 绑定和升级回滚继续由 P5/P6/P8 关闭。
+
 ## OQ-UPSTREAM-001：Hermes 真实 remote、release commit 和 fork 分支
 
 推荐处理：优先确认官方 remote/tag；如果当前快照来自 fork，则记录 fork remote、base commit、差异摘要和本地补丁。若仍无法确认来源，允许 P3 暂用本地快照，但必须保留来源不完整风险，禁止自动升级。
