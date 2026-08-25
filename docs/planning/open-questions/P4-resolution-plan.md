@@ -20,6 +20,8 @@ P4-02 进展：已在 `platform/adapters/openclaw/index.ts` 增加 `nexus.opencl
 
 P4-03 进展：已新增 `nexus.openclaw_command_mapping.p4.v1` 和平台 `nexus.task_command.p4.v1` 命令入口，continue/redo/cancel 只通过 Coordinator、Policy-Gate、TaskState 和 Event Bus 处理；`tests/unit/openclaw-command-mapping.test.mjs`、`tests/integration/openclaw-command-routing.test.mjs` 和 `tests/security/openclaw-command-bypass.test.mjs` 验证命令语义不依赖 OpenClaw 原生 task/cancel API。真实 upstream 来源仍不在 P4-03 关闭。
 
+P4-04 进展：已新增 `tests/integration/channel-routing.test.mjs` 和 `tests/security/openclaw-bypass.test.mjs`，用同一 Coordinator、Policy-Gate、Event Bus 和 `OpenClawGatewayAdapter` 验证 approved channel routing 正向通过，并验证 direct invoke、伪造 trust/header、未知渠道、identity mismatch、native payload、raw credential、native URL/path/session/error、plugin subagent 和未批准 manifest fail closed。真实 upstream remote/release/fork 仍不在 P4-04 关闭，继续交给 P8 兼容矩阵。
+
 ## OQ-CHANNEL-001：首批渠道的 P4 落地
 
 推荐处理：若 P0 未另行确认，P4 默认按钉钉、飞书、Telegram 建立 channel fixture 和白名单；企业微信或 Slack 只在项目负责人确认后加入 P4/P5 范围。所有渠道插件必须进入 Plugin Bridge inventory 和 admission policy。
@@ -40,6 +42,8 @@ P4-02 进展：已把 approved channel inbound 映射为平台 `nexus.task_reque
 
 P4-03 进展：已按保守命令词策略识别 `/continue`、`/redo`、`/retry`、`/cancel`、`/stop` 及对应中文明确命令；同一渠道 `message_id` 生成稳定 idempotency key，重放不重复创建 attempt 或取消事件。自然语言命令歧义不在 P4-03 做分类，真实渠道厂商发送与流式输出仍留给后续任务。
 
+P4-04 进展：已把 approved inbound text、command mapping、平台 `TaskCommand`、outbound queued send intent、Event Bus 事件和 enabled provider 路径合并到 `channel-routing.test.mjs`，并在 `openclaw-bypass.test.mjs` 中验证未知渠道和 tenant/conversation mismatch 均 fail closed。`OQ-CHANNEL-001` 继续保持已关闭：首批渠道仍为钉钉、飞书、Telegram；真实厂商出站发送、回调凭据托管和 streaming 决策不在 P4-04 扩展，继续由 P5/P6 承接。
+
 ## OQ-PLUGIN-001：OpenClaw 插件治理最小落地
 
 推荐处理：P4-01 采用与 P3-04 一致的“平台管理员白名单批准，租户不可自助安装”路线，只允许 approved `channel`、`message_transform`、`mcp_server` capability descriptor 进入 gateway provider；完整管理员 API、控制台、许可证审核、真实 sidecar 绑定和升级回滚仍由 P5/P6/P8 关闭。
@@ -55,3 +59,5 @@ P4-03 进展：已按保守命令词策略识别 `/continue`、`/redo`、`/retry
 P4-02 进展：已将 OpenClaw Plugin Bridge 首批 PluginInventory 来源收窄为 ClawHub + npm，并输出平台 `PluginInventory` / `CapabilityDescriptor` / gateway hint 投影；`tests/security/openclaw-plugin-bypass.test.mjs` 验证 Git、本地包、未批准、禁用、native runtime、raw URL/path/session/secret-like manifest 均 fail closed。完整插件治理 API、许可证审核、真实 sidecar 绑定和升级回滚继续由 P5/P8 关闭。
 
 P4-03 进展：渠道或插件产生的 continue/redo/cancel 只能落为平台 command mapping，不允许附带 raw credential、native session/path/url/error、OpenClaw 原生 task/cancel 或 plugin subagent payload；完整租户插件治理和真实 sidecar 绑定继续由 P5/P6/P8 关闭。
+
+P4-04 进展：`openclaw-bypass.test.mjs` 已集中覆盖未批准 manifest、native capability、secret/transport plugin payload 和 plugin subagent fail-closed；`markTrustedAdapterInvocation` 已收敛为 `platform/adapters` 私有 helper，防止插件或测试代码伪造 trusted invocation。完整插件治理 API、许可证审核、真实 sidecar 绑定和升级回滚仍按 `OQ-PLUGIN-001` 自动确认方案交给 P5/P6/P8。

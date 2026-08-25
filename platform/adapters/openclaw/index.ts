@@ -1165,8 +1165,8 @@ function requireText(value: unknown, field: string): string {
 }
 
 function assertNoNativeGatewayPayload(value: unknown): void {
-  const forbiddenKeys = /^(?:credential_material|raw_credential|api_key|password|token|secret|env|environment|native_session_id|native_error|native_error_code|native_path|native_url|base_url|endpoint|file_path|path|url|session_id|memory_path|tool_name|agent_command|plugin_subagent|native_agent|native_tool|native_memory|raw_manifest|native_manifest|manifest)$/i;
-  const forbiddenStrings = /MEMORY\.md|USER\.md|SKILL\.md|(?:https?|wss?|ftp):\/\/|\.\.\/|\/(?:tmp|var|workspace|opt|etc|home|usr)\/|\b(?:native_session[A-Za-z0-9_-]*|native_error[A-Za-z0-9_-]*|raw_credential|credential_material|api[_-]?key|password|secret[-_ ]?token|bearer\s+[A-Za-z0-9._-]+)\b/i;
+  const forbiddenKeys = /^(?:credential_material|raw_credential|api_key|password|token|secret|env|environment|native_session_id|native_error|native_error_code|native_path|native_url|base_url|endpoint|file_path|path|url|session_id|memory_path|tool_name|agent_command|plugin_subagent|native_agent|native_tool|native_memory|raw_manifest|native_manifest|manifest|openclaw_agent|openclaw_task|openclaw_cancel)$/i;
+  const forbiddenStrings = /MEMORY\.md|USER\.md|SKILL\.md|tools\.invoke|agentCommandFromGatewayIngress|(?:https?|wss?|ftp):\/\/|\.\.\/|\/(?:tmp|var|workspace|opt|etc|home|usr)\/|\b(?:native_session[A-Za-z0-9_-]*|native_error[A-Za-z0-9_-]*|raw_credential|credential_material|api[_-]?key|password|secret[-_ ]?token|bearer\s+[A-Za-z0-9._-]+|openclaw[_-]?(?:agent|task|cancel))\b/i;
   const visit = (candidate: unknown): void => {
     if (Array.isArray(candidate)) {
       for (const item of candidate) visit(item);

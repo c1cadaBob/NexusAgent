@@ -162,6 +162,30 @@ sources:
           - tests/integration/openclaw-command-routing.test.mjs
           - tests/security/openclaw-command-bypass.test.mjs
           - tests/smoke/P4.sh
+      - task_id: P4-04
+        description: "P4-04 OpenClaw channel bypass and smoke gate"
+        decision_record: docs/planning/task-prompts/P4/P4-04.md
+        positive_routing_test: tests/integration/channel-routing.test.mjs
+        bypass_test: tests/security/openclaw-bypass.test.mjs
+        trust_marker_policy: "markTrustedAdapterInvocation is private to platform/adapters; lifecycle wrapper verifies Policy-Gate decisions"
+        fail_closed_cases:
+          - direct adapter invoke
+          - forged trust header or decision
+          - unknown channel
+          - tenant or conversation mismatch
+          - native Agent tool memory task cancel payload
+          - raw credential or native URL path session error payload
+          - plugin subagent
+          - unapproved manifest
+        files:
+          - platform/adapters/index.ts
+          - platform/coordinator/index.ts
+          - platform/adapters/openclaw/index.ts
+          - tests/integration/channel-routing.test.mjs
+          - tests/security/openclaw-bypass.test.mjs
+          - tests/smoke/P4.sh
+          - docs/planning/task-prompts/P4/P4-04.md
+          - docs/planning/phase-gates/P4-gate-review.md
   - upstream_name: DSH
     vendor_name: deepseek-harness-master
     internal_role: executor-only

@@ -34,7 +34,7 @@ export class AdapterError extends Error {
   }
 }
 
-export function markTrustedAdapterInvocation<T extends CoordinatorAdapterInvocation>(invocation: T): T {
+function markTrustedAdapterInvocation<T extends CoordinatorAdapterInvocation>(invocation: T): T {
   Object.defineProperty(invocation, TRUSTED_ADAPTER_INVOCATION, {
     enumerable: false,
     value: true,
@@ -176,7 +176,7 @@ export class MockExecutorAdapter extends MockAdapter {
 
 export async function invokeLifecycleAdapter(
   policyGate: PolicyGate,
-  adapter: LifecycleAdapterPort,
+  adapter: CoordinatorAdapterPort,
   invocation: CoordinatorAdapterInvocation,
 ): Promise<CoordinatorAdapterResult> {
   policyGate.assertAllowedDecision(invocation.policy_decision, {

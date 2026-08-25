@@ -9,7 +9,7 @@ import {
   type TaskState,
 } from "../task-state/index.ts";
 import { type PlatformClock } from "../clock/index.ts";
-import { markTrustedAdapterInvocation } from "../adapters/index.ts";
+import { invokeLifecycleAdapter } from "../adapters/index.ts";
 import { type EventBus, type PlatformEventEnvelope, type PlatformEventType } from "../event-bus/index.ts";
 import {
   PolicyGate,
@@ -716,14 +716,7 @@ export async function invokeSecuredAdapter(
   adapter: CoordinatorAdapterPort,
   invocation: CoordinatorAdapterInvocation,
 ): Promise<CoordinatorAdapterResult> {
-  policyGate.assertAllowedDecision(invocation.policy_decision, {
-    action: "adapter.invoke",
-    tenant_id: invocation.tenant_id,
-    execution_id: invocation.execution_id,
-    trace_id: invocation.trace_id,
-  });
-
-  const result = await adapter.invoke(markTrustedAdapterInvocation({ ...invocation }));
+  const result = await invokeLifecycleAdapter(policyGate, adapter, invocation);
   if (!result.execution_id || !result.trace_id) {
     throw new PolicyGateError("PLATFORM_POLICY_DENIED", "Adapter result must include execution_id and trace_id");
   }

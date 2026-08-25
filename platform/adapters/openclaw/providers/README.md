@@ -27,3 +27,9 @@ P4-03 当前能力：
 - `nexus.openclaw_command_mapping.p4.v1` 只识别明确 continue/redo/cancel 命令词，并投影为平台 `nexus.task_command.p4.v1`。
 - `Coordinator.submitTaskCommand()` 统一处理 continue、redo、cancel 的 Policy-Gate、TaskState、Event Bus 和 idempotency；adapter 本身不取消、不重开、不调用原生任务。
 - 同一渠道 `message_id` 重放返回同一 command result，不重复创建 attempt 或取消事件；不同 payload 复用 idempotency key 返回 `PLATFORM_CONFLICT`。
+
+P4-04 当前能力：
+
+- `tests/integration/channel-routing.test.mjs` 使用同一 Coordinator、Policy-Gate、Event Bus 与 `OpenClawGatewayAdapter` 验证 approved inbound text、command mapping、platform `TaskCommand`、outbound queued send intent 和 enabled provider 正向路径。
+- `tests/security/openclaw-bypass.test.mjs` 集中验证 direct invoke、伪造 trust/header、未知渠道、tenant/conversation mismatch、native Agent/tool/memory/task/cancel、raw credential、native URL/path/session/error、plugin subagent 和未批准 manifest 均 fail closed。
+- `markTrustedAdapterInvocation` 保持为 `platform/adapters` 私有 helper；外部只能通过 `invokeLifecycleAdapter()` / `Coordinator.dispatchToAdapter()` 进入受 Policy-Gate 验证的 trusted invocation。
