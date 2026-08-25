@@ -7,6 +7,7 @@ export type OpenClawPluginCapabilityType = "channel" | "message_transform" | "mc
 export type OpenClawPluginAllowlistStatus = "pending_scan" | "pending_review" | "approved" | "disabled" | "rejected";
 export type OpenClawPluginRiskLevel = "low" | "medium" | "high" | "critical";
 export type OpenClawPluginSourceType = "clawhub" | "npm" | "git" | "local_snapshot" | "mcp_manifest";
+export type OpenClawPlatformPluginSourceType = "marketplace" | "package_registry";
 
 export interface OpenClawPluginTenantVisibility {
   mode: "platform_admin_only" | "approved_tenants" | "all_tenants";
@@ -69,6 +70,21 @@ export interface OpenClawCapabilityDescriptor {
   tenant_visibility: OpenClawPluginTenantVisibility;
 }
 
+export interface OpenClawPlatformPluginInventory {
+  plugin_id: string;
+  source_type: OpenClawPlatformPluginSourceType;
+  source_ref: string;
+  version: string;
+  sha256: string;
+  native_host: "channel_gateway_sidecar";
+  license: string;
+  risk_level: OpenClawPluginRiskLevel;
+  allowlist_status: "approved";
+  reviewer?: string;
+  capability_ids: readonly string[];
+  trace_id: string;
+}
+
 export interface OpenClawGatewayPluginHint {
   schema_version: typeof OPENCLAW_PLUGIN_BRIDGE_SCHEMA_VERSION;
   capability_id: string;
@@ -87,6 +103,7 @@ export interface OpenClawPluginDiscoveryResult {
   schema_version: typeof OPENCLAW_PLUGIN_BRIDGE_SCHEMA_VERSION;
   provider_id: string;
   trace_id: string;
+  plugin_inventory: readonly OpenClawPlatformPluginInventory[];
   capabilities: readonly OpenClawCapabilityDescriptor[];
   gateway_hints: readonly OpenClawGatewayPluginHint[];
 }
@@ -117,8 +134,8 @@ export function buildOpenClawPluginBridgeFixtures(): readonly OpenClawPluginInve
     {
       schema_version: OPENCLAW_PLUGIN_BRIDGE_SCHEMA_VERSION,
       plugin_id: "plugin_message_normalize_alpha",
-      source_type: "local_snapshot",
-      source_ref: "snapshot:message.normalize.alpha",
+      source_type: "npm",
+      source_ref: "@nexusagent-gateway/message-normalize-alpha",
       version: "2026.8.1-p4",
       sha256: "sha256:aaaabbbbccccddddeeeeffff0000111122223333444455556666777788889999",
       host_binding: "gateway_sidecar",
@@ -127,7 +144,7 @@ export function buildOpenClawPluginBridgeFixtures(): readonly OpenClawPluginInve
       allowlist_status: "approved",
       reviewer: "platform-admin",
       trace_id: "trace_plugin01",
-      admission_policy: approvedGatewayAdmissionPolicy("policy_message_normalize", ["local_snapshot"]),
+      admission_policy: approvedGatewayAdmissionPolicy("policy_message_normalize", ["npm"]),
       capabilities: [
         {
           capability_id: "cap_message_normalize_alpha",
@@ -152,9 +169,11 @@ export function discoverOpenClawGatewayCapabilities(
 
   const capabilities: OpenClawCapabilityDescriptor[] = [];
   const gatewayHints: OpenClawGatewayPluginHint[] = [];
+  const pluginInventory: OpenClawPlatformPluginInventory[] = [];
 
   for (const candidate of candidates) {
     const normalized = validateOpenClawPluginInventory(candidate, options.tenant_id);
+    pluginInventory.push(mapOpenClawPluginInventory(normalized));
     for (const capability of normalized.capabilities) {
       const descriptor: OpenClawCapabilityDescriptor = {
         capability_id: capability.capability_id,
@@ -192,9 +211,29 @@ export function discoverOpenClawGatewayCapabilities(
     schema_version: OPENCLAW_PLUGIN_BRIDGE_SCHEMA_VERSION,
     provider_id: options.provider_id ?? OPENCLAW_PLUGIN_BRIDGE_DEFAULT_PROVIDER_ID,
     trace_id: options.trace_id ?? "trace_plugin01",
+    plugin_inventory: pluginInventory.map(sanitizePluginInventory),
     capabilities: capabilities.map(sanitizeCapabilityDescriptor),
     gateway_hints: gatewayHints.map(sanitizeGatewayHint),
   };
+}
+
+export function mapOpenClawPluginInventory(candidate: OpenClawPluginInventoryCandidate): OpenClawPlatformPluginInventory {
+  const normalized = validateOpenClawPluginInventory(candidate, "tenant_alpha01");
+  const inventory: OpenClawPlatformPluginInventory = {
+    plugin_id: normalized.plugin_id,
+    source_type: mapPluginSourceType(normalized.source_type),
+    source_ref: normalized.source_ref,
+    version: normalized.version,
+    sha256: normalized.sha256,
+    native_host: "channel_gateway_sidecar",
+    license: normalized.license,
+    risk_level: normalized.risk_level,
+    allowlist_status: "approved",
+    ...(normalized.reviewer === undefined ? {} : { reviewer: normalized.reviewer }),
+    capability_ids: normalized.capabilities.map((capability) => capability.capability_id),
+    trace_id: normalized.trace_id,
+  };
+  return sanitizePluginInventory(inventory);
 }
 
 function channelPluginFixture(
@@ -282,6 +321,12 @@ function validateOpenClawPluginInventory(
       plugin_id: candidate.plugin_id,
     });
   }
+  if (candidate.source_type !== "clawhub" && candidate.source_type !== "npm") {
+    throw new OpenClawPluginBridgeError("PLATFORM_POLICY_DENIED", "Gateway plugin source is outside the P4-02 ClawHub/npm allowlist", {
+      plugin_id: candidate.plugin_id,
+      source_type: candidate.source_type,
+    });
+  }
   if (candidate.admission_policy.approval_state !== "approved") {
     throw new OpenClawPluginBridgeError("PLATFORM_POLICY_DENIED", "Gateway plugin admission policy is not approved", {
       plugin_id: candidate.plugin_id,
@@ -361,6 +406,32 @@ function isTenantVisible(visibility: OpenClawPluginTenantVisibility, tenantId: s
   if (visibility.mode === "all_tenants") return true;
   if (visibility.mode === "platform_admin_only") return false;
   return (visibility.tenant_ids ?? []).includes(tenantId);
+}
+
+function mapPluginSourceType(sourceType: OpenClawPluginSourceType): OpenClawPlatformPluginSourceType {
+  if (sourceType === "clawhub") return "marketplace";
+  if (sourceType === "npm") return "package_registry";
+  throw new OpenClawPluginBridgeError("PLATFORM_POLICY_DENIED", "Gateway plugin source is not enabled for P4-02 inventory", {
+    source_type: sourceType,
+  });
+}
+
+function sanitizePluginInventory(inventory: OpenClawPlatformPluginInventory): OpenClawPlatformPluginInventory {
+  assertNoNativePluginBridgePayload(inventory);
+  return {
+    plugin_id: inventory.plugin_id,
+    source_type: inventory.source_type,
+    source_ref: inventory.source_ref,
+    version: inventory.version,
+    sha256: inventory.sha256,
+    native_host: "channel_gateway_sidecar",
+    license: inventory.license,
+    risk_level: inventory.risk_level,
+    allowlist_status: "approved",
+    ...(inventory.reviewer === undefined ? {} : { reviewer: inventory.reviewer }),
+    capability_ids: [...inventory.capability_ids],
+    trace_id: inventory.trace_id,
+  };
 }
 
 function sanitizeCapabilityDescriptor(descriptor: OpenClawCapabilityDescriptor): OpenClawCapabilityDescriptor {
@@ -450,4 +521,3 @@ function sanitizePluginBridgeDetails(value: Record<string, unknown>): Record<str
   });
   return JSON.parse(raw) as Record<string, unknown>;
 }
-

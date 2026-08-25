@@ -24,8 +24,11 @@ required_files=(
   platform/adapters/openclaw/providers/README.md
   platform/adapters/openclaw/providers/openclaw-2026.8.1/README.md
   tests/unit/openclaw-provider-registry.test.mjs
+  tests/unit/openclaw-channel-contracts.test.mjs
   tests/integration/openclaw-gateway-adapter.test.mjs
+  tests/integration/openclaw-channel-adapter.test.mjs
   tests/security/openclaw-gateway-bypass.test.mjs
+  tests/security/openclaw-channel-leakage.test.mjs
   tests/security/openclaw-network-isolation.test.mjs
   tests/security/openclaw-plugin-bypass.test.mjs
   vendor/openclaw-main/src/gateway/agent-turn/nexus-gateway-only-experiment.ts
@@ -68,12 +71,40 @@ for audit_marker in \
   printf '%s\n' "$p4_01_audit_block" | rg -q "$audit_marker" || fail "P4-01 audit marker missing: $audit_marker"
 done
 
+p4_02_audit_block="$(sed -n '/^# P4-02 修改记录包$/,/^## 完整提示词$/p' docs/planning/task-prompts/P4/P4-02.md)"
+[[ -n "$p4_02_audit_block" ]] || fail 'P4-02 audit record package is missing'
+if printf '%s\n' "$p4_02_audit_block" | rg -q '\.\.\.'; then
+  fail 'P4-02 audit record package still contains placeholder ellipses'
+fi
+for audit_marker in \
+  '任务与验收条件' \
+  '源码证据' \
+  '基线测试' \
+  '影响面分析' \
+  '修改计划与回滚' \
+  '待确认问题' \
+  '实际变更文件' \
+  '测试结果' \
+  '回滚验证'; do
+  printf '%s\n' "$p4_02_audit_block" | rg -q "$audit_marker" || fail "P4-02 audit marker missing: $audit_marker"
+done
+
 for marker in \
   'task_id: P4-01' \
   'NexusAgent P4 OpenClaw gateway-only provider boundary hardening' \
   'platform/adapters/openclaw/index.ts' \
   'openclaw-gateway-bypass.test.mjs'; do
   rg -q "$marker" vendor/MANIFEST.yaml || fail "vendor manifest missing P4-01 marker: $marker"
+done
+
+for marker in \
+  'task_id: P4-02' \
+  'nexus.openclaw_channel_inbound.p4.v1' \
+  'nexus.openclaw_channel_outbound.p4.v1' \
+  'openclaw-channel-contracts.test.mjs' \
+  'openclaw-channel-adapter.test.mjs' \
+  'openclaw-channel-leakage.test.mjs'; do
+  rg -q "$marker" vendor/MANIFEST.yaml platform/adapters/openclaw/index.ts tests/smoke/P4.sh || fail "P4-02 marker missing: $marker"
 done
 
 for marker in \
@@ -106,6 +137,15 @@ for marker in \
 done
 
 for marker in \
+  'plugin_inventory' \
+  'mapOpenClawPluginInventory' \
+  'P4-02 ClawHub/npm allowlist' \
+  'channel-outbound-anti-corruption' \
+  'delivery_outcome'; do
+  rg -q "$marker" platform/adapters/openclaw/plugin-bridge.ts platform/adapters/openclaw/index.ts tests/security/openclaw-plugin-bypass.test.mjs || fail "P4-02 channel/plugin marker missing: $marker"
+done
+
+for marker in \
   'openclaw-adapter' \
   '127.0.0.1' \
   'NEXUS_PUBLIC' \
@@ -129,8 +169,11 @@ fi
 
 node --test \
   tests/unit/openclaw-provider-registry.test.mjs \
+  tests/unit/openclaw-channel-contracts.test.mjs \
   tests/integration/openclaw-gateway-adapter.test.mjs \
+  tests/integration/openclaw-channel-adapter.test.mjs \
   tests/security/openclaw-gateway-bypass.test.mjs \
+  tests/security/openclaw-channel-leakage.test.mjs \
   tests/security/openclaw-network-isolation.test.mjs \
   tests/security/openclaw-plugin-bypass.test.mjs
 

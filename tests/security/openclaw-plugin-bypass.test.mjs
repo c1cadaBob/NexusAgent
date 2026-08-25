@@ -24,6 +24,14 @@ test('OpenClaw Plugin Bridge discovers approved channel and message capabilities
     result.capabilities.filter((capability) => capability.capability_type === 'channel').map((capability) => capability.channel_name).sort(),
     ['dingtalk', 'feishu', 'telegram'],
   );
+  assert.equal(result.plugin_inventory.length, 4);
+  assert.deepEqual(result.plugin_inventory.map((plugin) => plugin.source_type).sort(), [
+    'marketplace',
+    'marketplace',
+    'package_registry',
+    'package_registry',
+  ]);
+  assert.ok(result.plugin_inventory.every((plugin) => plugin.native_host === 'channel_gateway_sidecar'));
   assert.ok(result.capabilities.some((capability) => capability.capability_type === 'message_transform'));
   assert.ok(result.gateway_hints.every((hint) => hint.coordinator_runtime === 'required' && hint.policy_gate_runtime === 'required'));
   for (const forbidden of ['http://', '/opt/', 'vendor/', 'MEMORY.md', 'USER.md', 'native_session', 'native_error', 'secret-token']) {
@@ -62,6 +70,16 @@ test('OpenClaw Plugin Bridge rejects native agent tool memory URL path and secre
     assert.throws(
       () => discover([blocked]),
       (error) => error instanceof OpenClawPluginBridgeError && ['PLATFORM_INVALID_REQUEST', 'PLATFORM_POLICY_DENIED'].includes(error.code),
+    );
+  }
+});
+
+test('OpenClaw Plugin Bridge rejects P4-02 Git and local plugin sources outside the first inventory allowlist', () => {
+  const [candidate] = buildOpenClawPluginBridgeFixtures();
+  for (const source_type of ['git', 'local_snapshot']) {
+    assert.throws(
+      () => discover([{ ...candidate, source_type, admission_policy: { ...candidate.admission_policy, allowed_sources: [source_type] } }]),
+      (error) => error instanceof OpenClawPluginBridgeError && error.code === 'PLATFORM_POLICY_DENIED',
     );
   }
 });

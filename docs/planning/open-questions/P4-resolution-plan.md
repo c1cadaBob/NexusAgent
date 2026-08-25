@@ -16,6 +16,8 @@
 
 P4-01 进展：已在 `platform/adapters/openclaw/index.ts` 固定当前 vendor 快照为 `openclaw-2026.8.1` 默认 gateway-only provider，并通过 `OpenClawProviderRegistry`、`tests/unit/openclaw-provider-registry.test.mjs` 和 `tests/smoke/P4.sh` 验证 provider 可禁用、恢复和回滚。真实 upstream remote/release commit/fork 分支仍未从本地快照确认，`OQ-UPSTREAM-002` 保持自动确认并继续由 P8 兼容矩阵关闭。
 
+P4-02 进展：已在 `platform/adapters/openclaw/index.ts` 增加 `nexus.openclaw_channel_inbound.p4.v1` / `nexus.openclaw_channel_outbound.p4.v1`，通过 `tests/unit/openclaw-channel-contracts.test.mjs`、`tests/integration/openclaw-channel-adapter.test.mjs` 和 `tests/security/openclaw-channel-leakage.test.mjs` 验证 channel 防腐契约不依赖真实 upstream remote。真实 upstream 来源仍不在 P4-02 关闭。
+
 ## OQ-CHANNEL-001：首批渠道的 P4 落地
 
 推荐处理：若 P0 未另行确认，P4 默认按钉钉、飞书、Telegram 建立 channel fixture 和白名单；企业微信或 Slack 只在项目负责人确认后加入 P4/P5 范围。所有渠道插件必须进入 Plugin Bridge inventory 和 admission policy。
@@ -32,6 +34,8 @@ P4-01 进展：已在 `platform/adapters/openclaw/index.ts` 固定当前 vendor 
 
 P4-01 进展：已在 OpenClaw Plugin Bridge fixture 中登记钉钉、飞书、Telegram 三个 approved channel capability，并通过 `tests/security/openclaw-plugin-bypass.test.mjs` 验证未批准、禁用、native agent/tool、direct memory、raw URL/path/session/secret-like 插件 payload 均 fail closed。P4-02/P4-04 继续补真实渠道 payload 映射、出站回写和完整 channel-routing 门禁。
 
+P4-02 进展：已把 approved channel inbound 映射为平台 `nexus.task_request.v1`，把平台最终结果映射为 queued channel send intent，并继续要求 Coordinator + Policy-Gate trusted invocation。流式输出、真实渠道厂商发送、重试和完整继续/重做/取消语义留给 P4-03/P4-04。
+
 ## OQ-PLUGIN-001：OpenClaw 插件治理最小落地
 
 推荐处理：P4-01 采用与 P3-04 一致的“平台管理员白名单批准，租户不可自助安装”路线，只允许 approved `channel`、`message_transform`、`mcp_server` capability descriptor 进入 gateway provider；完整管理员 API、控制台、许可证审核、真实 sidecar 绑定和升级回滚仍由 P5/P6/P8 关闭。
@@ -43,3 +47,5 @@ P4-01 进展：已在 OpenClaw Plugin Bridge fixture 中登记钉钉、飞书、
 - DSH：渠道插件不能直接触发 executor；必须经过平台任务、规划和执行链路。
 
 关闭证据：P4-01 已提供最小准入和防绕过测试；完整插件治理仍保持 `OQ-PLUGIN-001` 自动确认，后续在 P5/P8 关闭。
+
+P4-02 进展：已将 OpenClaw Plugin Bridge 首批 PluginInventory 来源收窄为 ClawHub + npm，并输出平台 `PluginInventory` / `CapabilityDescriptor` / gateway hint 投影；`tests/security/openclaw-plugin-bypass.test.mjs` 验证 Git、本地包、未批准、禁用、native runtime、raw URL/path/session/secret-like manifest 均 fail closed。完整插件治理 API、许可证审核、真实 sidecar 绑定和升级回滚继续由 P5/P8 关闭。

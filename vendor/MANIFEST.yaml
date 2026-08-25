@@ -133,6 +133,20 @@ sources:
           - tests/security/openclaw-gateway-bypass.test.mjs
           - tests/security/openclaw-plugin-bypass.test.mjs
           - tests/smoke/P4.sh
+      - task_id: P4-02
+        description: "NexusAgent P4 OpenClaw anti-corruption channel adapter and final-result outbound mapping"
+        decision_record: docs/planning/task-prompts/P4/P4-02.md
+        schema_version: nexus.openclaw_channel_inbound.p4.v1
+        outbound_schema_version: nexus.openclaw_channel_outbound.p4.v1
+        plugin_source_allowlist: [clawhub, npm]
+        files:
+          - platform/adapters/openclaw/index.ts
+          - platform/adapters/openclaw/plugin-bridge.ts
+          - tests/unit/openclaw-channel-contracts.test.mjs
+          - tests/integration/openclaw-channel-adapter.test.mjs
+          - tests/security/openclaw-channel-leakage.test.mjs
+          - tests/security/openclaw-plugin-bypass.test.mjs
+          - tests/smoke/P4.sh
   - upstream_name: DSH
     vendor_name: deepseek-harness-master
     internal_role: executor-only
