@@ -11,6 +11,10 @@ import {
   type ResolvedAgentRoute,
   type ResolveAgentRouteInput,
 } from "../../routing/resolve-route.js";
+import {
+  assertNexusGatewayOnlyNoNativePayload,
+  isNexusOpenClawGatewayOnlyExperimentEnabled,
+} from "../../gateway/agent-turn/nexus-gateway-only-experiment.js";
 
 export type ChannelInboundEnvelopeInput = Omit<AgentEnvelopeParams, "previousTimestamp"> & {
   previousTimestamp?: AgentEnvelopeParams["previousTimestamp"] | null;
@@ -25,6 +29,9 @@ export function createChannelInboundEnvelopeBuilder(params: {
   });
   const envelope = resolveEnvelopeFormatOptions(params.cfg);
   return (input: ChannelInboundEnvelopeInput): string => {
+    if (isNexusOpenClawGatewayOnlyExperimentEnabled()) {
+      assertNexusGatewayOnlyNoNativePayload(input);
+    }
     const previousTimestamp =
       input.previousTimestamp === null
         ? undefined
@@ -86,6 +93,9 @@ export function createInboundEnvelopeBuilder<TConfig, TEnvelope>(params: {
   });
   const envelopeOptions = params.resolveEnvelopeFormatOptions(params.cfg);
   return (input: { channel: string; from: string; body: string; timestamp?: number }) => {
+    if (isNexusOpenClawGatewayOnlyExperimentEnabled()) {
+      assertNexusGatewayOnlyNoNativePayload(input);
+    }
     const previousTimestamp = params.readSessionUpdatedAt({
       storePath,
       sessionKey: params.route.sessionKey,

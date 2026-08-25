@@ -2,10 +2,16 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { ErrorCodes } from "../../../packages/gateway-protocol/src/index.js";
 import { dispatchAgentRunFromGateway } from "./agent-run-dispatch.js";
 import {
+  assertNexusGatewayOnlyNoNativePayload,
+  assertNexusGatewayOnlyPlatformContext,
+  buildNexusGatewayOnlyPlatformMessageEvent,
   buildNexusGatewayOnlyTaskRequest,
   emitNexusGatewayOnlyTaskRequestHandoff,
   isNexusOpenClawGatewayOnlyExperimentEnabled,
   NEXUS_GATEWAY_ONLY_NATIVE_AGENT_BLOCKED_MESSAGE,
+  NEXUS_GATEWAY_ONLY_NATIVE_PAYLOAD_BLOCKED_MESSAGE,
+  NEXUS_GATEWAY_ONLY_PLATFORM_CONTEXT_REQUIRED_MESSAGE,
+  NEXUS_OPENCLAW_GATEWAY_EVENT_SCHEMA_VERSION,
   NEXUS_OPENCLAW_GATEWAY_ONLY_ENV,
 } from "./nexus-gateway-only-experiment.js";
 
@@ -60,6 +66,63 @@ describe("NexusAgent OpenClaw gateway-only experiment", () => {
       input: "transcript text",
       budget: { deadline_ms: 12900 },
     });
+  });
+
+  it("builds a P4 platform gateway event only with platform Coordinator context", () => {
+    const platformContext = {
+      tenant_id: "tenant_alpha01",
+      user_id: "user_alpha01",
+      agent_id: "agent_alpha01",
+      task_id: "task_alpha01",
+      attempt_id: "attempt_alpha01",
+      execution_id: "exec_alpha01",
+      conversation_id: "conv_alpha01",
+      trace_id: "trace_alpha01",
+    };
+
+    expect(assertNexusGatewayOnlyPlatformContext(platformContext)).toBeUndefined();
+    expect(
+      buildNexusGatewayOnlyPlatformMessageEvent({
+        platformContext,
+        channel: {
+          capability_id: "cap_channel_dingtalk",
+          name: "dingtalk",
+          direction: "inbound",
+          account_ref: "channel_account_dingtalk_alpha",
+          conversation_ref: "channel_conversation_alpha",
+          message_id: "msg_alpha01",
+        },
+        message: { kind: "text", text: "hello platform" },
+      }),
+    ).toMatchObject({
+      schema_version: NEXUS_OPENCLAW_GATEWAY_EVENT_SCHEMA_VERSION,
+      event_type: "channel.message",
+      tenant_id: "tenant_alpha01",
+      handoff: {
+        mode: "task_request",
+        coordinator_required: true,
+        policy_gate_required: true,
+        native_agent_runtime: "blocked",
+        native_tool_runtime: "blocked",
+        native_memory_runtime: "blocked",
+        plugin_runtime: "plugin_bridge_allowlist_required",
+      },
+    });
+  });
+
+  it("fails closed for missing platform context and native-like payload markers", () => {
+    expect(() => assertNexusGatewayOnlyPlatformContext({ tenant_id: "tenant_alpha01" })).toThrow(
+      NEXUS_GATEWAY_ONLY_PLATFORM_CONTEXT_REQUIRED_MESSAGE,
+    );
+    expect(() => assertNexusGatewayOnlyNoNativePayload({ native_session_id: "native_session_abc" })).toThrow(
+      NEXUS_GATEWAY_ONLY_NATIVE_PAYLOAD_BLOCKED_MESSAGE,
+    );
+    expect(() =>
+      buildNexusGatewayOnlyTaskRequest({
+        request: { message: "hello", sessionKey: "main", native_url: "http://127.0.0.1:3052/tools/invoke" } as never,
+        runId: "run-native-payload",
+      }),
+    ).toThrow(NEXUS_GATEWAY_ONLY_NATIVE_PAYLOAD_BLOCKED_MESSAGE);
   });
 
   it("emits an acceptance and final handoff instead of continuing native execution", () => {

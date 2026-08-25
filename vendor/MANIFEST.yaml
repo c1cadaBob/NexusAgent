@@ -115,7 +115,24 @@ sources:
     upstream_remote: "【待确认问题】"
     file_manifest_sha256: "ba6799694e6aabe947b110bd1091cac0c015c1b008d96ca924fc6daa45422a91"
     tree_sha256: "ba6799694e6aabe947b110bd1091cac0c015c1b008d96ca924fc6daa45422a91"
-    local_patches: []
+    local_patches:
+      - task_id: P4-01
+        description: "NexusAgent P4 OpenClaw gateway-only provider boundary hardening"
+        decision_record: docs/planning/task-prompts/P4/P4-01.md
+        schema_version: nexus.openclaw_gateway_event.p4.v1
+        files:
+          - vendor/openclaw-main/src/gateway/agent-turn/nexus-gateway-only-experiment.ts
+          - vendor/openclaw-main/src/gateway/agent-turn/nexus-gateway-only-experiment.test.ts
+          - vendor/openclaw-main/src/gateway/agent-turn/agent-request-routing.ts
+          - vendor/openclaw-main/src/channels/inbound-event/envelope.ts
+          - vendor/openclaw-main/src/channels/inbound-event/envelope.test.ts
+          - platform/adapters/openclaw/index.ts
+          - platform/adapters/openclaw/plugin-bridge.ts
+          - tests/unit/openclaw-provider-registry.test.mjs
+          - tests/integration/openclaw-gateway-adapter.test.mjs
+          - tests/security/openclaw-gateway-bypass.test.mjs
+          - tests/security/openclaw-plugin-bypass.test.mjs
+          - tests/smoke/P4.sh
   - upstream_name: DSH
     vendor_name: deepseek-harness-master
     internal_role: executor-only

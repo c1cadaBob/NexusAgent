@@ -41,7 +41,7 @@ Plugin Bridge 是治理层，不是新的通用插件运行时。首版只维护
 
 平台契约落点：`platform/contracts/plugin-inventory.schema.json`、`platform/contracts/capability-descriptor.schema.json`、`platform/contracts/plugin-admission-policy.schema.json`、`platform/contracts/native-host-binding.schema.json`。P5 对外 API 只能暴露这些契约的平台化投影，不能把原生宿主 URL、原生错误码、session 或存储路径透传给租户。
 
-provider 占位落点：`platform/adapters/openclaw/providers/openclaw-2026.8.1/`、`platform/adapters/hermes/providers/hermes-0.20.5/`、`platform/adapters/dsh/providers/dsh-0.1.1-rc.2/`。这些目录当前只保留边界说明，P2-P4 实现前不得写入未验证的生产逻辑。
+provider 落点：`platform/adapters/openclaw/providers/openclaw-2026.8.1/`、`platform/adapters/hermes/providers/hermes-0.20.5/`、`platform/adapters/dsh/providers/dsh-0.1.1-rc.2/`。DSH 和 Hermes 已分别在 P2/P3 建立 provider registry；OpenClaw 在 P4-01 建立 `openclaw-2026.8.1` gateway-only provider registry、内部 `nexus.openclaw_gateway_event.p4.v1` 事件和最小 Plugin Bridge 准入。
 
 ## 4. 准入与启用流程
 
@@ -74,7 +74,7 @@ provider 占位落点：`platform/adapters/openclaw/providers/openclaw-2026.8.1/
 P3-01 已完成 Hermes provider 最小基线：`platform/adapters/hermes/index.ts` 暴露 `HermesProviderRegistry`、`hermes-0.20.5` 默认 provider、`nexus.hermes_provider.p3.v1` contract、禁用/启用、默认切换和 `rollbackDefault()`；vendor guard 在 `NEXUS_HERMES_PLANNER_ONLY=1` 时阻断原生 gateway、tool runtime、recurring loop 和文件记忆直读直写。P3-02 已新增 `HermesMemoryGatewayAdapter` 和 vendor proxy helper，固定内部 `nexus.hermes_memory_proxy.p3.v1` / `nexus.memory_snapshot.p3.v1`，只启用 `session`、`user`、`agent_skill` 三层，并用 tests/smoke/P3.sh 验证 trusted invocation、scope 过滤、sanitizer、缺 scope fail-closed 和非 planner-only drift 回归。P3-03 已冻结当前内部 `ExecutionPlan` 为 `nexus.execution_plan.p3.v1`，保留 P0 marker 仅作历史证据，并新增 validator/fixture/planner adapter 和泄漏负向测试。P3-04 已新增 `platform/adapters/hermes/plugin-bridge.ts`，用最小 discovery/admission guard 验证 approved skill/MCP 可被平台发现，unapproved/disabled/native tool/direct memory/MCP secret 候选 fail closed，并用静态 compose 测试覆盖 Hermes/Memory dev 端口隔离。生产存储/检索、完整插件治理 API、真实侧车绑定和升级兼容矩阵继续由 P5/P6/P8 处理。
 
 - P3：实现 Hermes provider 白名单、skills/MCP 发现、planner-only 插件限制和记忆防直读测试。
-- P4：实现 OpenClaw provider 白名单、ClawHub/manifest 扫描、渠道插件复用和 gateway-only 防绕过测试。
+- P4：P4-01 已实现 OpenClaw provider 白名单基线、默认钉钉/飞书/Telegram capability fixture、gateway-only 防绕过测试和 dev/prod 端口隔离；P4-02/P4-04 继续补完整渠道 payload 映射、出站回写、manifest 扫描和阶段防绕过收口。
 - P5：实现管理员插件治理 API、控制台入口和 SDK/开发者文档；首版不开放租户自助安装。
 - P6：实现三平台插件防绕过、越权、凭据泄漏、原生宿主回滚、插件禁用和恶意插件场景测试。
 - P8：实现 OpenClaw/Hermes/DSH 上游兼容矩阵、插件升级门禁、插件禁用演练和回滚手册。

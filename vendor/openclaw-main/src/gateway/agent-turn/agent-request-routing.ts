@@ -24,6 +24,11 @@ import { loadSessionEntry, resolveSessionStoreKey } from "../session-utils.js";
 import { formatForLog } from "../ws-log.js";
 import { setGatewayDedupeEntries } from "./agent-dedupe.js";
 import { respondUnavailableAgentSessionForKey } from "./agent-handler-helpers.js";
+import {
+  assertNexusGatewayOnlyNoNativePayload,
+  isNexusOpenClawGatewayOnlyExperimentEnabled,
+  NEXUS_GATEWAY_ONLY_NATIVE_PAYLOAD_BLOCKED_MESSAGE,
+} from "./nexus-gateway-only-experiment.js";
 import type { AgentTurnContext } from "./types.js";
 
 type ExplicitRecipientSession = Awaited<ReturnType<typeof resolveAgentExplicitRecipientSession>>;
@@ -56,6 +61,18 @@ export async function prepareAgentRequestRouting(params: {
   reserveDedupe: (sessionKey?: string, agentId?: string) => void;
   clearDedupe: () => void;
 }): Promise<AgentRequestRouting | undefined> {
+  if (isNexusOpenClawGatewayOnlyExperimentEnabled()) {
+    try {
+      assertNexusGatewayOnlyNoNativePayload(params.request);
+    } catch {
+      params.respond(
+        false,
+        undefined,
+        errorShape(ErrorCodes.INVALID_REQUEST, NEXUS_GATEWAY_ONLY_NATIVE_PAYLOAD_BLOCKED_MESSAGE),
+      );
+      return undefined;
+    }
+  }
   const normalizedAttachments = normalizeRpcAttachmentsToChatAttachments(
     params.request.attachments,
   );

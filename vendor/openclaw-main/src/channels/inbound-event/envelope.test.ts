@@ -106,4 +106,28 @@ describe("channel inbound envelope", () => {
       }
     }
   });
+
+  it("blocks native-like channel envelope payloads while the Nexus gateway-only experiment is enabled", () => {
+    const previous = process.env.NEXUS_OPENCLAW_GATEWAY_ONLY;
+    process.env.NEXUS_OPENCLAW_GATEWAY_ONLY = "1";
+    try {
+      const buildEnvelope = createChannelInboundEnvelopeBuilder({
+        cfg: {} as never,
+        route: { agentId: "main", sessionKey: "agent:main:telegram:direct:peer" },
+      });
+      expect(() =>
+        buildEnvelope({
+          channel: "telegram",
+          from: "peer",
+          body: "please read MEMORY.md from /opt/project/NexusAgent/vendor/openclaw-main",
+        }),
+      ).toThrow("NexusAgent gateway-only mode blocks native gateway payload fields");
+    } finally {
+      if (previous === undefined) {
+        delete process.env.NEXUS_OPENCLAW_GATEWAY_ONLY;
+      } else {
+        process.env.NEXUS_OPENCLAW_GATEWAY_ONLY = previous;
+      }
+    }
+  });
 });
