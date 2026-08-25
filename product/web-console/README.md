@@ -15,11 +15,12 @@ Run the platform API separately:
 PORT=8080 node product/api/server.mjs
 ```
 
-## P5-02 scope
+## P5 scope
 
 - The console calls only `/v1/*` platform API routes from P5-01.
 - Local development uses the P5-01 dev principals: platform admin, tenant admin, operator, and viewer.
 - Task, approval, memory, budget, skills, tenants, users, health, task events, and administrator plugin governance are available in the alpha UI.
+- P5-03 adds a Channels page for tenant-scoped channel configuration, status changes, and platform dry-run tests. The page shows `credential_status` only and never renders submitted credential references.
 - Refresh uses the visible Refresh button plus a 15 second polling interval. Streaming and enterprise sign-on remain follow-up work.
 - Plugin governance displays public platform metadata only: ID, display name, source kind, version, SHA-256, license, notice status, risk, allowlist status, and capability IDs.
 

@@ -1,5 +1,6 @@
 import http from "node:http";
 import { LocalAuditLog } from "../../platform/audit/index.ts";
+import { LocalChannelManagement } from "../../platform/channel-management/index.ts";
 import { ManualClock, SystemClock, type PlatformClock } from "../../platform/clock/index.ts";
 import { Coordinator, CoordinatorError, type CoordinatorTaskCommandRequest } from "../../platform/coordinator/index.ts";
 import { LocalCredentialCenter } from "../../platform/credentials/index.ts";
@@ -101,6 +102,7 @@ export class PlatformApiApp {
   readonly audit: LocalAuditLog;
   readonly observability: LocalObservability;
   readonly pluginGovernance = new LocalPluginGovernance({ tenant_id: "tenant_alpha01", trace_id: "trace_plugin01" });
+  readonly channelManagement: LocalChannelManagement;
 
   readonly #tasks = new Map<string, StoredTask>();
   readonly #approvals = new Map<string, ApprovalRecord>();
@@ -115,6 +117,7 @@ export class PlatformApiApp {
     this.credentials = new LocalCredentialCenter({ clock: this.clock, eventBus: this.eventBus });
     this.audit = new LocalAuditLog({ clock: this.clock, eventBus: this.eventBus });
     this.observability = new LocalObservability({ clock: this.clock, service: "nexusagent-platform-api", version: "p5-local" });
+    this.channelManagement = new LocalChannelManagement({ clock: this.clock, coordinator: this.coordinator, eventBus: this.eventBus });
     this.#seedIdentity();
     this.#seedApprovals();
   }
@@ -159,6 +162,13 @@ export class PlatformApiApp {
       if (method === "POST" && /^\/v1\/approvals\/[^/]+\/decision$/.test(parsed.pathname)) return ok(this.#decideApproval(pathPart(parsed.pathname, 3), asObject(body), principal));
 
       if (method === "POST" && parsed.pathname === "/v1/budget/check") return ok(this.#checkBudget(asObject(body), principal));
+
+      if (method === "GET" && parsed.pathname === "/v1/channels") return ok(paginate(this.#listChannels(parsed.query, principal), parsed.query));
+      if (method === "POST" && parsed.pathname === "/v1/channels") return ok(this.#createChannel(asObject(body), principal), 201);
+      if (method === "GET" && /^\/v1\/channels\/[^/]+$/.test(parsed.pathname)) return ok(this.#getChannel(pathPart(parsed.pathname, 3), principal));
+      if (method === "PATCH" && /^\/v1\/channels\/[^/]+$/.test(parsed.pathname)) return ok(this.#updateChannel(pathPart(parsed.pathname, 3), asObject(body), principal));
+      if (method === "POST" && /^\/v1\/channels\/[^/]+\/status$/.test(parsed.pathname)) return ok(this.#setChannelStatus(pathPart(parsed.pathname, 3), asObject(body), principal));
+      if (method === "POST" && /^\/v1\/channels\/[^/]+\/test$/.test(parsed.pathname)) return ok(await this.#testChannel(pathPart(parsed.pathname, 3), asObject(body), principal));
 
       if (method === "GET" && parsed.pathname === "/v1/admin/plugins") return ok(paginate(this.#listPluginInventory(principal), parsed.query));
       if (method === "POST" && parsed.pathname === "/v1/admin/plugins/import") return ok(this.#importPlugin(asObject(body), principal), 202);
@@ -447,6 +457,66 @@ export class PlatformApiApp {
       ...(decision.code === undefined ? {} : { code: decision.code }),
       reasons: [...decision.reasons],
     };
+  }
+
+  #listChannels(query: URLSearchParams, principal: Principal): readonly JsonObject[] {
+    const tenant_id = query.get("tenant_id") ?? principal.tenant_id;
+    this.#assertTenant(principal, tenant_id);
+    this.#require(principal, "tenant:read");
+    return this.channelManagement.list({ tenant_id }).map((channel) => ({ ...channel }));
+  }
+
+  #createChannel(body: JsonObject, principal: Principal): JsonObject {
+    const tenant_id = requiredId("tenant_id", body.tenant_id);
+    this.#assertTenant(principal, tenant_id);
+    this.#require(principal, "tenant:manage");
+    return this.channelManagement.create({
+      tenant_id,
+      channel_name: requiredText(body.channel_name, "channel_name") as never,
+      display_name: requiredText(body.display_name, "display_name"),
+      account_ref: requiredText(body.account_ref, "account_ref"),
+      conversation_ref: requiredText(body.conversation_ref, "conversation_ref"),
+      ...(body.credential_ref === undefined ? {} : { credential_ref: requiredText(body.credential_ref, "credential_ref") }),
+      trace_id: requiredId("trace_id", body.trace_id),
+    });
+  }
+
+  #getChannel(channel_config_id: string, principal: Principal): JsonObject {
+    const channel = this.channelManagement.get(channel_config_id);
+    this.#assertTenant(principal, channel.tenant_id);
+    this.#require(principal, "tenant:read");
+    return { ...channel };
+  }
+
+  #updateChannel(channel_config_id: string, body: JsonObject, principal: Principal): JsonObject {
+    const channel = this.channelManagement.get(channel_config_id);
+    this.#assertTenant(principal, channel.tenant_id);
+    this.#require(principal, "tenant:manage");
+    return this.channelManagement.update(channel_config_id, {
+      ...(body.display_name === undefined ? {} : { display_name: requiredText(body.display_name, "display_name") }),
+      ...(body.account_ref === undefined ? {} : { account_ref: requiredText(body.account_ref, "account_ref") }),
+      ...(body.conversation_ref === undefined ? {} : { conversation_ref: requiredText(body.conversation_ref, "conversation_ref") }),
+      ...(body.credential_ref === undefined ? {} : { credential_ref: requiredText(body.credential_ref, "credential_ref") }),
+      trace_id: requiredId("trace_id", body.trace_id),
+    });
+  }
+
+  #setChannelStatus(channel_config_id: string, body: JsonObject, principal: Principal): JsonObject {
+    const channel = this.channelManagement.get(channel_config_id);
+    this.#assertTenant(principal, channel.tenant_id);
+    this.#require(principal, "tenant:manage");
+    return this.channelManagement.setStatus(channel_config_id, {
+      status: requiredText(body.status, "status") as never,
+      reason: requiredText(body.reason, "reason"),
+      trace_id: requiredId("trace_id", body.trace_id),
+    });
+  }
+
+  async #testChannel(channel_config_id: string, body: JsonObject, principal: Principal): Promise<JsonObject> {
+    const channel = this.channelManagement.get(channel_config_id);
+    this.#assertTenant(principal, channel.tenant_id);
+    this.#require(principal, "tenant:manage");
+    return this.channelManagement.testConnection(channel_config_id, { trace_id: requiredId("trace_id", body.trace_id) }, principal);
   }
 
   #listPluginInventory(principal: Principal): readonly JsonObject[] {

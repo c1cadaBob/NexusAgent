@@ -18,6 +18,8 @@ P5-01 进展：已按 REST-first 默认结论交付 `product/api/` 本地 REST M
 
 P5-02 进展：已按默认方案新增 `product/web-console/` React/Vite 控制台 Alpha，使用 P5-01 dev principal resolver 和 `/v1/*` 平台 API client；控制台实时体验为手动刷新 + 15 秒轮询，不实现 SSE/WebSocket/gRPC streaming；多语言、企业 SSO、生产 IdP 和 SDK 生成继续留给 P5-04/P8。`tests/integration/web-console-api-client.test.mjs`、`tests/security/web-console-leakage.test.mjs`、`tests/contract/web-console-openapi-alignment.test.mjs` 与 `tests/smoke/P5.sh` 验证控制台 API route 与 OpenAPI 对齐、权限不足 fail closed、view-model 不含上游原生字段。
 
+P5-03 进展：已新增 `product/channel-management/` 说明、`platform/channel-management/` 本地 runtime、`/v1/channels*` REST routes 和控制台 Channels 页面；渠道管理继续采用 REST-first，不新增 streaming 或真实渠道网络。连接测试返回平台 dry-run 结果，仅包含 `test_status`、`policy_gate_status`、`delivery_outcome`、`checked_at` 和 `trace_id`，不回显内部 adapter、原生路径、session、provider binding 或凭据引用值。`tests/contract/p5-channel-management-contract.test.mjs`、`tests/integration/channel-management-api.test.mjs`、`tests/security/channel-management-leakage.test.mjs` 与 `tests/smoke/P5.sh` 验证新增 OpenAPI route、approved channel enum、权限、凭据不回显和产品层泄漏扫描。
+
 ## OQ-PLUGIN-001：插件市场和租户自助安装范围
 
 推荐处理：P5 首版仅允许平台管理员导入、扫描、批准、启用、禁用和升级插件；租户只能使用已经批准且对其可见的能力，不允许直接从 ClawHub/npm/PyPI/GitHub 自助安装任意插件。P7/P8 后再评估租户自助市场。

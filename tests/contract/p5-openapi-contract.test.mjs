@@ -40,6 +40,10 @@ test('P5 OpenAPI covers implemented REST MVP routes', async () => {
     '/v1/approvals',
     '/v1/approvals/{approval_id}/decision',
     '/v1/budget/check',
+    '/v1/channels',
+    '/v1/channels/{channel_config_id}',
+    '/v1/channels/{channel_config_id}/status',
+    '/v1/channels/{channel_config_id}/test',
     '/v1/admin/plugins',
     '/v1/admin/plugins/import',
     '/v1/admin/plugins/{plugin_id}/admission',
@@ -67,12 +71,22 @@ test('P5 OpenAPI identifier and task-state schemas match platform runtime', asyn
 
 test('P5 OpenAPI list contracts use cursor pagination', async () => {
   const spec = await openapi();
-  for (const schemaName of ['TaskList', 'EventList', 'SkillList', 'CapabilityList', 'TenantList', 'TenantUserList', 'ApprovalList', 'PluginInventoryList']) {
+  for (const schemaName of ['TaskList', 'EventList', 'SkillList', 'CapabilityList', 'TenantList', 'TenantUserList', 'ApprovalList', 'ChannelConfigList', 'PluginInventoryList']) {
     const block = schemaBlock(spec, schemaName);
     assert.match(block, /next_cursor:/, `${schemaName} missing next_cursor`);
   }
   assert.equal([...spec.matchAll(/\$ref: '#\/components\/parameters\/LimitQuery'/g)].length >= 8, true);
   assert.equal([...spec.matchAll(/\$ref: '#\/components\/parameters\/CursorQuery'/g)].length >= 8, true);
+});
+
+test('P5 OpenAPI channel management uses approved channel names and hides credential references from responses', async () => {
+  const spec = await openapi();
+  const channelName = schemaBlock(spec, 'ChannelName');
+  for (const name of ['dingtalk', 'feishu', 'telegram']) assert.match(channelName, new RegExp(`- ${name}\\b`));
+  for (const stale of ['slack', 'wechat']) assert.doesNotMatch(channelName, new RegExp(`- ${stale}\\b`));
+  for (const schemaName of ['ChannelConfig', 'ChannelConnectionTestResult']) {
+    assert.doesNotMatch(schemaBlock(spec, schemaName), /credential_ref|native_|provider_binding|runtime/i, schemaName);
+  }
 });
 
 test('P5 OpenAPI plugin governance requires public admission metadata only', async () => {

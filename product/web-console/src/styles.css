@@ -51,7 +51,8 @@ button.active {
 }
 
 button:disabled,
-input:disabled {
+input:disabled,
+select:disabled {
   border-color: var(--line);
   color: #767676;
   cursor: not-allowed;
@@ -218,9 +219,14 @@ input:disabled {
   font-size: 12px;
 }
 
-.form-grid input {
+.form-grid input,
+.form-grid select {
   width: 100%;
   padding: 0 8px;
+}
+
+.channel-form {
+  grid-template-columns: repeat(5, minmax(0, 1fr)) minmax(140px, auto);
 }
 
 .form-grid button {

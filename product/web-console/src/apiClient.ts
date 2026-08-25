@@ -11,6 +11,8 @@ export interface PrincipalProfile {
   roles: readonly string[];
   canSubmitTask: boolean;
   canManagePlugins: boolean;
+  canReadChannels: boolean;
+  canManageChannels: boolean;
   canWriteMemory: boolean;
 }
 
@@ -24,6 +26,8 @@ export const DEV_PRINCIPALS: readonly PrincipalProfile[] = Object.freeze([
     roles: ["platform-admin", "admin"],
     canSubmitTask: true,
     canManagePlugins: true,
+    canReadChannels: true,
+    canManageChannels: true,
     canWriteMemory: true,
   },
   {
@@ -35,6 +39,8 @@ export const DEV_PRINCIPALS: readonly PrincipalProfile[] = Object.freeze([
     roles: ["tenant-admin", "admin"],
     canSubmitTask: true,
     canManagePlugins: false,
+    canReadChannels: true,
+    canManageChannels: true,
     canWriteMemory: true,
   },
   {
@@ -46,6 +52,8 @@ export const DEV_PRINCIPALS: readonly PrincipalProfile[] = Object.freeze([
     roles: ["operator"],
     canSubmitTask: true,
     canManagePlugins: false,
+    canReadChannels: false,
+    canManageChannels: false,
     canWriteMemory: true,
   },
   {
@@ -57,6 +65,8 @@ export const DEV_PRINCIPALS: readonly PrincipalProfile[] = Object.freeze([
     roles: ["viewer"],
     canSubmitTask: false,
     canManagePlugins: false,
+    canReadChannels: true,
+    canManageChannels: false,
     canWriteMemory: false,
   },
 ]);
@@ -78,6 +88,10 @@ export const PLATFORM_API_ROUTES = Object.freeze([
   "/v1/approvals",
   "/v1/approvals/{approval_id}/decision",
   "/v1/budget/check",
+  "/v1/channels",
+  "/v1/channels/{channel_config_id}",
+  "/v1/channels/{channel_config_id}/status",
+  "/v1/channels/{channel_config_id}/test",
   "/v1/admin/plugins",
   "/v1/admin/plugins/import",
   "/v1/admin/plugins/{plugin_id}/admission",
@@ -217,6 +231,38 @@ export interface PluginInventoryEntry {
   trace_id: string;
 }
 
+export type ChannelName = "dingtalk" | "feishu" | "telegram";
+export type ChannelConfigStatus = "enabled" | "disabled";
+
+export interface ChannelConnectionTestResult {
+  schema_version: string;
+  channel_config_id: string;
+  tenant_id: string;
+  channel_name: ChannelName;
+  test_status: "passed" | "failed";
+  policy_gate_status: "allowed" | "denied";
+  delivery_outcome: "queued" | "not_queued";
+  checked_at: string;
+  trace_id: string;
+}
+
+export interface ChannelConfigRecord {
+  schema_version: string;
+  channel_config_id: string;
+  tenant_id: string;
+  channel_name: ChannelName;
+  display_name: string;
+  status: ChannelConfigStatus;
+  capability_id: string;
+  account_ref: string;
+  conversation_ref: string;
+  credential_status: "reference_configured" | "missing_reference";
+  created_at: string;
+  updated_at: string;
+  trace_id: string;
+  last_test?: ChannelConnectionTestResult;
+}
+
 export class PlatformApiError extends Error {
   readonly status: number;
   readonly code: string;
@@ -330,6 +376,40 @@ export class PlatformApiClient {
     return this.#request<BudgetCheckResult>("POST", "/v1/budget/check", {
       body: { tenant_id: input.tenant_id ?? this.profile.tenant_id, ...input },
     });
+  }
+
+  listChannels(params: { tenant_id?: string; limit?: number; cursor?: string } = {}): Promise<PlatformList<ChannelConfigRecord>> {
+    return this.#request<PlatformList<ChannelConfigRecord>>("GET", withQuery("/v1/channels", { tenant_id: params.tenant_id ?? this.profile.tenant_id, limit: params.limit, cursor: params.cursor }));
+  }
+
+  createChannel(input: {
+    channel_name: ChannelName;
+    display_name: string;
+    account_ref: string;
+    conversation_ref: string;
+    credential_ref?: string;
+    trace_id: string;
+    tenant_id?: string;
+  }): Promise<ChannelConfigRecord> {
+    return this.#request<ChannelConfigRecord>("POST", "/v1/channels", {
+      body: { tenant_id: input.tenant_id ?? this.profile.tenant_id, ...input },
+    });
+  }
+
+  getChannel(channel_config_id: string): Promise<ChannelConfigRecord> {
+    return this.#request<ChannelConfigRecord>("GET", `/v1/channels/${encodeURIComponent(channel_config_id)}`);
+  }
+
+  updateChannel(channel_config_id: string, input: { display_name?: string; account_ref?: string; conversation_ref?: string; credential_ref?: string; trace_id: string }): Promise<ChannelConfigRecord> {
+    return this.#request<ChannelConfigRecord>("PATCH", `/v1/channels/${encodeURIComponent(channel_config_id)}`, { body: input });
+  }
+
+  setChannelStatus(channel_config_id: string, input: { status: ChannelConfigStatus; reason: string; trace_id: string }): Promise<ChannelConfigRecord> {
+    return this.#request<ChannelConfigRecord>("POST", `/v1/channels/${encodeURIComponent(channel_config_id)}/status`, { body: input });
+  }
+
+  testChannel(channel_config_id: string, input: { trace_id: string }): Promise<ChannelConnectionTestResult> {
+    return this.#request<ChannelConnectionTestResult>("POST", `/v1/channels/${encodeURIComponent(channel_config_id)}/test`, { body: input });
   }
 
   listPlugins(params: { limit?: number; cursor?: string } = {}): Promise<PlatformList<PluginInventoryEntry>> {

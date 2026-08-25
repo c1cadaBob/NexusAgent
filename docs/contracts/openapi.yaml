@@ -6,7 +6,7 @@ info:
   description: >-
     P5 REST MVP of the public NexusAgent API. The contract exposes only platform
     resources: tasks, attempts, executions, skills, capabilities, memory,
-    tenants, approvals, plugin governance, artifacts, audit references, and
+    tenants, approvals, channel management, plugin governance, artifacts, audit references, and
     health. Internal implementation details, internal component brands, raw
     endpoint references, internal error identifiers, and internal storage
     locations are intentionally excluded.
@@ -37,6 +37,8 @@ tags:
     description: Human or policy approval workflow.
   - name: budget
     description: Platform budget admission checks.
+  - name: channels
+    description: Tenant channel configuration and connection dry-run checks.
   - name: plugin-governance
     description: Administrator-only plugin inventory and admission workflow.
 paths:
@@ -428,6 +430,156 @@ paths:
           $ref: '#/components/responses/PlatformError'
         '429':
           $ref: '#/components/responses/PlatformError'
+  /v1/channels:
+    get:
+      tags: [channels]
+      operationId: listChannels
+      summary: List channel configurations visible to the caller.
+      parameters:
+        - $ref: '#/components/parameters/TenantIdQuery'
+        - $ref: '#/components/parameters/LimitQuery'
+        - $ref: '#/components/parameters/CursorQuery'
+      responses:
+        '200':
+          description: Channel configuration list.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChannelConfigList'
+        '401':
+          $ref: '#/components/responses/PlatformError'
+        '403':
+          $ref: '#/components/responses/PlatformError'
+    post:
+      tags: [channels]
+      operationId: createChannel
+      summary: Create a tenant channel configuration.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChannelConfigCreateRequest'
+      responses:
+        '201':
+          description: Channel configuration created.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChannelConfig'
+        '400':
+          $ref: '#/components/responses/PlatformError'
+        '401':
+          $ref: '#/components/responses/PlatformError'
+        '403':
+          $ref: '#/components/responses/PlatformError'
+        '409':
+          $ref: '#/components/responses/PlatformError'
+  /v1/channels/{channel_config_id}:
+    parameters:
+      - $ref: '#/components/parameters/ChannelConfigId'
+    get:
+      tags: [channels]
+      operationId: getChannel
+      summary: Read one channel configuration.
+      responses:
+        '200':
+          description: Channel configuration.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChannelConfig'
+        '401':
+          $ref: '#/components/responses/PlatformError'
+        '403':
+          $ref: '#/components/responses/PlatformError'
+        '404':
+          $ref: '#/components/responses/PlatformError'
+    patch:
+      tags: [channels]
+      operationId: updateChannel
+      summary: Update editable channel configuration fields.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChannelConfigUpdateRequest'
+      responses:
+        '200':
+          description: Updated channel configuration.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChannelConfig'
+        '400':
+          $ref: '#/components/responses/PlatformError'
+        '401':
+          $ref: '#/components/responses/PlatformError'
+        '403':
+          $ref: '#/components/responses/PlatformError'
+        '404':
+          $ref: '#/components/responses/PlatformError'
+  /v1/channels/{channel_config_id}/status:
+    post:
+      tags: [channels]
+      operationId: setChannelStatus
+      summary: Enable or disable one channel configuration.
+      parameters:
+        - $ref: '#/components/parameters/ChannelConfigId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChannelConfigStatusRequest'
+      responses:
+        '200':
+          description: Updated channel configuration.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChannelConfig'
+        '400':
+          $ref: '#/components/responses/PlatformError'
+        '401':
+          $ref: '#/components/responses/PlatformError'
+        '403':
+          $ref: '#/components/responses/PlatformError'
+        '404':
+          $ref: '#/components/responses/PlatformError'
+        '409':
+          $ref: '#/components/responses/PlatformError'
+  /v1/channels/{channel_config_id}/test:
+    post:
+      tags: [channels]
+      operationId: testChannelConnection
+      summary: Run a platform dry-run connection check for one channel configuration.
+      parameters:
+        - $ref: '#/components/parameters/ChannelConfigId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChannelConnectionTestRequest'
+      responses:
+        '200':
+          description: Channel dry-run result.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChannelConnectionTestResult'
+        '400':
+          $ref: '#/components/responses/PlatformError'
+        '401':
+          $ref: '#/components/responses/PlatformError'
+        '403':
+          $ref: '#/components/responses/PlatformError'
+        '404':
+          $ref: '#/components/responses/PlatformError'
+        '409':
+          $ref: '#/components/responses/PlatformError'
   /v1/admin/plugins:
     get:
       tags: [plugin-governance]
@@ -524,6 +676,12 @@ components:
       required: true
       schema:
         $ref: '#/components/schemas/PluginId'
+    ChannelConfigId:
+      name: channel_config_id
+      in: path
+      required: true
+      schema:
+        $ref: '#/components/schemas/ChannelConfigId'
     TenantIdQuery:
       name: tenant_id
       in: query
@@ -612,6 +770,22 @@ components:
       type: string
       minLength: 1
       pattern: '^plugin_[A-Za-z0-9_-]+$'
+    ChannelConfigId:
+      type: string
+      minLength: 1
+      pattern: '^channel_config_[A-Za-z0-9_-]+$'
+    ChannelName:
+      type: string
+      enum:
+        - dingtalk
+        - feishu
+        - telegram
+    ChannelConfigStatus:
+      type: string
+      enum: [enabled, disabled]
+    ChannelCredentialStatus:
+      type: string
+      enum: [reference_configured, missing_reference]
     Timestamp:
       type: string
       format: date-time
@@ -1147,6 +1321,156 @@ components:
           type: array
           items:
             type: string
+    ChannelConnectionTestResult:
+      type: object
+      additionalProperties: false
+      required: [schema_version, channel_config_id, tenant_id, channel_name, test_status, policy_gate_status, delivery_outcome, checked_at, trace_id]
+      properties:
+        schema_version:
+          type: string
+          const: nexus.channel_management.p5.v1
+        channel_config_id:
+          $ref: '#/components/schemas/ChannelConfigId'
+        tenant_id:
+          $ref: '#/components/schemas/TenantId'
+        channel_name:
+          $ref: '#/components/schemas/ChannelName'
+        test_status:
+          type: string
+          enum: [passed, failed]
+        policy_gate_status:
+          type: string
+          enum: [allowed, denied]
+        delivery_outcome:
+          type: string
+          enum: [queued, not_queued]
+        checked_at:
+          $ref: '#/components/schemas/Timestamp'
+        trace_id:
+          $ref: '#/components/schemas/TraceId'
+    ChannelConfig:
+      type: object
+      additionalProperties: false
+      required:
+        - schema_version
+        - channel_config_id
+        - tenant_id
+        - channel_name
+        - display_name
+        - status
+        - capability_id
+        - account_ref
+        - conversation_ref
+        - credential_status
+        - created_at
+        - updated_at
+        - trace_id
+      properties:
+        schema_version:
+          type: string
+          const: nexus.channel_management.p5.v1
+        channel_config_id:
+          $ref: '#/components/schemas/ChannelConfigId'
+        tenant_id:
+          $ref: '#/components/schemas/TenantId'
+        channel_name:
+          $ref: '#/components/schemas/ChannelName'
+        display_name:
+          type: string
+          minLength: 1
+        status:
+          $ref: '#/components/schemas/ChannelConfigStatus'
+        capability_id:
+          $ref: '#/components/schemas/CapabilityId'
+        account_ref:
+          type: string
+          pattern: '^channel_account_[A-Za-z0-9_-]+$'
+        conversation_ref:
+          type: string
+          pattern: '^channel_conversation_[A-Za-z0-9_-]+$'
+        credential_status:
+          $ref: '#/components/schemas/ChannelCredentialStatus'
+        created_at:
+          $ref: '#/components/schemas/Timestamp'
+        updated_at:
+          $ref: '#/components/schemas/Timestamp'
+        trace_id:
+          $ref: '#/components/schemas/TraceId'
+        last_test:
+          $ref: '#/components/schemas/ChannelConnectionTestResult'
+    ChannelConfigList:
+      type: object
+      additionalProperties: false
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ChannelConfig'
+        next_cursor:
+          type: string
+    ChannelConfigCreateRequest:
+      type: object
+      additionalProperties: false
+      required: [tenant_id, channel_name, display_name, account_ref, conversation_ref, trace_id]
+      properties:
+        tenant_id:
+          $ref: '#/components/schemas/TenantId'
+        channel_name:
+          $ref: '#/components/schemas/ChannelName'
+        display_name:
+          type: string
+          minLength: 1
+        account_ref:
+          type: string
+          pattern: '^channel_account_[A-Za-z0-9_-]+$'
+        conversation_ref:
+          type: string
+          pattern: '^channel_conversation_[A-Za-z0-9_-]+$'
+        credential_ref:
+          type: string
+          pattern: '^cred_[A-Za-z0-9_-]+$'
+        trace_id:
+          $ref: '#/components/schemas/TraceId'
+    ChannelConfigUpdateRequest:
+      type: object
+      additionalProperties: false
+      required: [trace_id]
+      properties:
+        display_name:
+          type: string
+          minLength: 1
+        account_ref:
+          type: string
+          pattern: '^channel_account_[A-Za-z0-9_-]+$'
+        conversation_ref:
+          type: string
+          pattern: '^channel_conversation_[A-Za-z0-9_-]+$'
+        credential_ref:
+          type: string
+          pattern: '^cred_[A-Za-z0-9_-]+$'
+        trace_id:
+          $ref: '#/components/schemas/TraceId'
+    ChannelConfigStatusRequest:
+      type: object
+      additionalProperties: false
+      required: [status, reason, trace_id]
+      properties:
+        status:
+          $ref: '#/components/schemas/ChannelConfigStatus'
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 1000
+        trace_id:
+          $ref: '#/components/schemas/TraceId'
+    ChannelConnectionTestRequest:
+      type: object
+      additionalProperties: false
+      required: [trace_id]
+      properties:
+        trace_id:
+          $ref: '#/components/schemas/TraceId'
     PluginInventoryEntry:
       type: object
       additionalProperties: false

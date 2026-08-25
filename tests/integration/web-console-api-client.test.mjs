@@ -99,3 +99,44 @@ test('platform admin workflow manages plugin metadata while tenant admin forced 
     return true;
   });
 });
+
+test('tenant admin workflow manages channel configuration while viewer write access fails closed', async () => {
+  const tenantAdmin = clientFor('tenant-admin').client;
+  const viewer = clientFor('viewer').client;
+
+  const created = await tenantAdmin.createChannel({
+    channel_name: 'feishu',
+    display_name: 'Feishu Console',
+    account_ref: 'channel_account_console01',
+    conversation_ref: 'channel_conversation_console01',
+    credential_ref: 'cred_channel_console01',
+    trace_id: 'trace_console12',
+  });
+  assert.equal(created.channel_name, 'feishu');
+  assert.equal(created.credential_status, 'reference_configured');
+  assert.equal(Object.hasOwn(created, 'credential_ref'), false);
+
+  const channels = await tenantAdmin.listChannels({ tenant_id: 'tenant_alpha01' });
+  assert.equal(channels.items.some((channel) => channel.channel_config_id === created.channel_config_id), true);
+
+  const enabled = await tenantAdmin.setChannelStatus(created.channel_config_id, { status: 'enabled', reason: 'console channel test', trace_id: 'trace_console13' });
+  assert.equal(enabled.status, 'enabled');
+
+  const tested = await tenantAdmin.testChannel(created.channel_config_id, { trace_id: 'trace_console14' });
+  assert.equal(tested.test_status, 'passed');
+  assert.equal(tested.policy_gate_status, 'allowed');
+  assert.equal(tested.delivery_outcome, 'queued');
+
+  await assert.rejects(() => viewer.createChannel({
+    channel_name: 'dingtalk',
+    display_name: 'Viewer Channel',
+    account_ref: 'channel_account_viewer01',
+    conversation_ref: 'channel_conversation_viewer01',
+    trace_id: 'trace_console15',
+  }), (error) => {
+    assert.equal(error instanceof PlatformApiError, true);
+    assert.equal(error.status, 403);
+    assert.equal(error.code, 'PLATFORM_FORBIDDEN');
+    return true;
+  });
+});

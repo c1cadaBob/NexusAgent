@@ -8,6 +8,9 @@ import {
   type ApprovalRecord,
   type BudgetCheckResult,
   type CapabilityDescriptor,
+  type ChannelConfigRecord,
+  type ChannelConnectionTestResult,
+  type ChannelName,
   type HealthStatus,
   type MemoryRecord,
   type PlatformEvent,
@@ -27,6 +30,7 @@ const initialDataset: ConsoleDataset = {
   taskEvents: [],
   tenants: [],
   tenantUsers: [],
+  channels: [],
   approvals: [],
   skills: [],
   capabilities: [],
@@ -51,6 +55,11 @@ function App() {
   const [memoryQuery, setMemoryQuery] = useState("platform console");
   const [budgetUnits, setBudgetUnits] = useState("10");
   const [remainingUnits, setRemainingUnits] = useState("25");
+  const [channelName, setChannelName] = useState<ChannelName>("dingtalk");
+  const [channelDisplayName, setChannelDisplayName] = useState("");
+  const [channelAccountRef, setChannelAccountRef] = useState("");
+  const [channelConversationRef, setChannelConversationRef] = useState("");
+  const [channelCredentialRef, setChannelCredentialRef] = useState("");
   const [pluginName, setPluginName] = useState("Approved Console Plugin");
   const [pluginHash, setPluginHash] = useState("c".repeat(64));
 
@@ -71,6 +80,7 @@ function App() {
       const tenantUsers = canReadTenantUsers && tenants.items[0] ? await client.listTenantUsers(tenants.items[0].tenant_id) : { items: [] as TenantUserRecord[] };
       const task_id = selectedTaskId || tasks.items[0]?.task_id || "";
       const taskEvents = task_id ? await client.listTaskEvents(task_id) : { items: [] as PlatformEvent[] };
+      const channels = profile.canReadChannels ? await client.listChannels({ tenant_id: profile.tenant_id }) : { items: [] as ChannelConfigRecord[] };
       const plugins = profile.canManagePlugins ? await client.listPlugins() : { items: [] as PluginInventoryEntry[] };
 
       setData((previous) => ({
@@ -79,6 +89,7 @@ function App() {
         tasks: tasks.items,
         tenants: tenants.items,
         tenantUsers: tenantUsers.items,
+        channels: channels.items,
         approvals: approvals.items,
         skills: skills.items,
         capabilities: capabilities.items,
@@ -150,6 +161,30 @@ function App() {
 
         {activeView === "overview" && <Overview health={data.health} dashboard={dashboard} />}
         {activeView === "tenants" && <Tenants tenants={data.tenants} users={data.tenantUsers} agents={dashboard.agents} />}
+        {activeView === "channels" && profile.canReadChannels && (
+          <Channels
+            profile={profile}
+            channels={data.channels}
+            channelRows={dashboard.channelRows}
+            lastTest={data.channelTest}
+            channelName={channelName}
+            setChannelName={setChannelName}
+            displayName={channelDisplayName}
+            setDisplayName={setChannelDisplayName}
+            accountRef={channelAccountRef}
+            setAccountRef={setChannelAccountRef}
+            conversationRef={channelConversationRef}
+            setConversationRef={setChannelConversationRef}
+            credentialRef={channelCredentialRef}
+            setCredentialRef={setChannelCredentialRef}
+            onCreate={() => runAction(() => client.createChannel({ channel_name: channelName, display_name: channelDisplayName, account_ref: channelAccountRef, conversation_ref: channelConversationRef, credential_ref: channelCredentialRef || undefined, trace_id: traceRef.current() }), "Channel created")}
+            onStatus={(channel_config_id, status) => runAction(() => client.setChannelStatus(channel_config_id, { status, reason: "Console status change", trace_id: traceRef.current() }), "Channel status updated")}
+            onTest={(channel_config_id) => runAction(async () => {
+              const result = await client.testChannel(channel_config_id, { trace_id: traceRef.current() });
+              setData((previous) => ({ ...previous, channelTest: result }));
+            }, "Channel test complete")}
+          />
+        )}
         {activeView === "tasks" && (
           <Tasks
             profile={profile}
@@ -222,6 +257,7 @@ function Overview({ health, dashboard }: { health?: HealthStatus; dashboard: Ret
     <Metric label="Active tasks" value={dashboard.counters.active_tasks} />
     <Metric label="Pending approvals" value={dashboard.counters.pending_approvals} />
     <Metric label="Approved capabilities" value={dashboard.counters.approved_capabilities} />
+    <Metric label="Channels" value={dashboard.counters.channel_configs} />
     <Metric label="Plugin entries" value={dashboard.counters.plugin_entries} />
   </section>;
 }
@@ -235,6 +271,41 @@ function Tenants({ tenants, users, agents }: { tenants: readonly TenantRecord[];
     <Table title="Tenants" rows={tenants} columns={["tenant_id", "name", "status", "created_at"]} />
     <Table title="Users" rows={users} columns={["tenant_id", "user_id", "roles", "status"]} />
     <Table title="Agents" rows={agents} columns={["agent_id", "task_count", "states", "latest_task_id"]} />
+  </section>;
+}
+
+function Channels(props: {
+  profile: PrincipalProfile;
+  channels: readonly ChannelConfigRecord[];
+  channelRows: readonly Record<string, unknown>[];
+  lastTest?: ChannelConnectionTestResult;
+  channelName: ChannelName;
+  setChannelName: (value: ChannelName) => void;
+  displayName: string;
+  setDisplayName: (value: string) => void;
+  accountRef: string;
+  setAccountRef: (value: string) => void;
+  conversationRef: string;
+  setConversationRef: (value: string) => void;
+  credentialRef: string;
+  setCredentialRef: (value: string) => void;
+  onCreate: () => void;
+  onStatus: (channel_config_id: string, status: "enabled" | "disabled") => void;
+  onTest: (channel_config_id: string) => void;
+}) {
+  const canManage = actionEnabled(props.profile, "manage_channels");
+  return <section className="stack">
+    <form className="form-grid channel-form" onSubmit={(event) => { event.preventDefault(); props.onCreate(); }}>
+      <label>Channel<select value={props.channelName} onChange={(event) => props.setChannelName(event.target.value as ChannelName)} disabled={!canManage}><option value="dingtalk">dingtalk</option><option value="feishu">feishu</option><option value="telegram">telegram</option></select></label>
+      <label>Display name<input value={props.displayName} onChange={(event) => props.setDisplayName(event.target.value)} disabled={!canManage} placeholder="Channel display name" /></label>
+      <label>Account ref<input value={props.accountRef} onChange={(event) => props.setAccountRef(event.target.value)} disabled={!canManage} placeholder="channel_account_*" /></label>
+      <label>Conversation ref<input value={props.conversationRef} onChange={(event) => props.setConversationRef(event.target.value)} disabled={!canManage} placeholder="channel_conversation_*" /></label>
+      <label>Credential ref<input value={props.credentialRef} onChange={(event) => props.setCredentialRef(event.target.value)} disabled={!canManage} placeholder="cred_*" /></label>
+      <button type="submit" disabled={!canManage}>Create channel</button>
+    </form>
+    <Table title="Channels" rows={props.channelRows} columns={["channel_config_id", "tenant_id", "channel_name", "display_name", "status", "capability_id", "account_ref", "conversation_ref", "credential_status", "updated_at", "trace_id"]} />
+    <div className="button-row">{props.channels.map((channel) => <React.Fragment key={channel.channel_config_id}><button type="button" disabled={!canManage || channel.status === "enabled"} onClick={() => props.onStatus(channel.channel_config_id, "enabled")}>Enable {channel.channel_config_id}</button><button type="button" disabled={!canManage || channel.status === "disabled"} onClick={() => props.onStatus(channel.channel_config_id, "disabled")}>Disable {channel.channel_config_id}</button><button type="button" disabled={!canManage || channel.status !== "enabled"} onClick={() => props.onTest(channel.channel_config_id)}>Test {channel.channel_config_id}</button></React.Fragment>)}</div>
+    {props.lastTest ? <Table title="Channel test" rows={[props.lastTest]} columns={["channel_config_id", "tenant_id", "channel_name", "test_status", "policy_gate_status", "delivery_outcome", "checked_at", "trace_id"]} /> : <EmptyState text="No channel test result" />}
   </section>;
 }
 
