@@ -1,0 +1,28 @@
+# NexusAgent Web Console
+
+P5-02 delivers the local alpha Web management console. It is a standalone React, Vite, and TypeScript app under `product/web-console/`; the repository root package configuration is unchanged.
+
+## Local runtime
+
+```bash
+corepack pnpm --dir product/web-console install --frozen-lockfile
+VITE_NEXUS_API_BASE_URL=http://localhost:8080 corepack pnpm --dir product/web-console run dev
+```
+
+Run the platform API separately:
+
+```bash
+PORT=8080 node product/api/server.mjs
+```
+
+## P5-02 scope
+
+- The console calls only `/v1/*` platform API routes from P5-01.
+- Local development uses the P5-01 dev principals: platform admin, tenant admin, operator, and viewer.
+- Task, approval, memory, budget, skills, tenants, users, health, task events, and administrator plugin governance are available in the alpha UI.
+- Refresh uses the visible Refresh button plus a 15 second polling interval. Streaming and enterprise sign-on remain follow-up work.
+- Plugin governance displays public platform metadata only: ID, display name, source kind, version, SHA-256, license, notice status, risk, allowlist status, and capability IDs.
+
+## Design direction
+
+The console uses a Swiss interface direction: white and neutral surfaces, Helvetica-family typography, one blue accent, left alignment, and 1 px grid rules. Empty states are explicit and no fixture data is fabricated for presentation.

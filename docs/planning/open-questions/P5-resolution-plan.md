@@ -16,6 +16,8 @@
 
 P5-01 进展：已按 REST-first 默认结论交付 `product/api/` 本地 REST MVP，覆盖任务提交/查询/取消/重试、memory search/write、租户/users/permissions、审批、预算和管理员插件治理；`docs/contracts/openapi.yaml` 已对齐 runtime `exec_`、`conv_`、`cap_` 标识和 TaskState enum；`tests/contract/p5-openapi-contract.test.mjs`、`tests/integration/platform-api-rest.test.mjs`、`tests/security/platform-api-leakage.test.mjs` 与 `tests/smoke/P5.sh` 已验证公共响应不含上游原生字段。SDK 生成、控制台实时刷新和生产 IdP/SSO 仍由 P5-02/P5-04/P8 承接。
 
+P5-02 进展：已按默认方案新增 `product/web-console/` React/Vite 控制台 Alpha，使用 P5-01 dev principal resolver 和 `/v1/*` 平台 API client；控制台实时体验为手动刷新 + 15 秒轮询，不实现 SSE/WebSocket/gRPC streaming；多语言、企业 SSO、生产 IdP 和 SDK 生成继续留给 P5-04/P8。`tests/integration/web-console-api-client.test.mjs`、`tests/security/web-console-leakage.test.mjs`、`tests/contract/web-console-openapi-alignment.test.mjs` 与 `tests/smoke/P5.sh` 验证控制台 API route 与 OpenAPI 对齐、权限不足 fail closed、view-model 不含上游原生字段。
+
 ## OQ-PLUGIN-001：插件市场和租户自助安装范围
 
 推荐处理：P5 首版仅允许平台管理员导入、扫描、批准、启用、禁用和升级插件；租户只能使用已经批准且对其可见的能力，不允许直接从 ClawHub/npm/PyPI/GitHub 自助安装任意插件。P7/P8 后再评估租户自助市场。
@@ -29,6 +31,8 @@ P5-01 进展：已按 REST-first 默认结论交付 `product/api/` 本地 REST M
 关闭证据：PluginInventory、CapabilityDescriptor、PluginAdmissionPolicy、NativeHostBinding 契约完成；未批准插件、伪造 manifest 和越权插件测试失败。
 
 P5-01 进展：已新增平台中性 `platform/plugin-governance/`，把 P3/P4 Plugin Bridge 证据投影为 public inventory/capability；`/v1/admin/plugins`、`/v1/admin/plugins/import` 和 `/v1/admin/plugins/{plugin_id}/admission` 仅允许 `dev-platform-admin` 本地角色访问，tenant admin/viewer 均 fail closed；公共响应不返回 source_ref、provider binding、runtime、URL/path/session 或 secret material。完整恶意插件运行时、生产 sidecar 和升级回滚矩阵仍由 P6/P8 继续验证。
+
+P5-02 进展：控制台插件治理页面仅对 platform admin dev principal 展示导入与准入操作，tenant admin/viewer 导航不显示插件治理入口且强制 API 调用仍由 P5-01 返回 403；页面和 view-model 只展示 plugin ID、display name、source kind、version、SHA-256、license、notice status、risk、allowlist status 和 capability IDs，不展示原生来源、provider binding、runtime、session、URL/path 或 secret material。租户自助安装、恶意插件运行时、升级回滚矩阵和生产 sidecar 仍由 P6/P8 继续验证。
 
 ## OQ-LEGAL-001：许可证、NOTICE 和再分发法务确认
 

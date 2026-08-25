@@ -13,13 +13,27 @@ required_files=(
   product/api/index.ts
   product/api/server.mjs
   product/api/README.md
+  product/web-console/package.json
+  product/web-console/pnpm-lock.yaml
+  product/web-console/index.html
+  product/web-console/vite.config.ts
+  product/web-console/tsconfig.json
+  product/web-console/README.md
+  product/web-console/src/apiClient.ts
+  product/web-console/src/viewModel.ts
+  product/web-console/src/main.tsx
+  product/web-console/src/styles.css
   platform/public-surface/index.ts
   platform/plugin-governance/index.ts
   tests/contract/p5-openapi-contract.test.mjs
+  tests/contract/web-console-openapi-alignment.test.mjs
   tests/integration/platform-api-rest.test.mjs
+  tests/integration/web-console-api-client.test.mjs
   tests/security/platform-api-leakage.test.mjs
   tests/security/plugin-governance-api.test.mjs
+  tests/security/web-console-leakage.test.mjs
   docs/planning/task-prompts/P5/P5-01.md
+  docs/planning/task-prompts/P5/P5-02.md
   docs/planning/open-questions/P5-resolution-plan.md
   docs/planning/open-questions-register.md
   docs/contracts/openapi.yaml
@@ -31,6 +45,27 @@ required_files=(
 
 for file in "${required_files[@]}"; do
   [[ -f "$file" ]] || fail "missing P5 required file: $file"
+done
+
+p5_02_audit_block="$(sed -n '/^# P5-02 修改记录包$/,/^## 完整提示词$/p' docs/planning/task-prompts/P5/P5-02.md)"
+[[ -n "$p5_02_audit_block" ]] || fail 'P5-02 audit record package is missing'
+if printf '%s\n' "$p5_02_audit_block" | rg -q '\.\.\.'; then
+  fail 'P5-02 audit record package still contains placeholder ellipses'
+fi
+for audit_marker in \
+  '任务与验收条件' \
+  '源码证据' \
+  '基线测试' \
+  '影响面分析' \
+  '修改计划与回滚' \
+  '待确认问题' \
+  '实际变更文件' \
+  '关键改动点' \
+  '新增测试' \
+  '测试结果' \
+  '防绕过测试' \
+  '回滚验证'; do
+  printf '%s\n' "$p5_02_audit_block" | rg -q "$audit_marker" || fail "P5-02 audit marker missing: $audit_marker"
 done
 
 p5_01_audit_block="$(sed -n '/^# P5-01 修改记录包$/,/^## 完整提示词$/p' docs/planning/task-prompts/P5/P5-01.md)"
@@ -61,6 +96,17 @@ for marker in \
   'dev-operator-alpha' \
   'PLATFORM_API_SCHEMA_VERSION'; do
   rg -q "$marker" product/api/index.ts product/api/README.md tests/integration/platform-api-rest.test.mjs || fail "P5 API marker missing: $marker"
+done
+
+for marker in \
+  'nexus.web_console.p5.v1' \
+  'nexus.web_console.view_model.p5.v1' \
+  'PlatformApiClient' \
+  'DEV_PRINCIPALS' \
+  'VITE_NEXUS_API_BASE_URL' \
+  'React' \
+  'vite build'; do
+  rg -q "$marker" product/web-console tests/integration/web-console-api-client.test.mjs tests/contract/web-console-openapi-alignment.test.mjs || fail "P5 web console marker missing: $marker"
 done
 
 for marker in \
@@ -95,14 +141,32 @@ if rg -qi 'Hermes|OpenClaw|DeepSeek|\bDSH\b' product/api docs/contracts/openapi.
   fail 'product API or public OpenAPI leaked internal component naming'
 fi
 
+if rg -qi 'Hermes|OpenClaw|DeepSeek|\bDSH\b' product/web-console/src product/web-console/README.md product/web-console/index.html product/web-console/package.json; then
+  fail 'web console public surface leaked internal component naming'
+fi
+
+if rg -n 'platform/adapters|vendor/' product/web-console/src product/web-console/README.md product/web-console/index.html product/web-console/package.json; then
+  fail 'web console imported or referenced a non-product implementation path'
+fi
+
 if rg -n 'Date\.now\(|datetime\.now\(' product/api platform/plugin-governance platform/public-surface; then
   fail 'wall-clock duration helper detected in P5 API surface'
 fi
 
+if rg -n 'Date\.now\(|datetime\.now\(' product/web-console/src; then
+  fail 'wall-clock duration helper detected in P5 web console surface'
+fi
+
 node --test \
   tests/contract/p5-openapi-contract.test.mjs \
+  tests/contract/web-console-openapi-alignment.test.mjs \
   tests/integration/platform-api-rest.test.mjs \
+  tests/integration/web-console-api-client.test.mjs \
   tests/security/platform-api-leakage.test.mjs \
-  tests/security/plugin-governance-api.test.mjs
+  tests/security/plugin-governance-api.test.mjs \
+  tests/security/web-console-leakage.test.mjs
 
-echo 'PASS: P5 platform REST API, OpenAPI contract, plugin governance, and public leakage gate'
+corepack pnpm --dir product/web-console install --frozen-lockfile
+corepack pnpm --dir product/web-console run build
+
+echo 'PASS: P5 platform REST API, Web console, OpenAPI contract, plugin governance, and public leakage gate'
