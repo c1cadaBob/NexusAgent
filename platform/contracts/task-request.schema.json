@@ -38,7 +38,10 @@
         "kind": { "type": "string", "enum": ["api", "channel", "scheduler", "system"] },
         "channel": { "type": "string", "minLength": 1 },
         "provider_binding_id": { "type": "string", "minLength": 1 },
-        "received_at_utc": { "$ref": "common-identifiers.schema.json#/$defs/utc_timestamp" }
+        "received_at_utc": { "$ref": "common-identifiers.schema.json#/$defs/utc_timestamp" },
+        "message_id": { "type": "string", "pattern": "^msg_[A-Za-z0-9][A-Za-z0-9_-]{2,127}$" },
+        "account_ref": { "type": "string", "pattern": "^channel_account_[A-Za-z0-9][A-Za-z0-9_-]{2,127}$" },
+        "conversation_ref": { "type": "string", "pattern": "^channel_conversation_[A-Za-z0-9][A-Za-z0-9_-]{2,127}$" }
       }
     },
     "input": {
@@ -56,6 +59,18 @@
           "type": "object",
           "additionalProperties": true
         }
+      }
+    },
+    "command": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "action", "idempotency_key", "source_message_id"],
+      "properties": {
+        "schema_version": { "const": "nexus.task_command.p4.v1" },
+        "action": { "type": "string", "enum": ["continue_attempt", "redo_attempt", "cancel_attempt"] },
+        "idempotency_key": { "type": "string", "minLength": 1 },
+        "source_message_id": { "type": "string", "pattern": "^msg_[A-Za-z0-9][A-Za-z0-9_-]{2,127}$" },
+        "next_attempt_id": { "$ref": "common-identifiers.schema.json#/$defs/attempt_id" }
       }
     },
     "policy_context": {

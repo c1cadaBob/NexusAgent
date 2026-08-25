@@ -147,6 +147,21 @@ sources:
           - tests/security/openclaw-channel-leakage.test.mjs
           - tests/security/openclaw-plugin-bypass.test.mjs
           - tests/smoke/P4.sh
+      - task_id: P4-03
+        description: "NexusAgent P4 OpenClaw continue redo cancel command attempt semantics"
+        decision_record: docs/planning/task-prompts/P4/P4-03.md
+        schema_version: nexus.openclaw_command_mapping.p4.v1
+        task_command_schema_version: nexus.task_command.p4.v1
+        command_semantics: [continue_attempt, redo_attempt, cancel_attempt]
+        files:
+          - platform/adapters/openclaw/command-mapping.ts
+          - platform/adapters/openclaw/index.ts
+          - platform/coordinator/index.ts
+          - platform/contracts/task-request.schema.json
+          - tests/unit/openclaw-command-mapping.test.mjs
+          - tests/integration/openclaw-command-routing.test.mjs
+          - tests/security/openclaw-command-bypass.test.mjs
+          - tests/smoke/P4.sh
   - upstream_name: DSH
     vendor_name: deepseek-harness-master
     internal_role: executor-only

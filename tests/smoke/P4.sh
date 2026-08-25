@@ -20,15 +20,19 @@ trap cleanup_vendor_openclaw_dirs EXIT
 
 required_files=(
   platform/adapters/openclaw/index.ts
+  platform/adapters/openclaw/command-mapping.ts
   platform/adapters/openclaw/plugin-bridge.ts
   platform/adapters/openclaw/providers/README.md
   platform/adapters/openclaw/providers/openclaw-2026.8.1/README.md
   tests/unit/openclaw-provider-registry.test.mjs
   tests/unit/openclaw-channel-contracts.test.mjs
+  tests/unit/openclaw-command-mapping.test.mjs
   tests/integration/openclaw-gateway-adapter.test.mjs
   tests/integration/openclaw-channel-adapter.test.mjs
+  tests/integration/openclaw-command-routing.test.mjs
   tests/security/openclaw-gateway-bypass.test.mjs
   tests/security/openclaw-channel-leakage.test.mjs
+  tests/security/openclaw-command-bypass.test.mjs
   tests/security/openclaw-network-isolation.test.mjs
   tests/security/openclaw-plugin-bypass.test.mjs
   vendor/openclaw-main/src/gateway/agent-turn/nexus-gateway-only-experiment.ts
@@ -41,6 +45,7 @@ required_files=(
   vendor/openclaw-main/src/channels/inbound-event/envelope.test.ts
   docs/planning/open-questions/P4-resolution-plan.md
   docs/planning/task-prompts/P4/P4-01.md
+  docs/planning/task-prompts/P4/P4-03.md
   docs/architecture/upstream-versioning-and-plugin-bridge.md
   docs/traceability/requirements-matrix.md
   docs/risks/risk-register.md
@@ -89,6 +94,24 @@ for audit_marker in \
   printf '%s\n' "$p4_02_audit_block" | rg -q "$audit_marker" || fail "P4-02 audit marker missing: $audit_marker"
 done
 
+p4_03_audit_block="$(sed -n '/^# P4-03 修改记录包$/,/^## 完整提示词$/p' docs/planning/task-prompts/P4/P4-03.md)"
+[[ -n "$p4_03_audit_block" ]] || fail 'P4-03 audit record package is missing'
+if printf '%s\n' "$p4_03_audit_block" | rg -q '\.\.\.'; then
+  fail 'P4-03 audit record package still contains placeholder ellipses'
+fi
+for audit_marker in \
+  '任务与验收条件' \
+  '源码证据' \
+  '基线测试' \
+  '影响面分析' \
+  '修改计划与回滚' \
+  '待确认问题' \
+  '实际变更文件' \
+  '测试结果' \
+  '回滚验证'; do
+  printf '%s\n' "$p4_03_audit_block" | rg -q "$audit_marker" || fail "P4-03 audit marker missing: $audit_marker"
+done
+
 for marker in \
   'task_id: P4-01' \
   'NexusAgent P4 OpenClaw gateway-only provider boundary hardening' \
@@ -105,6 +128,18 @@ for marker in \
   'openclaw-channel-adapter.test.mjs' \
   'openclaw-channel-leakage.test.mjs'; do
   rg -q "$marker" vendor/MANIFEST.yaml platform/adapters/openclaw/index.ts tests/smoke/P4.sh || fail "P4-02 marker missing: $marker"
+done
+
+for marker in \
+  'task_id: P4-03' \
+  'nexus.openclaw_command_mapping.p4.v1' \
+  'nexus.task_command.p4.v1' \
+  'submitTaskCommand' \
+  'command-attempt-semantics' \
+  'openclaw-command-mapping.test.mjs' \
+  'openclaw-command-routing.test.mjs' \
+  'openclaw-command-bypass.test.mjs'; do
+  rg -q "$marker" vendor/MANIFEST.yaml platform/adapters/openclaw/command-mapping.ts platform/adapters/openclaw/index.ts platform/coordinator/index.ts tests/smoke/P4.sh || fail "P4-03 command marker missing: $marker"
 done
 
 for marker in \
@@ -170,10 +205,13 @@ fi
 node --test \
   tests/unit/openclaw-provider-registry.test.mjs \
   tests/unit/openclaw-channel-contracts.test.mjs \
+  tests/unit/openclaw-command-mapping.test.mjs \
   tests/integration/openclaw-gateway-adapter.test.mjs \
   tests/integration/openclaw-channel-adapter.test.mjs \
+  tests/integration/openclaw-command-routing.test.mjs \
   tests/security/openclaw-gateway-bypass.test.mjs \
   tests/security/openclaw-channel-leakage.test.mjs \
+  tests/security/openclaw-command-bypass.test.mjs \
   tests/security/openclaw-network-isolation.test.mjs \
   tests/security/openclaw-plugin-bypass.test.mjs
 

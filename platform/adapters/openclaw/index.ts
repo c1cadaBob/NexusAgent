@@ -11,6 +11,21 @@ import {
   assertPlatformId,
   assertUtcTimestamp,
 } from "../../task-state/index.ts";
+import {
+  buildOpenClawCommandIdempotencyKey,
+  buildOpenClawCommandMapping,
+  OPENCLAW_COMMAND_MAPPING_SCHEMA_VERSION,
+} from "./command-mapping.ts";
+
+export {
+  buildOpenClawCommandIdempotencyKey,
+  buildOpenClawCommandMapping,
+  normalizeOpenClawCommandText,
+  OPENCLAW_COMMAND_MAPPING_SCHEMA_VERSION,
+  OpenClawCommandMappingError,
+  parseOpenClawCommandText,
+  type OpenClawCommandMapping,
+} from "./command-mapping.ts";
 
 export const OPENCLAW_BASELINE_PROVIDER_ID = "openclaw-2026.8.1";
 export const OPENCLAW_PROVIDER_CONTRACT_VERSION = "nexus.openclaw_provider.p4.v1";
@@ -245,6 +260,7 @@ export function baselineOpenClawProviderMetadata(
       "native-memory-block",
       "plugin-inventory-mapping",
       "plugin-bridge-allowlist",
+      "command-attempt-semantics",
       "provider-disable",
       "provider-rollback",
     ],
@@ -391,9 +407,11 @@ export class OpenClawGatewayAdapter implements LifecycleAdapterPort {
       OPENCLAW_GATEWAY_EVENT_SCHEMA_VERSION,
       OPENCLAW_CHANNEL_INBOUND_SCHEMA_VERSION,
       OPENCLAW_CHANNEL_OUTBOUND_SCHEMA_VERSION,
+      OPENCLAW_COMMAND_MAPPING_SCHEMA_VERSION,
       "gateway-only",
       "channel-anti-corruption",
       "platform-final-result-outbound",
+      "command-attempt-semantics",
       "native-agent-blocked",
       "native-tool-blocked",
       "native-memory-blocked",
@@ -453,6 +471,7 @@ export class OpenClawGatewayAdapter implements LifecycleAdapterPort {
 
     const inbound = validateOpenClawChannelInbound(invocation.payload, invocation);
     const taskHandoff = buildOpenClawTaskRequest(inbound);
+    const commandMapping = buildOpenClawCommandMapping(inbound);
     this.#publishInboundEvent(inbound, provider.provider_id);
     return {
       tenant_id: invocation.tenant_id,
@@ -464,12 +483,17 @@ export class OpenClawGatewayAdapter implements LifecycleAdapterPort {
       payload: {
         schema_version: OPENCLAW_CHANNEL_INBOUND_SCHEMA_VERSION,
         legacy_gateway_event_schema_version: OPENCLAW_GATEWAY_EVENT_SCHEMA_VERSION,
-        gateway_outcome: "handoff",
+        gateway_outcome: commandMapping ? "command_mapping" : "handoff",
         provider_id: provider.provider_id,
         provider_status: provider.status,
         provider_binding: "gateway_provider_default",
         channel_event: sanitizeChannelInbound(inbound),
         task_handoff: taskHandoff,
+        ...(commandMapping ? {
+          command_mapping_schema_version: OPENCLAW_COMMAND_MAPPING_SCHEMA_VERSION,
+          command_mapping: commandMapping,
+          task_command: commandMapping.task_command,
+        } : {}),
         native_agent_runtime: "blocked",
         native_tool_runtime: "blocked",
         native_memory_runtime: "blocked",
@@ -784,7 +808,27 @@ export function buildOpenClawTaskRequest(inbound: OpenClawChannelInboundMessage)
     input: {
       kind: normalized.message.kind === "command" ? "command" : "text",
       text: normalized.message.normalized_text ?? normalized.message.text,
+      metadata: {
+        channel_message_id: normalized.channel.message_id,
+        channel_capability_id: normalized.channel.capability_id,
+        command_mapping_schema_version: OPENCLAW_COMMAND_MAPPING_SCHEMA_VERSION,
+      },
     },
+    source: {
+      kind: "channel",
+      channel: normalized.channel.name,
+      provider_binding_id: normalized.provider_id ?? OPENCLAW_BASELINE_PROVIDER_ID,
+      received_at_utc: normalized.requested_at_utc,
+      message_id: normalized.channel.message_id,
+      account_ref: normalized.channel.account_ref,
+      conversation_ref: normalized.channel.conversation_ref,
+    },
+    policy_context: {
+      rbac_subject: normalized.user_id,
+      tenant_scope: "single_tenant",
+      approval_mode: "not_required",
+    },
+    idempotency_key: buildOpenClawCommandIdempotencyKey(normalized, "continue_attempt").replace("continue", "message"),
     created_at_utc: normalized.requested_at_utc,
     monotonic_ms: normalized.monotonic_ms,
   };
