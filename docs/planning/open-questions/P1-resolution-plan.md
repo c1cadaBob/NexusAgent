@@ -26,6 +26,8 @@
 
 关闭证据：`docs/contracts/openapi.yaml` 明确 REST MVP；P5 API contract tests 通过；若 gRPC 延后，排期和 SDK 文档写明批次。
 
+P5-01 进展：已按该默认结论交付 REST MVP 和 `tests/smoke/P5.sh`，gRPC/protobuf 与 streaming 仍作为 P5/P8 后续复核项，不阻塞 P5-01 API contract gate。
+
 ## OQ-INFRA-002：Event Bus 生产底层选型
 
 推荐处理：P1-P6 默认 NATS JetStream，P8 保留 Kafka/企业消息系统复核。业务代码只能依赖平台 EventBusPort 和 PlatformEventEnvelope，不能直接依赖 NATS subject、Kafka topic 或任何上游原生事件模型。

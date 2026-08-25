@@ -70,15 +70,21 @@ export interface CoordinatorTaskCommandRequest {
   monotonic_ms: number;
   idempotency_key: string;
   reason: string;
-  source: {
-    kind: "channel";
-    adapter_name: string;
-    channel_name: string;
-    channel_capability_id: string;
-    message_id: string;
-    account_ref: string;
-    conversation_ref: string;
-  };
+  source:
+    | {
+      kind: "channel";
+      adapter_name: string;
+      channel_name: string;
+      channel_capability_id: string;
+      message_id: string;
+      account_ref: string;
+      conversation_ref: string;
+    }
+    | {
+      kind: "api";
+      request_id: string;
+      client: "platform-api";
+    };
 }
 
 export interface CoordinatorAdapterInvocation {
@@ -466,6 +472,8 @@ export class Coordinator {
       "message_id",
       "account_ref",
       "conversation_ref",
+      "request_id",
+      "client",
     ]);
     if (!source || typeof source !== "object") {
       throw new CoordinatorError("PLATFORM_INVALID_REQUEST", "Task command source is required");
@@ -475,8 +483,15 @@ export class Coordinator {
         throw new CoordinatorError("PLATFORM_INVALID_REQUEST", "Task command source contains unsupported field", { field: key });
       }
     }
+    if (source.kind === "api") {
+      requireCoordinatorString(source.request_id, "source.request_id", /^req_[A-Za-z0-9][A-Za-z0-9_-]{2,127}$/);
+      if (source.client !== "platform-api") {
+        throw new CoordinatorError("PLATFORM_INVALID_REQUEST", "Task command API source client is unsupported", { client: source.client });
+      }
+      return;
+    }
     if (source.kind !== "channel") {
-      throw new CoordinatorError("PLATFORM_INVALID_REQUEST", "Task command source must be channel", { kind: source.kind });
+      throw new CoordinatorError("PLATFORM_INVALID_REQUEST", "Task command source is unsupported", { kind: source.kind });
     }
     requireCoordinatorString(source.adapter_name, "source.adapter_name", /^[A-Za-z0-9][A-Za-z0-9_-]{2,127}$/);
     requireCoordinatorString(source.channel_name, "source.channel_name", /^[A-Za-z][A-Za-z0-9_-]{2,63}$/);

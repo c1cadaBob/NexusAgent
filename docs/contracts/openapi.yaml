@@ -1,10 +1,10 @@
 openapi: 3.1.0
 info:
   title: NexusAgent Platform API
-  version: 0.1.0-p0
+  version: 0.5.0-p5
   summary: Unified public REST API for NexusAgent platform resources.
   description: >-
-    P0 draft of the public NexusAgent API. The contract exposes only platform
+    P5 REST MVP of the public NexusAgent API. The contract exposes only platform
     resources: tasks, attempts, executions, skills, capabilities, memory,
     tenants, approvals, plugin governance, artifacts, audit references, and
     health. Internal implementation details, internal component brands, raw
@@ -31,8 +31,12 @@ tags:
     description: Memory access through the platform memory gateway.
   - name: tenants
     description: Tenant administration and visibility.
+  - name: permissions
+    description: Platform permission catalog.
   - name: approvals
     description: Human or policy approval workflow.
+  - name: budget
+    description: Platform budget admission checks.
   - name: plugin-governance
     description: Administrator-only plugin inventory and admission workflow.
 paths:
@@ -263,6 +267,30 @@ paths:
           $ref: '#/components/responses/PlatformError'
         '403':
           $ref: '#/components/responses/PlatformError'
+  /v1/memory:
+    post:
+      tags: [memory]
+      operationId: writeMemory
+      summary: Write memory through the platform gateway.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MemoryWriteRequest'
+      responses:
+        '201':
+          description: Memory record written.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MemoryRecord'
+        '400':
+          $ref: '#/components/responses/PlatformError'
+        '401':
+          $ref: '#/components/responses/PlatformError'
+        '403':
+          $ref: '#/components/responses/PlatformError'
   /v1/tenants:
     get:
       tags: [tenants]
@@ -278,6 +306,48 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/TenantList'
+        '401':
+          $ref: '#/components/responses/PlatformError'
+        '403':
+          $ref: '#/components/responses/PlatformError'
+  /v1/tenants/{tenant_id}/users:
+    get:
+      tags: [tenants]
+      operationId: listTenantUsers
+      summary: List users for one tenant.
+      parameters:
+        - name: tenant_id
+          in: path
+          required: true
+          schema:
+            $ref: '#/components/schemas/TenantId'
+        - $ref: '#/components/parameters/LimitQuery'
+        - $ref: '#/components/parameters/CursorQuery'
+      responses:
+        '200':
+          description: Tenant user list.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TenantUserList'
+        '401':
+          $ref: '#/components/responses/PlatformError'
+        '403':
+          $ref: '#/components/responses/PlatformError'
+        '404':
+          $ref: '#/components/responses/PlatformError'
+  /v1/permissions:
+    get:
+      tags: [permissions]
+      operationId: listPermissions
+      summary: List platform permission names.
+      responses:
+        '200':
+          description: Permission list.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PermissionList'
         '401':
           $ref: '#/components/responses/PlatformError'
         '403':
@@ -331,6 +401,32 @@ paths:
         '404':
           $ref: '#/components/responses/PlatformError'
         '409':
+          $ref: '#/components/responses/PlatformError'
+  /v1/budget/check:
+    post:
+      tags: [budget]
+      operationId: checkBudget
+      summary: Check platform budget admission for a requested operation.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BudgetCheckRequest'
+      responses:
+        '200':
+          description: Budget decision.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BudgetCheckResult'
+        '400':
+          $ref: '#/components/responses/PlatformError'
+        '401':
+          $ref: '#/components/responses/PlatformError'
+        '403':
+          $ref: '#/components/responses/PlatformError'
+        '429':
           $ref: '#/components/responses/PlatformError'
   /v1/admin/plugins:
     get:
@@ -487,11 +583,11 @@ components:
     ExecutionId:
       type: string
       minLength: 1
-      pattern: '^execution_[A-Za-z0-9_-]+$'
+      pattern: '^exec_[A-Za-z0-9_-]+$'
     ConversationId:
       type: string
       minLength: 1
-      pattern: '^conversation_[A-Za-z0-9_-]+$'
+      pattern: '^conv_[A-Za-z0-9_-]+$'
     ArtifactId:
       type: string
       minLength: 1
@@ -507,7 +603,7 @@ components:
     CapabilityId:
       type: string
       minLength: 1
-      pattern: '^capability_[A-Za-z0-9_-]+$'
+      pattern: '^cap_[A-Za-z0-9_-]+$'
     ApprovalId:
       type: string
       minLength: 1
@@ -523,16 +619,18 @@ components:
     TaskState:
       type: string
       enum:
-        - queued
-        - awaiting_approval
+        - received
+        - admitted
+        - blocked
         - planning
+        - approval_required
+        - ready_for_execution
         - executing
-        - paused
-        - cancel_requested
-        - canceled
-        - succeeded
+        - settling
+        - completed
         - failed
-        - expired
+        - cancelled
+        - archived
     TaskRequest:
       type: object
       additionalProperties: false
@@ -781,15 +879,11 @@ components:
           type: string
         status:
           type: string
-          enum: [approved, enabled, disabled, pending_review]
+          enum: [approved, enabled, disabled, pending_review, rejected]
         risk_level:
           type: string
           enum: [low, medium, high, critical]
         required_permissions:
-          type: array
-          items:
-            type: string
-        required_credentials:
           type: array
           items:
             type: string
@@ -807,21 +901,22 @@ components:
     MemorySearchRequest:
       type: object
       additionalProperties: false
-      required: [tenant_id, user_id, query, trace_id]
+      required: [tenant_id, query, trace_id]
       properties:
         tenant_id:
           $ref: '#/components/schemas/TenantId'
         user_id:
           $ref: '#/components/schemas/UserId'
+        agent_id:
+          $ref: '#/components/schemas/AgentId'
+        conversation_id:
+          $ref: '#/components/schemas/ConversationId'
         query:
           type: string
           minLength: 1
           maxLength: 4000
-        scopes:
-          type: array
-          items:
-            type: string
-            enum: [conversation, user, agent, organization, audit_snapshot]
+        layer:
+          $ref: '#/components/schemas/MemoryLayer'
         limit:
           type: integer
           minimum: 1
@@ -832,16 +927,15 @@ components:
     MemorySearchResult:
       type: object
       additionalProperties: false
-      required: [memory_id, tenant_id, scope, text, score, trace_id]
+      required: [memory_id, tenant_id, layer, text, score, trace_id]
       properties:
         memory_id:
           type: string
           minLength: 1
         tenant_id:
           $ref: '#/components/schemas/TenantId'
-        scope:
-          type: string
-          enum: [conversation, user, agent, organization, audit_snapshot]
+        layer:
+          $ref: '#/components/schemas/MemoryLayer'
         text:
           type: string
         score:
@@ -859,6 +953,49 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/MemorySearchResult'
+    MemoryLayer:
+      type: string
+      enum: [session, user, agent_skill, organization, audit_snapshot]
+    MemoryWriteRequest:
+      type: object
+      additionalProperties: false
+      required: [tenant_id, layer, text, trace_id]
+      properties:
+        tenant_id:
+          $ref: '#/components/schemas/TenantId'
+        user_id:
+          $ref: '#/components/schemas/UserId'
+        agent_id:
+          $ref: '#/components/schemas/AgentId'
+        conversation_id:
+          $ref: '#/components/schemas/ConversationId'
+        layer:
+          $ref: '#/components/schemas/MemoryLayer'
+        text:
+          type: string
+          minLength: 1
+          maxLength: 64000
+        trace_id:
+          $ref: '#/components/schemas/TraceId'
+    MemoryRecord:
+      type: object
+      additionalProperties: false
+      required: [memory_id, tenant_id, layer, text, version, trace_id]
+      properties:
+        memory_id:
+          type: string
+          minLength: 1
+        tenant_id:
+          $ref: '#/components/schemas/TenantId'
+        layer:
+          $ref: '#/components/schemas/MemoryLayer'
+        text:
+          type: string
+        version:
+          type: integer
+          minimum: 1
+        trace_id:
+          $ref: '#/components/schemas/TraceId'
     Tenant:
       type: object
       additionalProperties: false
@@ -885,6 +1022,42 @@ components:
             $ref: '#/components/schemas/Tenant'
         next_cursor:
           type: string
+    TenantUser:
+      type: object
+      additionalProperties: false
+      required: [tenant_id, user_id, roles, status]
+      properties:
+        tenant_id:
+          $ref: '#/components/schemas/TenantId'
+        user_id:
+          $ref: '#/components/schemas/UserId'
+        roles:
+          type: array
+          items:
+            type: string
+        status:
+          type: string
+          enum: [active, disabled]
+    TenantUserList:
+      type: object
+      additionalProperties: false
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/TenantUser'
+        next_cursor:
+          type: string
+    PermissionList:
+      type: object
+      additionalProperties: false
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            type: string
     Approval:
       type: object
       additionalProperties: false
@@ -900,7 +1073,7 @@ components:
           $ref: '#/components/schemas/AttemptId'
         status:
           type: string
-          enum: [pending, approved, rejected, expired, canceled]
+          enum: [pending, approved, rejected, expired, cancelled]
         reason:
           type: string
         requested_at:
@@ -934,6 +1107,46 @@ components:
           maxLength: 1000
         trace_id:
           $ref: '#/components/schemas/TraceId'
+    BudgetCheckRequest:
+      type: object
+      additionalProperties: false
+      required: [tenant_id, requested_units, remaining_units, trace_id]
+      properties:
+        tenant_id:
+          $ref: '#/components/schemas/TenantId'
+        requested_units:
+          type: integer
+          minimum: 1
+        remaining_units:
+          type: integer
+          minimum: 0
+        max_units_per_attempt:
+          type: integer
+          minimum: 1
+        trace_id:
+          $ref: '#/components/schemas/TraceId'
+    BudgetCheckResult:
+      type: object
+      additionalProperties: false
+      required: [tenant_id, trace_id, status, requested_units, remaining_units, reasons]
+      properties:
+        tenant_id:
+          $ref: '#/components/schemas/TenantId'
+        trace_id:
+          $ref: '#/components/schemas/TraceId'
+        status:
+          type: string
+          enum: [approved, denied]
+        requested_units:
+          type: integer
+        remaining_units:
+          type: integer
+        code:
+          $ref: '#/components/schemas/PlatformErrorCode'
+        reasons:
+          type: array
+          items:
+            type: string
     PluginInventoryEntry:
       type: object
       additionalProperties: false
@@ -944,6 +1157,7 @@ components:
         - version
         - sha256
         - license
+        - notice_status
         - risk_level
         - allowlist_status
         - trace_id
@@ -966,6 +1180,9 @@ components:
         license:
           type: string
           minLength: 1
+        notice_status:
+          type: string
+          enum: [recorded, pending_review]
         risk_level:
           type: string
           enum: [low, medium, high, critical]
@@ -992,7 +1209,7 @@ components:
     PluginImportRequest:
       type: object
       additionalProperties: false
-      required: [source_kind, source_ref, trace_id]
+      required: [source_kind, source_ref, display_name, version, expected_sha256, license, notice_status, trace_id]
       properties:
         source_kind:
           type: string
@@ -1001,10 +1218,26 @@ components:
           type: string
           minLength: 1
           description: Platform-side import reference visible only to administrators.
+        display_name:
+          type: string
+          minLength: 1
+        version:
+          type: string
+          minLength: 1
         expected_sha256:
           type: string
           minLength: 64
           maxLength: 64
+          pattern: '^[A-Fa-f0-9]{64}$'
+        license:
+          type: string
+          minLength: 1
+        notice_status:
+          type: string
+          enum: [recorded, pending_review]
+        risk_level:
+          type: string
+          enum: [low, medium, high, critical]
         trace_id:
           $ref: '#/components/schemas/TraceId'
     PluginAdmissionDecision:
