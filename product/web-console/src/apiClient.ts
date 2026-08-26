@@ -14,6 +14,7 @@ export interface PrincipalProfile {
   canReadChannels: boolean;
   canManageChannels: boolean;
   canWriteMemory: boolean;
+  canManageMemoryRetention: boolean;
 }
 
 export const DEV_PRINCIPALS: readonly PrincipalProfile[] = Object.freeze([
@@ -29,6 +30,7 @@ export const DEV_PRINCIPALS: readonly PrincipalProfile[] = Object.freeze([
     canReadChannels: true,
     canManageChannels: true,
     canWriteMemory: true,
+    canManageMemoryRetention: true,
   },
   {
     key: "tenant-admin",
@@ -42,6 +44,7 @@ export const DEV_PRINCIPALS: readonly PrincipalProfile[] = Object.freeze([
     canReadChannels: true,
     canManageChannels: true,
     canWriteMemory: true,
+    canManageMemoryRetention: true,
   },
   {
     key: "operator",
@@ -55,6 +58,7 @@ export const DEV_PRINCIPALS: readonly PrincipalProfile[] = Object.freeze([
     canReadChannels: false,
     canManageChannels: false,
     canWriteMemory: true,
+    canManageMemoryRetention: false,
   },
   {
     key: "viewer",
@@ -68,6 +72,7 @@ export const DEV_PRINCIPALS: readonly PrincipalProfile[] = Object.freeze([
     canReadChannels: true,
     canManageChannels: false,
     canWriteMemory: false,
+    canManageMemoryRetention: false,
   },
 ]);
 
@@ -82,6 +87,9 @@ export const PLATFORM_API_ROUTES = Object.freeze([
   "/v1/capabilities",
   "/v1/memory/search",
   "/v1/memory",
+  "/v1/memory/retention",
+  "/v1/memory/retention/sweep",
+  "/v1/memory/{memory_id}/delete",
   "/v1/tenants",
   "/v1/tenants/{tenant_id}/users",
   "/v1/permissions",
@@ -205,6 +213,62 @@ export interface MemoryRecord {
   version?: number;
   trace_id: string;
   score?: number;
+}
+
+export interface MemoryRetentionRule {
+  layer: string;
+  enabled: boolean;
+  ttl_days: number | null;
+  action: "retain" | "soft_delete";
+  immutable: boolean;
+}
+
+export interface MemoryRetentionPolicy {
+  schema_version: "nexus.memory_retention.p7.v1";
+  tenant_id: string;
+  policy_id: string;
+  enabled: boolean;
+  mode: "conservative";
+  rules: readonly MemoryRetentionRule[];
+  resource_budget: {
+    evaluation_mode: "manual_sweep";
+    max_sweep_records: number;
+    max_policy_rules: number;
+  };
+  updated_at_utc: string;
+  monotonic_ms: number;
+  trace_id: string;
+}
+
+export interface MemoryDeleteResult {
+  schema_version: "nexus.memory_retention.p7.v1";
+  tenant_id: string;
+  memory_id: string;
+  layer: string;
+  status: "deleted" | "expired";
+  reason_code: "MEMORY_MANUAL_DELETE" | "MEMORY_RETENTION_EXPIRED";
+  version: number;
+  deleted_at_utc: string;
+  monotonic_ms: number;
+  trace_id: string;
+}
+
+export interface MemoryRetentionSweepResult {
+  schema_version: "nexus.memory_retention.p7.v1";
+  tenant_id: string;
+  policy_id: string;
+  scanned_count: number;
+  deleted_count: number;
+  skipped_count: number;
+  items: readonly MemoryDeleteResult[];
+  resource_budget: {
+    evaluation_mode: "manual_sweep";
+    max_sweep_records: number;
+    evaluated_records: number;
+  };
+  swept_at_utc: string;
+  monotonic_ms: number;
+  trace_id: string;
 }
 
 export interface BudgetCheckResult {
@@ -349,6 +413,28 @@ export class PlatformApiClient {
   writeMemory(input: { text: string; layer: string; trace_id: string; tenant_id?: string; user_id?: string; agent_id?: string; conversation_id?: string }): Promise<MemoryRecord> {
     return this.#request<MemoryRecord>("POST", "/v1/memory", {
       body: { tenant_id: input.tenant_id ?? this.profile.tenant_id, user_id: input.user_id ?? this.profile.user_id, ...input },
+    });
+  }
+
+  getMemoryRetentionPolicy(input: { tenant_id?: string; trace_id?: string } = {}): Promise<MemoryRetentionPolicy> {
+    return this.#request<MemoryRetentionPolicy>("GET", withQuery("/v1/memory/retention", { tenant_id: input.tenant_id ?? this.profile.tenant_id, trace_id: input.trace_id }));
+  }
+
+  updateMemoryRetentionPolicy(input: { tenant_id?: string; trace_id: string; enabled?: boolean; rules?: readonly Partial<MemoryRetentionRule>[]; max_sweep_records?: number }): Promise<MemoryRetentionPolicy> {
+    return this.#request<MemoryRetentionPolicy>("PATCH", "/v1/memory/retention", {
+      body: { tenant_id: input.tenant_id ?? this.profile.tenant_id, ...input },
+    });
+  }
+
+  sweepMemoryRetention(input: { tenant_id?: string; trace_id: string; max_records?: number }): Promise<MemoryRetentionSweepResult> {
+    return this.#request<MemoryRetentionSweepResult>("POST", "/v1/memory/retention/sweep", {
+      body: { tenant_id: input.tenant_id ?? this.profile.tenant_id, ...input },
+    });
+  }
+
+  deleteMemory(memory_id: string, input: { tenant_id?: string; reason: string; trace_id: string }): Promise<MemoryDeleteResult> {
+    return this.#request<MemoryDeleteResult>("POST", `/v1/memory/${encodeURIComponent(memory_id)}/delete`, {
+      body: { tenant_id: input.tenant_id ?? this.profile.tenant_id, ...input },
     });
   }
 

@@ -33,3 +33,12 @@ The service exposes `/v1/health` without authentication. All other routes requir
 - `POST /v1/channels/{channel_config_id}/test`
 
 The channel test route performs a dry-run only. It validates platform policy and queues a send-intent projection without reaching any external channel network.
+
+## P7-02 memory retention routes
+
+- `GET /v1/memory/retention`
+- `PATCH /v1/memory/retention`
+- `POST /v1/memory/retention/sweep`
+- `POST /v1/memory/{memory_id}/delete`
+
+Memory retention is tenant-admin managed in P7-02. The default conservative policy is enabled, soft-deletes expired `session` memory after seven days through manual sweep, retains longer-lived memory layers, and keeps `audit_snapshot` immutable. Responses return policy, count, and tombstone metadata only; memory text is not returned by delete or sweep results.

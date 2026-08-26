@@ -12,7 +12,10 @@ import {
   type ChannelConnectionTestResult,
   type ChannelName,
   type HealthStatus,
+  type MemoryDeleteResult,
   type MemoryRecord,
+  type MemoryRetentionPolicy,
+  type MemoryRetentionSweepResult,
   type PlatformEvent,
   type PlatformTask,
   type PluginInventoryEntry,
@@ -82,6 +85,7 @@ function App() {
       const taskEvents = task_id ? await client.listTaskEvents(task_id) : { items: [] as PlatformEvent[] };
       const channels = profile.canReadChannels ? await client.listChannels({ tenant_id: profile.tenant_id }) : { items: [] as ChannelConfigRecord[] };
       const plugins = profile.canManagePlugins ? await client.listPlugins() : { items: [] as PluginInventoryEntry[] };
+      const memoryRetentionPolicy = profile.canManageMemoryRetention ? await client.getMemoryRetentionPolicy({ tenant_id: profile.tenant_id, trace_id: traceRef.current() }) : undefined;
 
       setData((previous) => ({
         ...previous,
@@ -95,6 +99,7 @@ function App() {
         capabilities: capabilities.items,
         taskEvents: taskEvents.items,
         plugins: plugins.items,
+        memoryRetentionPolicy,
       }));
       setSelectedTaskId(task_id);
       setMessage("Refresh complete");
@@ -210,6 +215,9 @@ function App() {
           <MemoryPanel
             profile={profile}
             records={data.memory}
+            retentionRows={dashboard.memoryRetentionRows}
+            retentionPolicy={data.memoryRetentionPolicy}
+            retentionSweep={data.memoryRetentionSweep}
             memoryText={memoryText}
             setMemoryText={setMemoryText}
             memoryQuery={memoryQuery}
@@ -219,6 +227,14 @@ function App() {
               const result = await client.searchMemory({ query: memoryQuery, layer: "user", trace_id: traceRef.current(), user_id: profile.user_id });
               setData((previous) => ({ ...previous, memory: result.items }));
             }, "Memory search complete")}
+            onSweep={() => runAction(async () => {
+              const result = await client.sweepMemoryRetention({ trace_id: traceRef.current() });
+              setData((previous) => ({ ...previous, memoryRetentionSweep: result }));
+            }, "Memory retention sweep complete")}
+            onDelete={(memory_id) => runAction(async () => {
+              const result = await client.deleteMemory(memory_id, { reason: "Console memory retention delete", trace_id: traceRef.current() });
+              setData((previous) => ({ ...previous, memoryRetentionSweep: resultToSweep(result) }));
+            }, "Memory deleted")}
           />
         )}
         {activeView === "budget" && (
@@ -350,8 +366,25 @@ function Skills({ skills, capabilities }: { skills: readonly SkillRecord[]; capa
   return <section className="two-column"><Table title="Skills" rows={skills} columns={["skill_id", "tenant_id", "display_name", "status", "version", "capability_ids"]} /><Table title="Capabilities" rows={capabilities} columns={["capability_id", "capability_type", "display_name", "plugin_id", "status", "risk_level", "required_permissions"]} /></section>;
 }
 
-function MemoryPanel(props: { profile: PrincipalProfile; records: readonly MemoryRecord[]; memoryText: string; setMemoryText: (value: string) => void; memoryQuery: string; setMemoryQuery: (value: string) => void; onWrite: () => void; onSearch: () => void }) {
-  return <section className="stack"><form className="form-grid" onSubmit={(event) => { event.preventDefault(); props.onWrite(); }}><label>Memory text<input value={props.memoryText} onChange={(event) => props.setMemoryText(event.target.value)} disabled={!actionEnabled(props.profile, "write_memory")} /></label><button type="submit" disabled={!actionEnabled(props.profile, "write_memory")}>Write memory</button></form><form className="form-grid" onSubmit={(event) => { event.preventDefault(); props.onSearch(); }}><label>Memory query<input value={props.memoryQuery} onChange={(event) => props.setMemoryQuery(event.target.value)} /></label><button type="submit">Search memory</button></form><Table title="Memory results" rows={props.records} columns={["memory_id", "tenant_id", "layer", "text", "score", "trace_id"]} /></section>;
+function MemoryPanel(props: { profile: PrincipalProfile; records: readonly MemoryRecord[]; retentionRows: readonly Record<string, unknown>[]; retentionPolicy?: MemoryRetentionPolicy; retentionSweep?: MemoryRetentionSweepResult; memoryText: string; setMemoryText: (value: string) => void; memoryQuery: string; setMemoryQuery: (value: string) => void; onWrite: () => void; onSearch: () => void; onSweep: () => void; onDelete: (memory_id: string) => void }) {
+  const canManageRetention = actionEnabled(props.profile, "manage_memory_retention");
+  return <section className="stack"><form className="form-grid" onSubmit={(event) => { event.preventDefault(); props.onWrite(); }}><label>Memory text<input value={props.memoryText} onChange={(event) => props.setMemoryText(event.target.value)} disabled={!actionEnabled(props.profile, "write_memory")} /></label><button type="submit" disabled={!actionEnabled(props.profile, "write_memory")}>Write memory</button></form><form className="form-grid" onSubmit={(event) => { event.preventDefault(); props.onSearch(); }}><label>Memory query<input value={props.memoryQuery} onChange={(event) => props.setMemoryQuery(event.target.value)} /></label><button type="submit">Search memory</button></form><Table title="Memory results" rows={props.records} columns={["memory_id", "tenant_id", "layer", "text", "score", "trace_id"]} />{canManageRetention && <><Table title="Memory retention policy" rows={props.retentionRows} columns={["policy_id", "tenant_id", "layer", "enabled", "ttl_days", "action", "immutable", "mode", "updated_at_utc", "trace_id"]} /><div className="button-row"><button type="button" onClick={props.onSweep}>Run retention sweep</button>{props.records.map((record) => <button type="button" key={record.memory_id} onClick={() => props.onDelete(record.memory_id)}>Delete {record.memory_id}</button>)}</div>{props.retentionSweep ? <Table title="Memory retention sweep" rows={[props.retentionSweep]} columns={["tenant_id", "policy_id", "scanned_count", "deleted_count", "skipped_count", "swept_at_utc", "trace_id"]} /> : <EmptyState text="No retention sweep result" />}</>}</section>;
+}
+
+function resultToSweep(result: MemoryDeleteResult): MemoryRetentionSweepResult {
+  return {
+    schema_version: result.schema_version,
+    tenant_id: result.tenant_id,
+    policy_id: `memory_retention_${result.tenant_id.replace(/^tenant_/, "")}`,
+    scanned_count: 1,
+    deleted_count: 1,
+    skipped_count: 0,
+    items: [result],
+    resource_budget: { evaluation_mode: "manual_sweep", max_sweep_records: 1, evaluated_records: 1 },
+    swept_at_utc: result.deleted_at_utc,
+    monotonic_ms: result.monotonic_ms,
+    trace_id: result.trace_id,
+  };
 }
 
 function BudgetPanel(props: { budget?: BudgetCheckResult; budgetUnits: string; setBudgetUnits: (value: string) => void; remainingUnits: string; setRemainingUnits: (value: string) => void; onCheck: () => void }) {

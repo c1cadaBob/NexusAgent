@@ -140,3 +140,29 @@ test('tenant admin workflow manages channel configuration while viewer write acc
     return true;
   });
 });
+
+test('tenant admin workflow manages memory retention while operator forced access fails closed', async () => {
+  const tenantAdmin = clientFor('tenant-admin').client;
+  const operator = clientFor('operator').client;
+
+  const policy = await tenantAdmin.getMemoryRetentionPolicy({ trace_id: 'trace_console_retention01' });
+  assert.equal(policy.schema_version, 'nexus.memory_retention.p7.v1');
+  assert.equal(policy.enabled, true);
+  assert.equal(policy.rules.find((rule) => rule.layer === 'session').ttl_days, 7);
+
+  const updated = await tenantAdmin.updateMemoryRetentionPolicy({ enabled: true, max_sweep_records: 25, trace_id: 'trace_console_retention02' });
+  assert.equal(updated.resource_budget.max_sweep_records, 25);
+  const memory = await tenantAdmin.writeMemory({ text: 'console retention memory', layer: 'user', trace_id: 'trace_console_retention03' });
+  const deleted = await tenantAdmin.deleteMemory(memory.memory_id, { reason: 'console retention delete', trace_id: 'trace_console_retention04' });
+  assert.equal(deleted.status, 'deleted');
+  assert.equal(Object.hasOwn(deleted, 'text'), false);
+  const sweep = await tenantAdmin.sweepMemoryRetention({ trace_id: 'trace_console_retention05' });
+  assert.equal(sweep.schema_version, 'nexus.memory_retention.p7.v1');
+
+  await assert.rejects(() => operator.sweepMemoryRetention({ trace_id: 'trace_console_retention06' }), (error) => {
+    assert.equal(error instanceof PlatformApiError, true);
+    assert.equal(error.status, 403);
+    assert.equal(error.code, 'PLATFORM_FORBIDDEN');
+    return true;
+  });
+});

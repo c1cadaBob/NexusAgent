@@ -5,7 +5,7 @@ import { ManualClock, SystemClock, type PlatformClock } from "../../platform/clo
 import { Coordinator, CoordinatorError, type CoordinatorTaskCommandRequest } from "../../platform/coordinator/index.ts";
 import { LocalCredentialCenter } from "../../platform/credentials/index.ts";
 import { InMemoryEventBus } from "../../platform/event-bus/index.ts";
-import { LocalMemoryGateway, type MemoryLayer } from "../../platform/memory-gateway/index.ts";
+import { LocalMemoryGateway, MemoryGatewayError, type MemoryLayer } from "../../platform/memory-gateway/index.ts";
 import { LocalObservability } from "../../platform/observability/index.ts";
 import { LocalPluginGovernance, PluginGovernanceError } from "../../platform/plugin-governance/index.ts";
 import { PolicyGate } from "../../platform/policy-gate/index.ts";
@@ -113,10 +113,10 @@ export class PlatformApiApp {
   constructor(options: PlatformApiOptions = {}) {
     this.clock = options.clock ?? new SystemClock();
     this.coordinator = new Coordinator({ policyGate: this.policyGate, eventBus: this.eventBus, clock: this.clock });
-    this.memory = new LocalMemoryGateway({ clock: this.clock, eventBus: this.eventBus });
+    this.observability = new LocalObservability({ clock: this.clock, service: "nexusagent-platform-api", version: "p5-local" });
+    this.memory = new LocalMemoryGateway({ clock: this.clock, eventBus: this.eventBus, observability: this.observability });
     this.credentials = new LocalCredentialCenter({ clock: this.clock, eventBus: this.eventBus });
     this.audit = new LocalAuditLog({ clock: this.clock, eventBus: this.eventBus });
-    this.observability = new LocalObservability({ clock: this.clock, service: "nexusagent-platform-api", version: "p5-local" });
     this.channelManagement = new LocalChannelManagement({ clock: this.clock, coordinator: this.coordinator, eventBus: this.eventBus });
     this.#seedIdentity();
     this.#seedApprovals();
@@ -154,6 +154,10 @@ export class PlatformApiApp {
 
       if (method === "POST" && parsed.pathname === "/v1/memory/search") return ok({ items: this.#searchMemory(asObject(body), principal) });
       if (method === "POST" && parsed.pathname === "/v1/memory") return ok(this.#writeMemory(asObject(body), principal), 201);
+      if (method === "GET" && parsed.pathname === "/v1/memory/retention") return ok(this.#getMemoryRetention(parsed.query, principal));
+      if (method === "PATCH" && parsed.pathname === "/v1/memory/retention") return ok(this.#updateMemoryRetention(asObject(body), principal));
+      if (method === "POST" && parsed.pathname === "/v1/memory/retention/sweep") return ok(this.#sweepMemoryRetention(asObject(body), principal));
+      if (method === "POST" && /^\/v1\/memory\/[^/]+\/delete$/.test(parsed.pathname)) return ok(this.#deleteMemory(pathPart(parsed.pathname, 3), asObject(body), principal));
 
       if (method === "GET" && parsed.pathname === "/v1/tenants") return ok(paginate(this.#listTenants(principal), parsed.query));
       if (method === "GET" && /^\/v1\/tenants\/[^/]+\/users$/.test(parsed.pathname)) return ok(paginate(this.#listTenantUsers(pathPart(parsed.pathname, 3), principal), parsed.query));
@@ -381,6 +385,53 @@ export class PlatformApiApp {
       version: record.version,
       trace_id: record.trace_id,
     };
+  }
+
+  #getMemoryRetention(query: URLSearchParams, principal: Principal): JsonObject {
+    const tenant_id = query.get("tenant_id") ?? principal.tenant_id;
+    this.#assertTenant(principal, tenant_id);
+    this.#require(principal, "tenant:manage");
+    const trace_id = query.get("trace_id") ?? "trace_memory_retention01";
+    return this.memory.getRetentionPolicy(tenant_id, requiredId("trace_id", trace_id)) as unknown as JsonObject;
+  }
+
+  #updateMemoryRetention(body: JsonObject, principal: Principal): JsonObject {
+    const tenant_id = requiredId("tenant_id", body.tenant_id);
+    this.#assertTenant(principal, tenant_id);
+    this.#require(principal, "tenant:manage");
+    return this.memory.updateRetentionPolicy({
+      tenant_id,
+      trace_id: requiredId("trace_id", body.trace_id),
+      ...(body.enabled === undefined ? {} : { enabled: requiredBoolean(body.enabled, "enabled") }),
+      ...(body.rules === undefined ? {} : { rules: requiredArray(body.rules, "rules") as never }),
+      ...(body.max_sweep_records === undefined ? {} : { max_sweep_records: positiveInteger(body.max_sweep_records, "max_sweep_records") }),
+    }) as unknown as JsonObject;
+  }
+
+  #sweepMemoryRetention(body: JsonObject, principal: Principal): JsonObject {
+    const tenant_id = requiredId("tenant_id", body.tenant_id);
+    this.#assertTenant(principal, tenant_id);
+    this.#require(principal, "tenant:manage");
+    return this.memory.sweepRetention({
+      tenant_id,
+      trace_id: requiredId("trace_id", body.trace_id),
+      requested_by_user_id: principal.user_id,
+      ...(body.max_records === undefined ? {} : { max_records: positiveInteger(body.max_records, "max_records") }),
+    }) as unknown as JsonObject;
+  }
+
+  #deleteMemory(memory_id: string, body: JsonObject, principal: Principal): JsonObject {
+    const tenant_id = requiredId("tenant_id", body.tenant_id);
+    this.#assertTenant(principal, tenant_id);
+    this.#require(principal, "tenant:manage");
+    return this.memory.softDeleteMemory({
+      tenant_id,
+      memory_id,
+      trace_id: requiredId("trace_id", body.trace_id),
+      reason: requiredText(body.reason, "reason"),
+      requested_by_user_id: principal.user_id,
+      delete_kind: "manual",
+    }) as unknown as JsonObject;
   }
 
   #listTenants(principal: Principal): readonly JsonObject[] {
@@ -797,6 +848,16 @@ function optionalId(key: "tenant_id" | "user_id" | "agent_id" | "task_id" | "att
 
 function requiredText(value: unknown, field: string): string {
   if (typeof value !== "string" || !value.trim()) throw new PlatformApiError("PLATFORM_INVALID_REQUEST", "Text field is required", { field });
+  return value;
+}
+
+function requiredBoolean(value: unknown, field: string): boolean {
+  if (typeof value !== "boolean") throw new PlatformApiError("PLATFORM_INVALID_REQUEST", "Boolean field is required", { field });
+  return value;
+}
+
+function requiredArray(value: unknown, field: string): readonly unknown[] {
+  if (!Array.isArray(value)) throw new PlatformApiError("PLATFORM_INVALID_REQUEST", "Array field is required", { field });
   return value;
 }
 

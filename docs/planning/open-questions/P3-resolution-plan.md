@@ -42,6 +42,8 @@ P3-04 已按“平台管理员白名单批准、租户不可自助安装”的�
 
 关闭证据：P3-02 已完成 Memory Gateway proxy schema、三层 planner scope、版本条件和冲突处理测试；Hermes planner-only 原生记忆直读直写不再作为事实源，缺 scope fail closed；跨租户/跨用户 memory 不进入 snapshot。保留期、生产存储和检索策略仍需 P3-03/P8 继续补齐后再把该问题完全关闭。
 
+P7-02 证据：P7-02 补齐主动遗忘与保留策略的 P7 增量证据：默认启用 conservative `nexus.memory_retention.p7.v1`，`session` 层 7 天后可通过 manual sweep soft delete，`user`、`agent_skill`、`organization` 默认保留，`audit_snapshot` immutable；delete/sweep 只返回 policy/count/tombstone metadata，Event Bus/Observability 不记录 memory text，tenant admin 仅能管理本租户，platform admin 可跨租户，operator/viewer fail closed。生产存储/检索和物理清除策略继续由 OQ-MEMORY-002/P8 复核。
+
 ## OQ-MEMORY-002：Memory Gateway 存储和检索选型
 
 推荐处理：P3 默认 PostgreSQL + pgvector，P8 复核是否切 Qdrant 或企业向量检索标准。PostgreSQL + pgvector 便于 P3 同时处理结构化 metadata、租户隔离、事务、备份和最小向量检索。

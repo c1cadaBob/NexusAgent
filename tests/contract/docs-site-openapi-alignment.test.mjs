@@ -16,7 +16,7 @@ function openapiRoutePattern(route) {
 test('docs site route matrix is covered by public OpenAPI', async () => {
   const spec = await readFile(openapiPath, 'utf8');
   assert.equal(DOCS_SITE_SCHEMA_VERSION, 'nexus.docs_site.p5.v1');
-  assert.equal(DOCS_ROUTE_MATRIX.length, 26);
+  assert.equal(DOCS_ROUTE_MATRIX.length, 30);
   for (const route of DOCS_ROUTE_MATRIX) {
     assert.match(spec, openapiRoutePattern(route.path), `OpenAPI missing docs route ${route.path}`);
   }

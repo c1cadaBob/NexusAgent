@@ -50,3 +50,9 @@
 - REQ-013/REQ-014：P7-01 新增默认关闭的内部 `nexus.plan_quality.p7.v1` 计划质量信号，只通过内部 Observability metrics/logs/timeline 暴露，不改公共 API/SDK/控制台；关闭或评估异常不影响 P6 MVP 基础任务链路。
 - REQ-015/REQ-016/REQ-017：P7-01 已补任务修改记录包、P7 smoke 和文档追踪；`tests/smoke/P7.sh` 检查 required files、审计无占位、默认关闭 marker、无公共面泄漏、Date.now 禁用扫描和 targeted unit/integration/security tests。
 - OQ-PRODUCT-001：P7-01 只落地可裁剪元认知与计划质量信号，P7-02/P7-03/P7-04/P7-05、真实业务评测集、Token 预算计费维度和 P8 发布治理仍按后续任务承接。
+
+## P7-02 追踪补充
+
+- REQ-008/REQ-013：P7-02 新增默认启用的 `nexus.memory_retention.p7.v1` conservative retention、soft delete 和 manual sweep，补齐 Memory Gateway 保留期、过期审计和不可跨租户误删证据。
+- REQ-011/REQ-014：P7-02 将管理员 memory retention 操作暴露到 REST/OpenAPI/TypeScript SDK/Web Console，但仍只返回平台 policy/count/tombstone metadata，不返回 memory text 或上游原生字段。
+- REQ-015/REQ-016/REQ-017：P7-02 已补任务修改记录包、targeted unit/integration/security tests 和 P7 smoke；`OQ-MEMORY-001` 补保留期与冲突策略证据，`OQ-MEMORY-002` 生产存储/检索选型继续留 P8。

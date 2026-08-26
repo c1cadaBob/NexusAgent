@@ -47,3 +47,7 @@ node product/sdk/examples/plugin-governance.mjs
 - Webhook delivery and streaming transports are not implemented in P5 Alpha. Read task events with `GET /v1/tasks/{task_id}/events`.
 - Tenant self-service third-party plugin installation is not supported in P5 Alpha. Plugin import and admission are platform administrator operations.
 - Channel tests are dry-run checks and do not contact external channel networks.
+
+## P7-02 Memory Retention
+
+The SDK includes tenant-admin memory retention helpers: `getMemoryRetentionPolicy`, `updateMemoryRetentionPolicy`, `sweepMemoryRetention`, and `deleteMemory`. These methods call platform `/v1/memory*` routes only. Delete and sweep responses return metadata such as policy ID, counts, status, and trace ID; memory text is not echoed.

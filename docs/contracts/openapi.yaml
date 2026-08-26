@@ -296,6 +296,108 @@ paths:
           $ref: '#/components/responses/PlatformError'
         '403':
           $ref: '#/components/responses/PlatformError'
+  /v1/memory/retention:
+    get:
+      tags: [memory]
+      operationId: getMemoryRetentionPolicy
+      summary: Read tenant memory retention policy.
+      parameters:
+        - $ref: '#/components/parameters/TenantIdQuery'
+        - name: trace_id
+          in: query
+          schema:
+            $ref: '#/components/schemas/TraceId'
+      responses:
+        '200':
+          description: Memory retention policy.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MemoryRetentionPolicy'
+        '401':
+          $ref: '#/components/responses/PlatformError'
+        '403':
+          $ref: '#/components/responses/PlatformError'
+    patch:
+      tags: [memory]
+      operationId: updateMemoryRetentionPolicy
+      summary: Update tenant memory retention policy.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MemoryRetentionPolicyUpdateRequest'
+      responses:
+        '200':
+          description: Updated memory retention policy.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MemoryRetentionPolicy'
+        '400':
+          $ref: '#/components/responses/PlatformError'
+        '401':
+          $ref: '#/components/responses/PlatformError'
+        '403':
+          $ref: '#/components/responses/PlatformError'
+  /v1/memory/retention/sweep:
+    post:
+      tags: [memory]
+      operationId: sweepMemoryRetention
+      summary: Run a manual memory retention sweep.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MemoryRetentionSweepRequest'
+      responses:
+        '200':
+          description: Memory retention sweep result.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MemoryRetentionSweepResult'
+        '400':
+          $ref: '#/components/responses/PlatformError'
+        '401':
+          $ref: '#/components/responses/PlatformError'
+        '403':
+          $ref: '#/components/responses/PlatformError'
+  /v1/memory/{memory_id}/delete:
+    post:
+      tags: [memory]
+      operationId: deleteMemory
+      summary: Soft delete a memory record through the platform gateway.
+      parameters:
+        - name: memory_id
+          in: path
+          required: true
+          schema:
+            type: string
+            pattern: '^memory_'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MemoryDeleteRequest'
+      responses:
+        '200':
+          description: Memory delete result.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MemoryDeleteResult'
+        '400':
+          $ref: '#/components/responses/PlatformError'
+        '401':
+          $ref: '#/components/responses/PlatformError'
+        '403':
+          $ref: '#/components/responses/PlatformError'
+        '404':
+          $ref: '#/components/responses/PlatformError'
   /v1/tenants:
     get:
       tags: [tenants]
@@ -1171,6 +1273,195 @@ components:
         version:
           type: integer
           minimum: 1
+        trace_id:
+          $ref: '#/components/schemas/TraceId'
+    MemoryRetentionRule:
+      type: object
+      additionalProperties: false
+      required: [layer, enabled, ttl_days, action, immutable]
+      properties:
+        layer:
+          $ref: '#/components/schemas/MemoryLayer'
+        enabled:
+          type: boolean
+        ttl_days:
+          type: integer
+          nullable: true
+          minimum: 1
+          maximum: 3650
+        action:
+          type: string
+          enum: [retain, soft_delete]
+        immutable:
+          type: boolean
+    MemoryRetentionPolicy:
+      type: object
+      additionalProperties: false
+      required: [schema_version, tenant_id, policy_id, enabled, mode, rules, resource_budget, updated_at_utc, monotonic_ms, trace_id]
+      properties:
+        schema_version:
+          type: string
+          enum: [nexus.memory_retention.p7.v1]
+        tenant_id:
+          $ref: '#/components/schemas/TenantId'
+        policy_id:
+          type: string
+          pattern: '^memory_retention_'
+        enabled:
+          type: boolean
+        mode:
+          type: string
+          enum: [conservative]
+        rules:
+          type: array
+          maxItems: 5
+          items:
+            $ref: '#/components/schemas/MemoryRetentionRule'
+        resource_budget:
+          type: object
+          additionalProperties: false
+          required: [evaluation_mode, max_sweep_records, max_policy_rules]
+          properties:
+            evaluation_mode:
+              type: string
+              enum: [manual_sweep]
+            max_sweep_records:
+              type: integer
+              minimum: 1
+              maximum: 1000
+            max_policy_rules:
+              type: integer
+              minimum: 1
+              maximum: 5
+        updated_at_utc:
+          $ref: '#/components/schemas/Timestamp'
+        monotonic_ms:
+          type: integer
+          minimum: 0
+        trace_id:
+          $ref: '#/components/schemas/TraceId'
+    MemoryRetentionPolicyUpdateRequest:
+      type: object
+      additionalProperties: false
+      required: [tenant_id, trace_id]
+      properties:
+        tenant_id:
+          $ref: '#/components/schemas/TenantId'
+        enabled:
+          type: boolean
+        rules:
+          type: array
+          maxItems: 5
+          items:
+            $ref: '#/components/schemas/MemoryRetentionRule'
+        max_sweep_records:
+          type: integer
+          minimum: 1
+          maximum: 1000
+        trace_id:
+          $ref: '#/components/schemas/TraceId'
+    MemoryRetentionSweepRequest:
+      type: object
+      additionalProperties: false
+      required: [tenant_id, trace_id]
+      properties:
+        tenant_id:
+          $ref: '#/components/schemas/TenantId'
+        max_records:
+          type: integer
+          minimum: 1
+          maximum: 1000
+        trace_id:
+          $ref: '#/components/schemas/TraceId'
+    MemoryDeleteRequest:
+      type: object
+      additionalProperties: false
+      required: [tenant_id, reason, trace_id]
+      properties:
+        tenant_id:
+          $ref: '#/components/schemas/TenantId'
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 1000
+        trace_id:
+          $ref: '#/components/schemas/TraceId'
+    MemoryDeleteResult:
+      type: object
+      additionalProperties: false
+      required: [schema_version, tenant_id, memory_id, layer, status, reason_code, version, deleted_at_utc, monotonic_ms, trace_id]
+      properties:
+        schema_version:
+          type: string
+          enum: [nexus.memory_retention.p7.v1]
+        tenant_id:
+          $ref: '#/components/schemas/TenantId'
+        memory_id:
+          type: string
+          pattern: '^memory_'
+        layer:
+          $ref: '#/components/schemas/MemoryLayer'
+        status:
+          type: string
+          enum: [deleted, expired]
+        reason_code:
+          type: string
+          enum: [MEMORY_MANUAL_DELETE, MEMORY_RETENTION_EXPIRED]
+        version:
+          type: integer
+          minimum: 1
+        deleted_at_utc:
+          $ref: '#/components/schemas/Timestamp'
+        monotonic_ms:
+          type: integer
+          minimum: 0
+        trace_id:
+          $ref: '#/components/schemas/TraceId'
+    MemoryRetentionSweepResult:
+      type: object
+      additionalProperties: false
+      required: [schema_version, tenant_id, policy_id, scanned_count, deleted_count, skipped_count, items, resource_budget, swept_at_utc, monotonic_ms, trace_id]
+      properties:
+        schema_version:
+          type: string
+          enum: [nexus.memory_retention.p7.v1]
+        tenant_id:
+          $ref: '#/components/schemas/TenantId'
+        policy_id:
+          type: string
+          pattern: '^memory_retention_'
+        scanned_count:
+          type: integer
+          minimum: 0
+        deleted_count:
+          type: integer
+          minimum: 0
+        skipped_count:
+          type: integer
+          minimum: 0
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/MemoryDeleteResult'
+        resource_budget:
+          type: object
+          additionalProperties: false
+          required: [evaluation_mode, max_sweep_records, evaluated_records]
+          properties:
+            evaluation_mode:
+              type: string
+              enum: [manual_sweep]
+            max_sweep_records:
+              type: integer
+              minimum: 1
+            evaluated_records:
+              type: integer
+              minimum: 0
+        swept_at_utc:
+          $ref: '#/components/schemas/Timestamp'
+        monotonic_ms:
+          type: integer
+          minimum: 0
         trace_id:
           $ref: '#/components/schemas/TraceId'
     Tenant:

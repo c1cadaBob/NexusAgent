@@ -53,3 +53,5 @@ P6-01 证据：基础业务闭环只覆盖 MVP 主链路，未引入 P7 高级�
 P6-02 证据：安全攻击矩阵只补防腐层、防绕过、越权和恶意插件隔离，不新增 P7 高级能力、真实业务评测集、streaming、自动评测、高级记忆策略或用户可见产品能力。P7 高级能力继续默认延后，最终 MVP 裁剪清单仍由 P6 gate 或项目负责人确认。
 
 P6-03/P6 gate 证据：`docs/planning/phase-gates/P6-gate-review.md` 明确 P6 MVP 门禁只依赖基础闭环、安全/防绕过、故障注入、轻量化降级路线和 provider/plugin rollback；P7 高级能力默认不进入 MVP。若项目负责人要求某项 P7 能力进入首版，必须另建任务并提供开关、指标、预算和回滚说明，不得改变 P6 已验证的平台 contracts 或内部 provider 边界。
+
+P7-02 证据：用户明确选择将主动遗忘与保留策略作为 P7 增量交付到 API+Console，但实现采用默认启用 conservative policy、manual sweep、soft delete、管理员权限和 metadata-only 结果，不引入后台 scheduler、真实外部网络或上游原生能力，也不改变 P6 已冻结的基础任务闭环。

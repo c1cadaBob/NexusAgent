@@ -5,6 +5,8 @@ import type {
   ChannelConfigRecord,
   ChannelConnectionTestResult,
   HealthStatus,
+  MemoryRetentionPolicy,
+  MemoryRetentionSweepResult,
   MemoryRecord,
   PlatformEvent,
   PlatformTask,
@@ -70,6 +72,8 @@ export interface ConsoleDataset {
   skills: readonly SkillRecord[];
   capabilities: readonly CapabilityDescriptor[];
   memory: readonly MemoryRecord[];
+  memoryRetentionPolicy?: MemoryRetentionPolicy;
+  memoryRetentionSweep?: MemoryRetentionSweepResult;
   budget?: BudgetCheckResult;
   plugins: readonly PluginInventoryEntry[];
 }
@@ -100,6 +104,7 @@ export interface ConsoleDashboardModel {
   agents: readonly AgentSummary[];
   channelRows: readonly Pick<ChannelConfigRecord, typeof CHANNEL_PUBLIC_COLUMNS[number]>[];
   pluginRows: readonly Pick<PluginInventoryEntry, typeof PLUGIN_PUBLIC_COLUMNS[number]>[];
+  memoryRetentionRows: readonly Record<string, unknown>[];
 }
 
 export function buildConsoleDashboardModel(profile: PrincipalProfile, data: ConsoleDataset): ConsoleDashboardModel {
@@ -122,6 +127,7 @@ export function buildConsoleDashboardModel(profile: PrincipalProfile, data: Cons
     agents: summarizeAgents(data.tasks),
     channelRows: data.channels.map(projectChannelRow),
     pluginRows: data.plugins.map(projectPluginRow),
+    memoryRetentionRows: projectMemoryRetentionRows(data.memoryRetentionPolicy),
   };
   assertConsolePublicValue(model);
   return model;
@@ -189,11 +195,30 @@ export function visibleNavigation(profile: PrincipalProfile): readonly typeof NA
   });
 }
 
-export function actionEnabled(profile: PrincipalProfile, action: "submit_task" | "write_memory" | "manage_plugins" | "manage_channels"): boolean {
+export function actionEnabled(profile: PrincipalProfile, action: "submit_task" | "write_memory" | "manage_plugins" | "manage_channels" | "manage_memory_retention"): boolean {
   if (action === "submit_task") return profile.canSubmitTask;
   if (action === "write_memory") return profile.canWriteMemory;
   if (action === "manage_channels") return profile.canManageChannels;
+  if (action === "manage_memory_retention") return profile.canManageMemoryRetention;
   return profile.canManagePlugins;
+}
+
+export function projectMemoryRetentionRows(policy: MemoryRetentionPolicy | undefined): readonly Record<string, unknown>[] {
+  if (!policy) return [];
+  const rows = policy.rules.map((rule) => ({
+    policy_id: policy.policy_id,
+    tenant_id: policy.tenant_id,
+    layer: rule.layer,
+    enabled: rule.enabled,
+    ttl_days: rule.ttl_days,
+    action: rule.action,
+    immutable: rule.immutable,
+    mode: policy.mode,
+    updated_at_utc: policy.updated_at_utc,
+    trace_id: policy.trace_id,
+  }));
+  assertConsolePublicValue(rows);
+  return rows;
 }
 
 export function assertConsolePublicValue(value: unknown): void {

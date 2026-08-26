@@ -113,6 +113,24 @@ test('TypeScript SDK tenant admin manages channels without credential echo', asy
   assertClean({ created, enabled, tested });
 });
 
+test('TypeScript SDK tenant admin manages memory retention without memory text echo', async () => {
+  const { client } = clientFor('dev-tenant-admin-alpha');
+  const trace = createTraceFactory('trace_sdk_retention_test');
+  const policy = await client.getMemoryRetentionPolicy({ tenant_id: 'tenant_alpha01', trace_id: trace() });
+  assert.equal(policy.schema_version, 'nexus.memory_retention.p7.v1');
+  assert.equal(policy.rules.find((rule) => rule.layer === 'session').ttl_days, 7);
+
+  const updated = await client.updateMemoryRetentionPolicy({ tenant_id: 'tenant_alpha01', trace_id: trace(), enabled: true, max_sweep_records: 25 });
+  assert.equal(updated.resource_budget.max_sweep_records, 25);
+  const memory = await client.writeMemory({ tenant_id: 'tenant_alpha01', user_id: 'user_alpha01', layer: 'user', text: 'SDK retention memory', trace_id: trace() });
+  const deleted = await client.deleteMemory(memory.memory_id, { tenant_id: 'tenant_alpha01', reason: 'SDK retention delete', trace_id: trace() });
+  assert.equal(deleted.status, 'deleted');
+  assert.equal(Object.hasOwn(deleted, 'text'), false);
+  const sweep = await client.sweepMemoryRetention({ tenant_id: 'tenant_alpha01', trace_id: trace() });
+  assert.equal(sweep.schema_version, 'nexus.memory_retention.p7.v1');
+  assertClean({ policy, updated, deleted, sweep });
+});
+
 test('TypeScript SDK platform admin manages plugin metadata admission', async () => {
   const { client } = clientFor('dev-platform-admin');
   const trace = createTraceFactory('trace_sdk_plugin_test');
