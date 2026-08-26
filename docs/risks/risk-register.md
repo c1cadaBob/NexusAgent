@@ -48,6 +48,13 @@ DSH 不作为稳定平台契约，只作为内部 executor provider。P2 必须�
 - R-012：`tests/smoke/P6.sh` 已扩展 P6-03 required files、P6-03 审计无占位、fault matrix markers、real-service drill marker、P6 gate report marker、Date.now 禁用扫描、targeted fault tests 和 Docker Compose dev lifecycle drill。
 - 遗留风险：P6-03 关闭 P6 最小故障注入、降级路线、provider 回滚和插件禁用证据；生产 durable workflow、真实业务评测集、生产 sidecar/OS 隔离、真实渠道网络、插件升级兼容矩阵、许可证发布包和发布运维手册仍待 P8 或后续任务。
 
+## P7-01 元认知与计划质量信号更新
+
+- R-006/R-009：P7-01 将元认知与计划质量信号实现为默认关闭的可裁剪能力，仅在显式开启时对 `ExecutionPlan` 做 deterministic static scoring，避免扩大 MVP 性能、Token 或容量风险。
+- R-010/R-012：`docs/planning/task-prompts/P7/P7-01.md` 已补修改记录包，`tests/smoke/P7.sh` 检查 P7-01 required files、审计无占位、默认关闭、内部 Observability、无公共 API 改动、Date.now 禁用扫描和 targeted tests，降低排期/验收遗漏风险。
+- R-003/R-007：`tests/security/p7-plan-quality-leakage.test.mjs` 验证 quality signals、metrics、logs 和 timeline 不包含 raw credential、native URL/path/session/error、provider runtime、真实网络 URL 或本地路径；P7-01 不改公共 API/SDK/控制台。
+- 遗留风险：P7-01 不关闭 P7-02 主动遗忘、P7-03 技能自动评测、P7-04 Token 预算计费维度、P7-05 阶段门禁或 P8 发布治理；如后续将质量信号暴露给 API/控制台，必须另建任务并补公共面泄漏门禁。
+
 ## P6-01 内部业务闭环更新
 
 - R-003/R-007：P6-01 新增 deterministic in-process `tests/integration/p6-business-closed-loop.test.mjs`，断言 closed-loop Event Bus/audit timeline 不含 raw credential、native URL/path/session/error、provider runtime、真实网络 URL 或 `/opt/` 路径；公共 API、SDK、控制台和 OpenAPI 未在本任务变更。

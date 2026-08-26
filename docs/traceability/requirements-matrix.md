@@ -44,3 +44,9 @@
 - REQ-014/REQ-015/REQ-016/REQ-017：P6-03 已补修改记录包、P6 OQ、集中台账、风险、`docs/planning/phase-gates/P6-gate-review.md` 和 smoke 门禁；`tests/smoke/P6.sh` 新增 P6-03 required files、fault matrix markers、real-service drill marker、P6 gate report marker、Date.now 禁用扫描、targeted fault tests 和 Docker Compose dev lifecycle drill。
 - REQ-018/REQ-019：P6-03 新增 `tests/fault-injection/p6-plugin-provider-rollback.test.mjs`，验证 DSH/Hermes/OpenClaw provider registry 可 select/disable/rollback，禁用 canary 后恢复 baseline provider；该 provider 回滚证据证明平台契约不随内部 provider 切换或故障漂移。
 - REQ-020：P6-03 验证 `LocalPluginGovernance` approve/disable/reject 控制 capability visibility，plugin rollback 后能力恢复或隐藏；metadata-only plugin import 即使 approve/disable/reject 也不创建 tenant-visible capability，真实插件升级兼容矩阵、生产 sidecar/OS 隔离和许可证发布包仍待 P8。
+
+## P7-01 追踪补充
+
+- REQ-013/REQ-014：P7-01 新增默认关闭的内部 `nexus.plan_quality.p7.v1` 计划质量信号，只通过内部 Observability metrics/logs/timeline 暴露，不改公共 API/SDK/控制台；关闭或评估异常不影响 P6 MVP 基础任务链路。
+- REQ-015/REQ-016/REQ-017：P7-01 已补任务修改记录包、P7 smoke 和文档追踪；`tests/smoke/P7.sh` 检查 required files、审计无占位、默认关闭 marker、无公共面泄漏、Date.now 禁用扫描和 targeted unit/integration/security tests。
+- OQ-PRODUCT-001：P7-01 只落地可裁剪元认知与计划质量信号，P7-02/P7-03/P7-04/P7-05、真实业务评测集、Token 预算计费维度和 P8 发布治理仍按后续任务承接。

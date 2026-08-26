@@ -19,6 +19,34 @@ import {
   type PolicyDecision,
   type PolicyPrincipal,
 } from "../policy-gate/index.ts";
+import {
+  evaluateExecutionPlanQuality,
+  PLAN_QUALITY_DEFAULT_ENABLED,
+  recordPlanQualityEvaluation,
+  recordPlanQualityWarning,
+  type PlanQualityCoordinatorOptions,
+  type PlanQualityEvaluation,
+  type PlanQualityInput,
+  type PlanQualityObservability,
+} from "./plan-quality.ts";
+
+export {
+  evaluateExecutionPlanQuality,
+  PLAN_QUALITY_DEFAULT_ENABLED,
+  PLAN_QUALITY_SCHEMA_VERSION,
+  PlanQualityError,
+  recordPlanQualityEvaluation,
+  recordPlanQualityWarning,
+  type PlanQualityBand,
+  type PlanQualityCoordinatorOptions,
+  type PlanQualityEvaluation,
+  type PlanQualityExplanation,
+  type PlanQualityInput,
+  type PlanQualityObservability,
+  type PlanQualityResourceBudget,
+  type PlanQualitySignal,
+  type PlanQualitySignalStatus,
+} from "./plan-quality.ts";
 
 export type AdapterKind = "channel" | "planner" | "executor" | "memory" | "artifact" | "credential";
 
@@ -154,6 +182,14 @@ export interface CoordinatorOptions {
   policyGate?: PolicyGate;
   clock?: PlatformClock;
   eventBus?: EventBus;
+  planQuality?: PlanQualityCoordinatorOptions;
+}
+
+interface CoordinatorPlanQualityConfig {
+  enabled: boolean;
+  observability?: PlanQualityObservability;
+  evaluator: (input: PlanQualityInput) => PlanQualityEvaluation;
+  resource_budget?: PlanQualityCoordinatorOptions["resource_budget"];
 }
 
 export class CoordinatorError extends Error {
@@ -187,10 +223,14 @@ export class Coordinator {
   readonly #adapters = new Map<string, CoordinatorAdapterPort>();
   readonly #snapshots = new Map<string, TaskSnapshot>();
   readonly #commandIdempotency = new Map<string, { fingerprint: string; result: SubmitTaskCommandResult }>();
+  readonly #planQuality: CoordinatorPlanQualityConfig;
   readonly #events: Record<string, unknown>[] = [];
   #eventSequence = 0;
 
   constructor(policyGateOrOptions: PolicyGate | CoordinatorOptions = new PolicyGate()) {
+    this.#planQuality = normalizePlanQualityOptions(
+      policyGateOrOptions instanceof PolicyGate ? undefined : policyGateOrOptions.planQuality,
+    );
     if (policyGateOrOptions instanceof PolicyGate) {
       this.policyGate = policyGateOrOptions;
       return;
@@ -369,10 +409,15 @@ export class Coordinator {
     });
 
     this.#assertAdapterResultMatchesSnapshot(adapterResult, snapshot);
-    this.#recordEvent(this.#adapterLifecycleEvent(adapter.kind, adapterResult.status, snapshot, {
+    const completedReading = {
       utc_timestamp: reading.utc_timestamp,
       monotonic_ms: reading.monotonic_ms + 2,
-    }));
+    };
+    this.#recordEvent(this.#adapterLifecycleEvent(adapter.kind, adapterResult.status, snapshot, completedReading));
+    this.#recordPlanQuality(adapter, adapterResult, snapshot, {
+      utc_timestamp: reading.utc_timestamp,
+      monotonic_ms: reading.monotonic_ms + 3,
+    });
     return {
       decision,
       adapter_result: adapterResult,
@@ -638,6 +683,43 @@ export class Coordinator {
     this.eventBus?.publish(event);
   }
 
+  #recordPlanQuality(
+    adapter: CoordinatorAdapterPort,
+    adapterResult: CoordinatorAdapterResult,
+    snapshot: TaskSnapshot,
+    reading: { utc_timestamp: string; monotonic_ms: number },
+  ): void {
+    if (!this.#planQuality.enabled || adapter.kind !== "planner") return;
+    const executionPlan = adapterResult.payload.execution_plan;
+    if (!executionPlan || typeof executionPlan !== "object") return;
+    try {
+      const evaluation = this.#planQuality.evaluator({
+        execution_plan: executionPlan,
+        evaluated_at_utc: reading.utc_timestamp,
+        monotonic_ms: reading.monotonic_ms,
+        resource_budget: this.#planQuality.resource_budget,
+      });
+      if (this.#planQuality.observability) recordPlanQualityEvaluation(this.#planQuality.observability, evaluation);
+    } catch (error) {
+      try {
+        recordPlanQualityWarning({
+          observability: this.#planQuality.observability,
+          tenant_id: snapshot.tenant_id,
+          task_id: snapshot.task_id,
+          attempt_id: snapshot.attempt_id,
+          execution_id: snapshot.execution_id,
+          conversation_id: snapshot.conversation_id,
+          trace_id: snapshot.trace_id,
+          recorded_at_utc: reading.utc_timestamp,
+          monotonic_ms: reading.monotonic_ms,
+          error,
+        });
+      } catch {
+        // Plan quality is a P7 optional signal and must never block task dispatch.
+      }
+    }
+  }
+
   #taskCommandAuditEvent(
     request: CoordinatorTaskCommandRequest,
     snapshot: TaskSnapshot,
@@ -781,6 +863,15 @@ export async function invokeSecuredAdapter(
     throw new PolicyGateError("PLATFORM_POLICY_DENIED", "Adapter result must include execution_id and trace_id");
   }
   return result;
+}
+
+function normalizePlanQualityOptions(options: PlanQualityCoordinatorOptions | undefined): CoordinatorPlanQualityConfig {
+  return {
+    enabled: options?.enabled ?? PLAN_QUALITY_DEFAULT_ENABLED,
+    observability: options?.observability,
+    evaluator: options?.evaluator ?? evaluateExecutionPlanQuality,
+    resource_budget: options?.resource_budget,
+  };
 }
 
 function requireCoordinatorString(value: unknown, field: string, pattern: RegExp): string {
