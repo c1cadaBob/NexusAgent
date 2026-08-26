@@ -29,6 +29,15 @@ DSH 不作为稳定平台契约，只作为内部 executor provider。P2 必须�
 
 三大平台社区插件默认不可信，只能通过 Plugin Bridge 白名单复用。P3/P4 必须证明 Hermes/OpenClaw 原生插件不能绕过 planner-only/gateway-only 边界；P5 只能开放管理员插件治理 API 和控制台，不开放租户自助安装；P6 必须模拟恶意插件访问凭据、artifact、memory、底层端口和原生 agent-loop 并验证失败；P8 必须交付插件升级、禁用、兼容矩阵和回滚手册。详细规则见 [上游版本适配与社区插件复用桥接策略](../architecture/upstream-versioning-and-plugin-bridge.md)。
 
+## P6-01 内部业务闭环更新
+
+- R-003/R-007：P6-01 新增 deterministic in-process `tests/integration/p6-business-closed-loop.test.mjs`，断言 closed-loop Event Bus/audit timeline 不含 raw credential、native URL/path/session/error、provider runtime、真实网络 URL 或 `/opt/` 路径；公共 API、SDK、控制台和 OpenAPI 未在本任务变更。
+- R-004：P6-01 使用同一 `PolicyGate`、`Coordinator`、`InMemoryEventBus` 和受控 adapter dispatch 串联 OpenClaw inbound/outbound、Hermes memory/planning 与 DSH execution，证明基础业务闭环不需要 adapters 两两直连或绕过平台 TaskState/Coordinator。
+- R-005/R-014：P6-01 在闭环中验证 Hermes memory write/snapshot 经 `LocalMemoryGateway`，DSH artifact 内容只进入 `LocalArtifactStore`，`artifact.created` 与 `execution.completed` 事件只保留 metadata-only 引用。
+- R-006：P6-01 将跨栈联调的首个基础成功标准固定为 deterministic in-process 100% 通过；真实多服务性能、Token 预算、故障注入和长任务恢复仍由 P6-03/P7/P8 承接。
+- R-012：P6-01 修改记录包已补修改前分析、过程记录和验证总结字段，并由 `tests/smoke/P6.sh` 检查审计无占位、OQ/风险/追踪同步和 targeted E2E。
+- 遗留风险：P6-01 不关闭恶意插件运行时、真实 sidecar/OS 隔离、生产 durable workflow、真实渠道网络、故障注入或 OpenClaw + DSH 降级路线；这些继续由 P6-02、P6-03 和 P8 关闭。
+
 ## P4-01/P4-02/P4-03/P4-04 OpenClaw gateway-only provider、channel 防腐、命令语义与防绕过更新
 
 - R-002/R-016：`platform/adapters/openclaw/index.ts` 已固定 `openclaw-2026.8.1` 默认 gateway-only provider，`OpenClawProviderRegistry` 覆盖启用、禁用、默认切换和回滚，`tests/unit/openclaw-provider-registry.test.mjs` 与 `tests/smoke/P4.sh` 验证 provider view 不泄漏 vendor path、native session、URL 或原生错误。

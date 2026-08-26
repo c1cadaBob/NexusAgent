@@ -4,7 +4,7 @@
 >
 > 维护规则：本文件是【待确认问题】的状态索引，不替代架构、契约、风险、决策或任务文档。技术细节、推荐处理方式、默认解决方案、三大平台影响分析和关闭证据统一写入 `docs/planning/open-questions/` 对应确认文件；本台账只记录问题、状态、影响、责任工作流、最晚确认阶段、确认结论和解决说明文档位置。
 >
-> 最后更新UTC：2026-08-23。
+> 最后更新UTC：2026-08-26。
 
 ## 1. 状态枚举
 
@@ -132,13 +132,13 @@
 | OQ-INFRA-003 | 自动确认 | 基础设施 | `docs/architecture/service-blueprint.md`、`docs/planning/development-schedule.md`。 | Artifact Store 生产对象存储和备份策略是什么。 | 影响 artifact URL、生命周期、加密、备份恢复和越权测试。 | 平台内核/SRE/安全。 | P1 结束前，P8 发布前复核。 | 待补齐 | `docs/planning/open-questions/P1-resolution-plan.md`、`docs/planning/open-questions/P8-resolution-plan.md`。 | REQ-009/REQ-013/R-008。 | 待补齐 | 2026-08-23。 |
 | OQ-INFRA-004 | 自动确认 | 基础设施 | `docs/architecture/service-blueprint.md`、`docs/planning/development-schedule.md`。 | Credential Center 生产密钥后端是什么。 | 影响凭据轮换、动态租约、审计、最小权限和明文泄漏测试。 | 安全/SRE/平台内核。 | P1 结束前，P8 发布前复核。 | 待补齐 | `docs/planning/open-questions/P1-resolution-plan.md`、`docs/planning/open-questions/P8-resolution-plan.md`。 | REQ-013/R-014。 | 待补齐 | 2026-08-23。 |
 | OQ-INFRA-005 | 自动确认 | 基础设施 | `docs/architecture/service-blueprint.md`、`docs/planning/development-schedule.md`。 | Observability 生产后端和告警标准是什么。 | 影响 trace 存储、日志保留、指标命名、告警接入和控制台监控页。 | SRE/平台内核/安全。 | P1 结束前，P8 发布前复核。 | 待补齐 | `docs/planning/open-questions/P1-resolution-plan.md`、`docs/planning/open-questions/P8-resolution-plan.md`。 | REQ-013/R-008。 | 待补齐 | 2026-08-23。 |
-| OQ-INFRA-006 | 自动确认 | 基础设施 | `docs/architecture/service-blueprint.md`。 | 长任务编排是否引入 Temporal/Cadence 或继续自研状态机。 | 影响恢复、人工信号、重试、补偿事务和部署复杂度。 | 平台内核/SRE/架构。 | P6 前。 | 待补齐 | `docs/planning/open-questions/P6-resolution-plan.md`。 | REQ-011/R-008。 | 待补齐 | 2026-08-23。 |
+| OQ-INFRA-006 | 自动确认 | 基础设施 | `docs/architecture/service-blueprint.md`。 | 长任务编排是否引入 Temporal/Cadence 或继续自研状态机。 | 影响恢复、人工信号、重试、补偿事务和部署复杂度。 | 平台内核/SRE/架构。 | P6 前。 | P6-01 接受默认 TaskState/Coordinator 路线：基础业务闭环已用 deterministic in-process E2E 证明同一 Coordinator、Policy-Gate、Event Bus、Memory Gateway、Artifact Store 和内部 adapters 可串联；Temporal/Cadence 与 durable workflow 最终选型仍待 P6-03/P6 gate 或 P8 复核。 | `docs/planning/open-questions/P6-resolution-plan.md`。 | REQ-011/R-008。 | P6-01 本次提交补闭环证据，故障恢复与生产编排最终关闭仍待后续任务。 | 2026-08-26。 |
 | OQ-MEMORY-001 | 自动确认 | Memory Gateway | `docs/planning/integrated-platform-plan.md`、`docs/architecture/service-blueprint.md`、`docs/decisions/P0-hermes-planner-only.md`。 | Hermes Memory Gateway 的五层记忆具体层级、保留期和冲突策略是什么。 | 影响 P3 planner context、并发写入、快照、冲突解决和审计。 | 平台内核/Hermes/产品。 | P3 前。 | 待补齐 | `docs/planning/open-questions/P3-resolution-plan.md`。 | REQ-008/R-005。 | 待补齐 | 2026-08-23。 |
 | OQ-MEMORY-002 | 自动确认 | Memory Gateway | `docs/architecture/service-blueprint.md`、`docs/risks/risk-register.md`。 | Memory Gateway 生产检索和存储选型是什么。 | 影响检索延迟、一致性、租户隔离、备份和运维复杂度。 | 平台内核/SRE/Hermes。 | P3 前，P8 发布前复核。 | 待补齐 | `docs/planning/open-questions/P3-resolution-plan.md`、`docs/planning/open-questions/P8-resolution-plan.md`。 | REQ-008/REQ-013/R-005/R-008。 | 待补齐 | 2026-08-23。 |
 | OQ-DSH-001 | 自动确认 | DSH 执行器 | `docs/architecture/dsh-versioning-and-replacement.md`、`docs/risks/risk-register.md`。 | DSH 预览版是否固定为当前 `0.1.1-rc.2` provider，后续如何并存、禁用和回滚。 | 影响 P2 provider registry、兼容 fixture、升级门禁和生产默认 executor 切换。 | 上游改造/执行器/SRE。 | P2 前。 | 待补齐 | `docs/planning/open-questions/P2-resolution-plan.md`。 | REQ-018/R-001/R-016。 | 待补齐 | 2026-08-23。 |
 | OQ-DSH-002 | 自动确认 | DSH 执行器 | `docs/decisions/P0-dsh-executor-only.md`、`docs/risks/risk-register.md`。 | DSH 正式沙箱后端、文件/网络策略、取消语义和 artifact 归档策略是什么。 | 影响 executor-only 改造、安全测试、产物入库、取消/超时和故障注入。 | 上游改造/安全/SRE。 | P2 前。 | 待补齐 | `docs/planning/open-questions/P2-resolution-plan.md`。 | REQ-009/REQ-018/R-001/R-004。 | 待补齐 | 2026-08-23。 |
 | OQ-DEPLOY-001 | 自动确认 | 部署交付 | `docs/planning/integrated-platform-plan.md`、`docs/planning/development-schedule.md`。 | 生产部署目标是单机 Docker Compose、Kubernetes，还是两者同时作为正式交付物。 | 影响 P8 编排、CI/CD、运维手册、备份恢复和发布门禁。 | SRE/架构/产品。 | P8 前，建议 P1 结束前定方向。 | 待补齐 | `docs/planning/open-questions/P1-resolution-plan.md`、`docs/planning/open-questions/P8-resolution-plan.md`。 | REQ-005/REQ-014/R-008。 | 待补齐 | 2026-08-23。 |
-| OQ-PRODUCT-001 | 自动确认 | 产品范围 | `docs/planning/development-schedule.md`、`docs/planning/integrated-platform-plan.md`。 | P7 高级能力是否进入首版。 | 影响 W15-W18 是否需要额外冻结窗口、资源预算和 MVP 范围。 | 产品/架构/评测。 | P6 开始前。 | 待补齐 | `docs/planning/open-questions/P6-resolution-plan.md`。 | REQ-014/R-009。 | 待补齐 | 2026-08-23。 |
+| OQ-PRODUCT-001 | 自动确认 | 产品范围 | `docs/planning/development-schedule.md`、`docs/planning/integrated-platform-plan.md`。 | P7 高级能力是否进入首版。 | 影响 W15-W18 是否需要额外冻结窗口、资源预算和 MVP 范围。 | 产品/架构/评测。 | P6 开始前。 | P6-01 接受默认裁剪：P7 高级能力不进入 MVP 基础闭环，当前只验证渠道入站、任务、memory/planning、execution/artifact、outbound send intent 和 audit timeline；真实业务评测集、资源阈值和最终 P7 裁剪清单仍待 P6 gate 或后续评测任务确认。 | `docs/planning/open-questions/P6-resolution-plan.md`。 | REQ-014/R-009。 | P6-01 本次提交补基础闭环和默认延期证据，最终 MVP/P7 裁剪关闭仍待 P6 gate。 | 2026-08-26。 |
 
 ## 7. 当前关闭摘要
 
