@@ -126,6 +126,7 @@ export class PlatformApiApp {
     const method = input.method.toUpperCase();
     const parsed = parsePath(input.path);
     const trace_id = traceFromBody(input.body) ?? traceFromHeaders(input.headers) ?? "trace_api01";
+    let principal: Principal | undefined;
     try {
       if (method === "GET" && parsed.pathname === "/v1/health") {
         const health = this.observability.health(["api.local", "contracts.p5"]);
@@ -137,7 +138,7 @@ export class PlatformApiApp {
         });
       }
 
-      const principal = this.#principalFor(input.headers);
+      principal = this.#principalFor(input.headers);
       const body = input.body === undefined ? {} : input.body;
       assertPublicRequestPayload(body);
 
@@ -176,6 +177,7 @@ export class PlatformApiApp {
 
       throw new PlatformApiError("PLATFORM_NOT_FOUND", "Platform API route not found", { method, path: parsed.pathname });
     } catch (error) {
+      this.#auditDeniedRequest(error, trace_id, principal, method);
       return errorResponse(error, trace_id);
     }
   }
@@ -589,6 +591,29 @@ export class PlatformApiApp {
   #requirePlatformAdmin(principal: Principal): void {
     if (!isPlatformAdmin(principal)) {
       throw new PlatformApiError("PLATFORM_FORBIDDEN", "Platform administrator role is required");
+    }
+  }
+
+  #auditDeniedRequest(error: unknown, trace_id: string, principal: Principal | undefined, method: string): void {
+    if (!principal) return;
+    const code = errorCode(error);
+    if (code === "PLATFORM_UNAUTHENTICATED") return;
+    try {
+      this.audit.append({
+        tenant_id: principal.tenant_id,
+        user_id: principal.user_id,
+        trace_id,
+        action: "api.request.denied",
+        outcome: "denied",
+        resource: { kind: "trace", id: trace_id, tenant_id: principal.tenant_id },
+        details: {
+          code,
+          method,
+          reason: error instanceof Error ? error.message : "Platform API request denied",
+        },
+      });
+    } catch {
+      // Denied-audit capture must never change the public API failure mode.
     }
   }
 

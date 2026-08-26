@@ -11,8 +11,12 @@ cd "$repo_root"
 
 required_files=(
   tests/integration/p6-business-closed-loop.test.mjs
+  tests/security/p6-anti-corruption-bypass.test.mjs
+  tests/security/p6-tenant-data-spine-authorization.test.mjs
+  tests/security/p6-plugin-isolation.test.mjs
   tests/smoke/P6.sh
   docs/planning/task-prompts/P6/P6-01.md
+  docs/planning/task-prompts/P6/P6-02.md
   docs/planning/open-questions/P6-resolution-plan.md
   docs/planning/open-questions-register.md
   docs/traceability/requirements-matrix.md
@@ -46,6 +50,27 @@ for audit_marker in \
   printf '%s\n' "$p6_01_audit_block" | rg -q "$audit_marker" || fail "P6-01 audit marker missing: $audit_marker"
 done
 
+p6_02_audit_block="$(sed -n '/^# P6-02 修改记录包$/,/^## 完整提示词$/p' docs/planning/task-prompts/P6/P6-02.md)"
+[[ -n "$p6_02_audit_block" ]] || fail 'P6-02 audit record package is missing'
+if printf '%s\n' "$p6_02_audit_block" | rg -q '\.\.\.'; then
+  fail 'P6-02 audit record package still contains placeholder ellipses'
+fi
+for audit_marker in \
+  '任务与验收条件' \
+  '源码证据' \
+  '基线测试' \
+  '影响面分析' \
+  '修改计划与回滚' \
+  '待确认问题' \
+  '实际变更文件' \
+  '关键改动点' \
+  '新增测试' \
+  '测试结果' \
+  '防绕过测试' \
+  '回滚验证'; do
+  printf '%s\n' "$p6_02_audit_block" | rg -q "$audit_marker" || fail "P6-02 audit marker missing: $audit_marker"
+done
+
 for marker in \
   'P6 business closed loop' \
   'ManualClock' \
@@ -66,8 +91,23 @@ for marker in \
 done
 
 for marker in \
+  'P6 anti-corruption attack matrix' \
+  'policy.denied' \
+  'api.request.denied' \
+  'dual-format malicious plugin' \
+  'provider_runtime' \
+  'native_agent' \
+  'credential_material' \
+  'platform/adapters|vendor/'; do
+  rg -q "$marker" tests/security/p6-anti-corruption-bypass.test.mjs tests/security/p6-tenant-data-spine-authorization.test.mjs tests/security/p6-plugin-isolation.test.mjs || fail "P6-02 security marker missing: $marker"
+done
+
+for marker in \
   'P6-01' \
+  'P6-02' \
   'deterministic in-process' \
+  '双格式覆盖' \
+  'OQ-PLUGIN-001' \
   'OQ-INFRA-006' \
   'OQ-PRODUCT-001' \
   'TaskState/Coordinator' \
@@ -75,10 +115,11 @@ for marker in \
   rg -q "$marker" docs/planning/task-prompts/P6/P6-01.md docs/planning/open-questions/P6-resolution-plan.md docs/planning/open-questions-register.md docs/traceability/requirements-matrix.md docs/risks/risk-register.md docs/README.md tests/smoke/README.md || fail "P6 documentation marker missing: $marker"
 done
 
-if rg -n 'Date\.now\(|datetime\.now\(' tests/integration/p6-business-closed-loop.test.mjs tests/smoke/P6.sh; then
+if rg -n 'Date\.now\(|datetime\.now\(' tests/integration/p6-business-closed-loop.test.mjs tests/security/p6-anti-corruption-bypass.test.mjs tests/security/p6-tenant-data-spine-authorization.test.mjs tests/security/p6-plugin-isolation.test.mjs tests/smoke/P6.sh; then
   fail 'wall-clock duration helper detected in P6 closed-loop smoke surface'
 fi
 
 node --test tests/integration/p6-business-closed-loop.test.mjs
+node --test tests/security/p6-anti-corruption-bypass.test.mjs tests/security/p6-tenant-data-spine-authorization.test.mjs tests/security/p6-plugin-isolation.test.mjs
 
-echo 'PASS: P6-01 platform E2E closed-loop, ID/event correlation, artifact metadata, audit timeline, and smoke checks'
+echo 'PASS: P6-01 closed-loop plus P6-02 anti-corruption bypass, tenant/data-spine authorization, dual-format malicious plugin isolation, denied audit evidence, and smoke checks'

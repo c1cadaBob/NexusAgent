@@ -228,6 +228,9 @@ export class Coordinator {
       budget: options.budget,
       approval: options.approval,
     });
+    if (!decision.allow) {
+      this.#recordEvent(this.#policyDeniedEvent(decision, "task-intake", reading));
+    }
 
     const current = this.#snapshotFromRequest(request, "received", 1, reading.monotonic_ms);
     const nextState: TaskState = decision.allow ? "admitted" : "blocked";
@@ -292,6 +295,7 @@ export class Coordinator {
       approval: options.approval,
     });
     if (!decision.allow) {
+      this.#recordEvent(this.#policyDeniedEvent(decision, "task-command", reading));
       throw new CoordinatorError(decision.code ?? "PLATFORM_POLICY_DENIED", "Task command denied by Policy-Gate", {
         command: request.command,
         reasons: decision.reasons,
@@ -338,6 +342,10 @@ export class Coordinator {
         adapter_name: adapter.name,
       },
     });
+
+    if (!decision.allow) {
+      this.#recordEvent(this.#policyDeniedEvent(decision, "adapter-dispatch", reading));
+    }
 
     this.policyGate.assertAllowedDecision(decision, {
       action: "adapter.invoke",
@@ -672,6 +680,43 @@ export class Coordinator {
     };
   }
 
+  #policyDeniedEvent(
+    decision: PolicyDecision,
+    component: "task-intake" | "task-command" | "adapter-dispatch",
+    reading: { utc_timestamp: string; monotonic_ms: number },
+  ): PlatformEventEnvelope {
+    return {
+      schema_version: "nexus.event_envelope.v1",
+      event_id: this.#nextEventId(decision.trace_id),
+      event_type: "policy.denied",
+      tenant_id: decision.tenant_id,
+      user_id: decision.user_id,
+      task_id: decision.task_id,
+      attempt_id: decision.attempt_id,
+      execution_id: decision.execution_id,
+      conversation_id: decision.conversation_id,
+      trace_id: decision.trace_id,
+      occurred_at_utc: reading.utc_timestamp,
+      monotonic_ms: reading.monotonic_ms,
+      producer: {
+        service: "coordinator",
+        component,
+      },
+      subject: {
+        kind: decision.task_id ? "task" : "execution",
+        id: decision.task_id ?? decision.execution_id,
+      },
+      payload: {
+        decision_id: decision.decision_id,
+        action: decision.action,
+        outcome: decision.outcome,
+        code: decision.code ?? "PLATFORM_POLICY_DENIED",
+        reasons: [...decision.reasons],
+        route: decision.route,
+      },
+    };
+  }
+
   #adapterLifecycleEvent(
     adapterKind: AdapterKind,
     status: CoordinatorAdapterResult["status"] | "started",
@@ -746,8 +791,8 @@ function requireCoordinatorString(value: unknown, field: string, pattern: RegExp
 }
 
 function assertNoNativeCoordinatorPayload(value: unknown): void {
-  const forbiddenKeys = /^(?:credential_material|raw_credential|api_key|password|token|secret|env|environment|native_session_id|native_error|native_error_code|native_path|native_url|base_url|endpoint|file_path|path|url|session_id|memory_path|tool_name|agent_command|plugin_subagent|native_agent|native_tool|native_memory|raw_manifest|native_manifest|manifest|provider_agent|provider_task|provider_cancel)$/i;
-  const forbiddenStrings = /MEMORY\.md|USER\.md|SKILL\.md|(?:https?|wss?|ftp):\/\/|\.\.\/|\/(?:tmp|var|workspace|opt|etc|home|usr)\/|\b(?:native_session[A-Za-z0-9_-]*|native_error[A-Za-z0-9_-]*|raw_credential|credential_material|api[_-]?key|password|secret[-_ ]?token|bearer\s+[A-Za-z0-9._-]+|provider[_-]?(?:agent|task|cancel))\b/i;
+  const forbiddenKeys = /^(?:credential_material|raw_credential|api_key|password|token|secret|env|environment|native_session_id|native_error|native_error_code|native_path|native_url|base_url|endpoint|file_path|path|url|session_id|memory_path|tool_name|agent_command|plugin_subagent|native_agent|native_tool|native_memory|raw_manifest|native_manifest|manifest|provider_agent|provider_task|provider_cancel|provider_runtime)$/i;
+  const forbiddenStrings = /MEMORY\.md|USER\.md|SKILL\.md|(?:https?|wss?|ftp):\/\/|\.\.\/|\/(?:tmp|var|workspace|opt|etc|home|usr)\/|\b(?:native[_-]?(?:session|error|agent|tool|memory|runtime)[A-Za-z0-9_-]*|raw_credential|credential_material|api[_-]?key|password|secret[-_ ]?token|bearer\s+[A-Za-z0-9._-]+|provider[_-]?(?:agent|task|cancel|runtime))\b/i;
   const visit = (candidate: unknown): void => {
     if (Array.isArray(candidate)) {
       for (const item of candidate) visit(item);

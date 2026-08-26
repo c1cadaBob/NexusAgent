@@ -29,6 +29,15 @@ DSH 不作为稳定平台契约，只作为内部 executor provider。P2 必须�
 
 三大平台社区插件默认不可信，只能通过 Plugin Bridge 白名单复用。P3/P4 必须证明 Hermes/OpenClaw 原生插件不能绕过 planner-only/gateway-only 边界；P5 只能开放管理员插件治理 API 和控制台，不开放租户自助安装；P6 必须模拟恶意插件访问凭据、artifact、memory、底层端口和原生 agent-loop 并验证失败；P8 必须交付插件升级、禁用、兼容矩阵和回滚手册。详细规则见 [上游版本适配与社区插件复用桥接策略](../architecture/upstream-versioning-and-plugin-bridge.md)。
 
+## P6-02 防腐层、防绕过和越权测试更新
+
+- R-003/R-007：P6-02 新增 `tests/security/p6-anti-corruption-bypass.test.mjs`、`tests/security/p6-tenant-data-spine-authorization.test.mjs` 和 `tests/security/p6-plugin-isolation.test.mjs`，断言 direct invoke、伪造 trust/header、native URL/path/session/error、provider runtime、raw credential、真实网络 URL 和 `/opt/` 路径不能进入公共响应、事件或 audit payload。
+- R-004：Coordinator 对 denied task submit、task command 和 adapter dispatch 发布 sanitized `policy.denied` event；Platform API 对已认证失败请求写入内部 `api.request.denied` audit record，防绕过失败证据包含 `trace_id` 与拒绝原因。
+- R-005/R-014：跨租户 artifact/memory/credential 读取、credential resolve、审批跳过和预算不足均 fail closed，错误响应不回显 credential material、secret-like 字段或 native/provider runtime marker。
+- R-013/R-014：恶意插件 fixture 采用“双格式覆盖”，即平台中性 mock manifest/payload + Hermes/OpenClaw Plugin Bridge fixture 变体；Hermes/OpenClaw bridge 输入侧 denylist 已补 `provider_runtime`、`native_agent`、`native_tool`、`native_memory`、`native_runtime`、`plugin_subagent`、env secret、raw/native manifest 和 source/path/url marker。
+- R-012：`tests/smoke/P6.sh` 已扩展 P6-02 required files、审计无占位、attack matrix marker、dual-format malicious plugin marker、denied audit/trace marker、Date.now 禁用扫描和 targeted security tests。
+- 遗留风险：P6-02 不关闭故障注入、降级路线、生产 sidecar/OS 隔离、真实插件运行时、真实业务评测集、真实渠道网络、生产 durable workflow 或插件升级回滚矩阵；这些继续由 P6-03、P6 gate 和 P8 关闭。
+
 ## P6-01 内部业务闭环更新
 
 - R-003/R-007：P6-01 新增 deterministic in-process `tests/integration/p6-business-closed-loop.test.mjs`，断言 closed-loop Event Bus/audit timeline 不含 raw credential、native URL/path/session/error、provider runtime、真实网络 URL 或 `/opt/` 路径；公共 API、SDK、控制台和 OpenAPI 未在本任务变更。

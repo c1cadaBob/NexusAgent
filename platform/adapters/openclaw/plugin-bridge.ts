@@ -435,7 +435,7 @@ function sanitizePluginInventory(inventory: OpenClawPlatformPluginInventory): Op
 }
 
 function sanitizeCapabilityDescriptor(descriptor: OpenClawCapabilityDescriptor): OpenClawCapabilityDescriptor {
-  assertNoNativePluginBridgePayload(descriptor);
+  assertNoNativePluginBridgePayload(descriptor, { allowInternalProjectionKeys: true });
   return {
     capability_id: descriptor.capability_id,
     capability_type: descriptor.capability_type,
@@ -454,7 +454,7 @@ function sanitizeCapabilityDescriptor(descriptor: OpenClawCapabilityDescriptor):
 }
 
 function sanitizeGatewayHint(hint: OpenClawGatewayPluginHint): OpenClawGatewayPluginHint {
-  assertNoNativePluginBridgePayload(hint);
+  assertNoNativePluginBridgePayload(hint, { allowInternalProjectionKeys: true });
   return {
     schema_version: OPENCLAW_PLUGIN_BRIDGE_SCHEMA_VERSION,
     capability_id: hint.capability_id,
@@ -484,9 +484,22 @@ function requirePattern(value: unknown, field: string, pattern: RegExp): string 
   return value;
 }
 
-function assertNoNativePluginBridgePayload(value: unknown): void {
-  const forbiddenKeys = /^(?:credential_material|raw_credential|api_key|password|token|secret|env|environment|native_session_id|native_error|native_path|native_url|base_url|endpoint|file_path|path|url|session_id|tool_name|memory_path|agent_command)$/i;
-  const forbiddenStrings = /MEMORY\.md|USER\.md|SKILL\.md|https?:\/\/|vendor\/|\.\.\/|\/(?:tmp|var|workspace|opt)\/|\b(?:native_session[A-Za-z0-9_-]*|native_error[A-Za-z0-9_-]*|raw_credential|credential_material|api_key|password|secret[-_ ]?token|bearer\s+[A-Za-z0-9._-]+)\b/i;
+const INTERNAL_PLUGIN_BRIDGE_PROJECTION_KEYS = new Set([
+  "provider_binding",
+  "gateway_runtime",
+  "coordinator_runtime",
+  "policy_gate_runtime",
+  "agent_runtime",
+  "tool_runtime",
+  "memory_runtime",
+]);
+
+function assertNoNativePluginBridgePayload(
+  value: unknown,
+  options: { allowInternalProjectionKeys?: boolean } = {},
+): void {
+  const forbiddenKeys = /^(?:credential_material|raw_credential|api_key|password|token|secret|env|environment|native_session_id|native_error|native_path|native_url|base_url|endpoint|file_path|path|url|session_id|tool_name|memory_path|agent_command|plugin_subagent|native_agent|native_tool|native_memory|native_runtime|provider_runtime|provider_binding|runtime)$/i;
+  const forbiddenStrings = /MEMORY\.md|USER\.md|SKILL\.md|https?:\/\/|vendor\/|\.\.\/|\/(?:tmp|var|workspace|opt)\/|\b(?:native[_-]?(?:session|error|agent|tool|memory|runtime)[A-Za-z0-9_-]*|provider[_-]?(?:runtime|binding)|plugin[_-]?subagent|raw_credential|credential_material|api_key|password|secret[-_ ]?token|bearer\s+[A-Za-z0-9._-]+)\b/i;
   const visit = (candidate: unknown): void => {
     if (Array.isArray(candidate)) {
       for (const item of candidate) visit(item);
@@ -494,7 +507,8 @@ function assertNoNativePluginBridgePayload(value: unknown): void {
     }
     if (candidate && typeof candidate === "object") {
       for (const [key, item] of Object.entries(candidate)) {
-        if (forbiddenKeys.test(key)) {
+        const allowInternalKey = options.allowInternalProjectionKeys === true && INTERNAL_PLUGIN_BRIDGE_PROJECTION_KEYS.has(key);
+        if (!allowInternalKey && forbiddenKeys.test(key)) {
           throw new OpenClawPluginBridgeError("PLATFORM_INVALID_REQUEST", "Gateway plugin payload contains non-platform field", { field: key });
         }
         visit(item);
@@ -515,7 +529,7 @@ function sanitizePluginBridgeDetails(value: Record<string, unknown>): Record<str
         .replace(/https?:\/\/\S+/gi, "[redacted-url]")
         .replace(/\/[A-Za-z0-9._~:/?#\[\]@!$&'()*+,;=%-]+/gi, "[redacted-path]")
         .replace(/MEMORY\.md|USER\.md|SKILL\.md/gi, "[redacted-native-file]")
-        .replace(/\b(?:native_session_id|native_session|native_error|native_path|native_url|credential_material|raw_credential|api_key|password|token|session_id|file_path|path|url)\b/gi, "[redacted-field]");
+        .replace(/\b(?:native_session_id|native_session|native_error|native_path|native_url|native_agent|native_tool|native_memory|native_runtime|provider_runtime|provider_binding|plugin_subagent|credential_material|raw_credential|api_key|password|token|session_id|file_path|path|url|runtime)\b/gi, "[redacted-field]");
     }
     return item;
   });

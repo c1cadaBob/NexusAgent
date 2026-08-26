@@ -29,3 +29,10 @@
 - REQ-008/REQ-009：P6-01 证明基础闭环中 Hermes memory write/snapshot 仍经 Memory Gateway，DSH stdout/stderr/artifact candidates 仍归一化为 `ArtifactReference`，artifact 内容只在 `LocalArtifactStore` 读回，Event Bus 只携带 metadata-only 事件。
 - REQ-014/REQ-015/REQ-016/REQ-017：P6-01 已补本任务修改记录包、P6 OQ 默认结论、风险和 smoke 门禁；`OQ-INFRA-006` 保持 TaskState/Coordinator 默认路线，`OQ-PRODUCT-001` 保持 P7 高级能力延后，最终 durable workflow、真实业务评测集和 P7 裁剪清单仍由 P6-03/P6 gate 或后续任务关闭。
 - REQ-010：P6-01 不执行故障注入或降级路线，只为 P6 smoke 建立基础业务闭环入口；OpenClaw + DSH 降级路径仍按 P6-03 验收。
+
+## P6-02 追踪补充
+
+- REQ-001/REQ-002：P6-02 新增 `tests/security/p6-anti-corruption-bypass.test.mjs` 和 `tests/security/p6-tenant-data-spine-authorization.test.mjs`，验证 direct adapter invoke、伪造 Policy-Gate/trusted header、disabled/unknown provider、native/provider payload、跳过审批、预算不足和跨租户 artifact/memory/credential 访问均 fail closed；`platform/coordinator/index.ts` 通过 sanitized `policy.denied` event 保留 `trace_id` 与拒绝原因，`product/api/index.ts` 对已认证失败请求写入内部 `api.request.denied` audit record。
+- REQ-008/REQ-009：P6-02 安全矩阵验证 cross-tenant memory/artifact/credential 读取失败，失败响应、audit 和事件不回显 raw credential、credential material、native URL/path/session/error、provider runtime、真实网络 URL 或 `/opt/` 路径；P6-02 不改变 Memory Gateway、Artifact Store 或 Credential Center 公共契约。
+- REQ-014/REQ-015/REQ-016/REQ-017：P6-02 已补修改记录包、P6 OQ、集中台账、风险和 smoke 门禁；`tests/smoke/P6.sh` 继续保留 P6-01 closed-loop gate，并新增 P6-02 required files、attack matrix marker、dual-format malicious plugin marker、Date.now 禁用扫描和 targeted security tests。
+- REQ-020：P6-02 新增 `tests/security/p6-plugin-isolation.test.mjs`，按“双格式覆盖”验证平台中性 mock 恶意 manifest/payload 与 Hermes/OpenClaw Plugin Bridge fixture 变体均不能注入 native agent/tool/memory/runtime、provider runtime、plugin subagent、env secret、raw/native manifest 或未批准 capability；真实插件运行时、生产 sidecar/OS 隔离、插件升级回滚和许可证发布包仍由 P8 关闭。
