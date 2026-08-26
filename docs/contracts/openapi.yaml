@@ -9,7 +9,10 @@ info:
     tenants, approvals, channel management, plugin governance, artifacts, audit references, and
     health. Internal implementation details, internal component brands, raw
     endpoint references, internal error identifiers, and internal storage
-    locations are intentionally excluded.
+    locations are intentionally excluded. P5-04 TypeScript SDK and developer
+    docs consume this contract as the only public API source. P5 Alpha event
+    reads use /v1/tasks/{task_id}/events; webhook delivery and streaming
+    transports are deferred.
   license:
     name: Internal planning draft
     identifier: LicenseRef-NexusAgent-Planning-Draft

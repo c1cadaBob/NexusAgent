@@ -1,0 +1,96 @@
+export const DOCS_SITE_SCHEMA_VERSION = "nexus.docs_site.p5.v1";
+
+export interface RouteDoc {
+  method: "GET" | "POST" | "PATCH";
+  path: string;
+  area: string;
+  purpose: string;
+}
+
+export interface SdkMethodDoc {
+  name: string;
+  route: string;
+  role: "unauthenticated" | "operator" | "tenant admin" | "platform admin";
+}
+
+export const DOCS_ROUTE_MATRIX: readonly RouteDoc[] = Object.freeze([
+  { method: "GET", path: "/v1/health", area: "Health", purpose: "Read service health" },
+  { method: "POST", path: "/v1/tasks", area: "Tasks", purpose: "Submit a task" },
+  { method: "GET", path: "/v1/tasks", area: "Tasks", purpose: "List visible tasks" },
+  { method: "GET", path: "/v1/tasks/{task_id}", area: "Tasks", purpose: "Read one task" },
+  { method: "POST", path: "/v1/tasks/{task_id}/cancel", area: "Tasks", purpose: "Request cancellation" },
+  { method: "POST", path: "/v1/tasks/{task_id}/retry", area: "Tasks", purpose: "Start another attempt" },
+  { method: "GET", path: "/v1/tasks/{task_id}/events", area: "Events", purpose: "Read task events" },
+  { method: "GET", path: "/v1/skills", area: "Skills", purpose: "List skills" },
+  { method: "GET", path: "/v1/capabilities", area: "Capabilities", purpose: "List approved capabilities" },
+  { method: "POST", path: "/v1/memory/search", area: "Memory", purpose: "Search memory" },
+  { method: "POST", path: "/v1/memory", area: "Memory", purpose: "Write memory" },
+  { method: "GET", path: "/v1/tenants", area: "Tenants", purpose: "List tenants" },
+  { method: "GET", path: "/v1/tenants/{tenant_id}/users", area: "Tenants", purpose: "List tenant users" },
+  { method: "GET", path: "/v1/permissions", area: "Permissions", purpose: "List permissions" },
+  { method: "GET", path: "/v1/approvals", area: "Approvals", purpose: "List approvals" },
+  { method: "POST", path: "/v1/approvals/{approval_id}/decision", area: "Approvals", purpose: "Record a decision" },
+  { method: "POST", path: "/v1/budget/check", area: "Budget", purpose: "Check budget admission" },
+  { method: "GET", path: "/v1/channels", area: "Channels", purpose: "List channel configs" },
+  { method: "POST", path: "/v1/channels", area: "Channels", purpose: "Create channel config" },
+  { method: "GET", path: "/v1/channels/{channel_config_id}", area: "Channels", purpose: "Read channel config" },
+  { method: "PATCH", path: "/v1/channels/{channel_config_id}", area: "Channels", purpose: "Update channel config" },
+  { method: "POST", path: "/v1/channels/{channel_config_id}/status", area: "Channels", purpose: "Set channel status" },
+  { method: "POST", path: "/v1/channels/{channel_config_id}/test", area: "Channels", purpose: "Run channel dry-run" },
+  { method: "GET", path: "/v1/admin/plugins", area: "Plugin governance", purpose: "List plugin inventory" },
+  { method: "POST", path: "/v1/admin/plugins/import", area: "Plugin governance", purpose: "Import plugin metadata" },
+  { method: "POST", path: "/v1/admin/plugins/{plugin_id}/admission", area: "Plugin governance", purpose: "Set admission state" },
+] as const);
+
+export const SDK_METHOD_CATALOG: readonly SdkMethodDoc[] = Object.freeze([
+  { name: "health", route: "/v1/health", role: "unauthenticated" },
+  { name: "submitTask", route: "/v1/tasks", role: "operator" },
+  { name: "listTasks", route: "/v1/tasks", role: "operator" },
+  { name: "getTask", route: "/v1/tasks/{task_id}", role: "operator" },
+  { name: "cancelTask", route: "/v1/tasks/{task_id}/cancel", role: "operator" },
+  { name: "retryTask", route: "/v1/tasks/{task_id}/retry", role: "operator" },
+  { name: "listTaskEvents", route: "/v1/tasks/{task_id}/events", role: "operator" },
+  { name: "listSkills", route: "/v1/skills", role: "operator" },
+  { name: "listCapabilities", route: "/v1/capabilities", role: "operator" },
+  { name: "searchMemory", route: "/v1/memory/search", role: "operator" },
+  { name: "writeMemory", route: "/v1/memory", role: "operator" },
+  { name: "listTenants", route: "/v1/tenants", role: "tenant admin" },
+  { name: "listTenantUsers", route: "/v1/tenants/{tenant_id}/users", role: "tenant admin" },
+  { name: "listPermissions", route: "/v1/permissions", role: "operator" },
+  { name: "listApprovals", route: "/v1/approvals", role: "operator" },
+  { name: "decideApproval", route: "/v1/approvals/{approval_id}/decision", role: "operator" },
+  { name: "checkBudget", route: "/v1/budget/check", role: "operator" },
+  { name: "listChannels", route: "/v1/channels", role: "tenant admin" },
+  { name: "createChannel", route: "/v1/channels", role: "tenant admin" },
+  { name: "getChannel", route: "/v1/channels/{channel_config_id}", role: "tenant admin" },
+  { name: "updateChannel", route: "/v1/channels/{channel_config_id}", role: "tenant admin" },
+  { name: "setChannelStatus", route: "/v1/channels/{channel_config_id}/status", role: "tenant admin" },
+  { name: "testChannel", route: "/v1/channels/{channel_config_id}/test", role: "tenant admin" },
+  { name: "listPlugins", route: "/v1/admin/plugins", role: "platform admin" },
+  { name: "importPlugin", route: "/v1/admin/plugins/import", role: "platform admin" },
+  { name: "decidePluginAdmission", route: "/v1/admin/plugins/{plugin_id}/admission", role: "platform admin" },
+] as const);
+
+export const ERROR_CODES = Object.freeze([
+  "PLATFORM_INVALID_REQUEST",
+  "PLATFORM_UNAUTHENTICATED",
+  "PLATFORM_FORBIDDEN",
+  "PLATFORM_NOT_FOUND",
+  "PLATFORM_CONFLICT",
+  "PLATFORM_POLICY_DENIED",
+  "PLATFORM_INTERNAL_ERROR",
+] as const);
+
+export const SDK_SNIPPET = `const client = new NexusAgentClient({
+  baseUrl: process.env.NEXUS_API_BASE_URL ?? "http://localhost:8080",
+  accessToken: process.env.NEXUS_API_TOKEN ?? "dev-operator-alpha",
+});
+
+const task = await client.submitTask({
+  tenant_id: "tenant_alpha01",
+  user_id: "user_alpha01",
+  agent_id: "agent_alpha01",
+  conversation_id: "conv_sdk01",
+  input: "Summarize the platform task queue",
+  trace_id: trace(),
+});`;

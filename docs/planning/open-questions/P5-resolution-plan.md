@@ -20,6 +20,8 @@ P5-02 进展：已按默认方案新增 `product/web-console/` React/Vite 控制
 
 P5-03 进展：已新增 `product/channel-management/` 说明、`platform/channel-management/` 本地 runtime、`/v1/channels*` REST routes 和控制台 Channels 页面；渠道管理继续采用 REST-first，不新增 streaming 或真实渠道网络。连接测试返回平台 dry-run 结果，仅包含 `test_status`、`policy_gate_status`、`delivery_outcome`、`checked_at` 和 `trace_id`，不回显内部 adapter、原生路径、session、provider binding 或凭据引用值。`tests/contract/p5-channel-management-contract.test.mjs`、`tests/integration/channel-management-api.test.mjs`、`tests/security/channel-management-leakage.test.mjs` 与 `tests/smoke/P5.sh` 验证新增 OpenAPI route、approved channel enum、权限、凭据不回显和产品层泄漏扫描。
 
+P5-04 进展：已按 TypeScript-only 默认范围新增 `product/sdk/` 本地 SDK、可运行 examples 和 `product/docs-site/` Vite React 开发者文档站；SDK 与 docs-site 只引用 `docs/contracts/openapi.yaml` 中的 `/v1/*` REST API，不新增 webhook runtime route、SSE/WebSocket 或 gRPC streaming。P5 Alpha 事件出口文档化为 `GET /v1/tasks/{task_id}/events` 轮询；生产 IdP/SSO、webhook delivery、streaming 和其他 SDK 语言继续留给 P8 或后续 SDK 批次。`tests/contract/p5-sdk-openapi-contract.test.mjs`、`tests/integration/sdk-typescript-client.test.mjs`、`tests/security/sdk-docs-leakage.test.mjs`、`tests/contract/docs-site-openapi-alignment.test.mjs` 与 `tests/smoke/P5.sh` 验证 SDK/docs route coverage、示例可运行、平台错误映射和产品层泄漏扫描。
+
 ## OQ-PLUGIN-001：插件市场和租户自助安装范围
 
 推荐处理：P5 首版仅允许平台管理员导入、扫描、批准、启用、禁用和升级插件；租户只能使用已经批准且对其可见的能力，不允许直接从 ClawHub/npm/PyPI/GitHub 自助安装任意插件。P7/P8 后再评估租户自助市场。
@@ -36,6 +38,8 @@ P5-01 进展：已新增平台中性 `platform/plugin-governance/`，把 P3/P4 P
 
 P5-02 进展：控制台插件治理页面仅对 platform admin dev principal 展示导入与准入操作，tenant admin/viewer 导航不显示插件治理入口且强制 API 调用仍由 P5-01 返回 403；页面和 view-model 只展示 plugin ID、display name、source kind、version、SHA-256、license、notice status、risk、allowlist status 和 capability IDs，不展示原生来源、provider binding、runtime、session、URL/path 或 secret material。租户自助安装、恶意插件运行时、升级回滚矩阵和生产 sidecar 仍由 P6/P8 继续验证。
 
+P5-04 进展：TypeScript SDK 和开发者文档只暴露管理员插件治理 API 的平台字段与示例，文档明确 `Tenant self-service third-party plugin installation is not supported in P5 Alpha`；租户自助安装、恶意插件运行时、升级回滚矩阵和生产 sidecar 仍由 P6/P8 继续验证。
+
 ## OQ-LEGAL-001：许可证、NOTICE 和再分发法务确认
 
 推荐处理：P5 建立许可证/NOTICE 检查流程，P8 发布前复核。首版只启用来源、hash、版本、许可证、NOTICE、权限和回滚记录完整的插件；许可证有疑义的上游补丁或第三方插件不得进入生产启用清单。
@@ -49,3 +53,5 @@ P5-02 进展：控制台插件治理页面仅对 platform admin dev principal �
 关闭证据：`vendor/MANIFEST.yaml`、PluginInventory 和第三方声明文档补齐许可证字段；法务或指定负责人确认；P8 交付包包含 NOTICE/THIRD_PARTY 声明。
 
 P5-01 进展：管理员插件导入 API 已强制 `expected_sha256`、`license`、`notice_status`、`risk_level` 和版本元数据，缺失或带 URL/path/credential/manifest 绕过字段的导入请求 fail closed。法务确认、第三方声明文档和发布包 NOTICE/THIRD_PARTY 仍保留为 P8 关闭证据。
+
+P5-04 进展：TypeScript SDK、examples 和开发者文档展示管理员插件治理时继续要求 hash、license、notice_status、risk_level 和版本元数据，并通过 SDK/docs 泄漏扫描验证公共文档不包含内部组件品牌、原生路径、session、provider binding、runtime 或 secret material；法务确认、THIRD_PARTY/NOTICE 发布包仍保留为 P8 关闭证据。
