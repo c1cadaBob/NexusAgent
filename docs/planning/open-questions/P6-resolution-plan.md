@@ -18,6 +18,8 @@ P6-01 证据：`tests/integration/p6-business-closed-loop.test.mjs` 已用 deter
 
 P6-02 证据：`tests/security/p6-anti-corruption-bypass.test.mjs` 与 `tests/security/p6-tenant-data-spine-authorization.test.mjs` 继续沿用自研 `TaskState/Coordinator` 路线，验证跳过审批、预算不足、伪造 Policy-Gate/trusted header、disabled/unknown provider 和直接 adapter invoke 均 fail closed，并通过 sanitized `policy.denied` event、Policy-Gate decision log 和内部 `api.request.denied` audit record 保留 `trace_id` 与拒绝原因。该证据不关闭故障恢复、durable workflow 或 Temporal/Cadence 最终选型，P6-03/P6 gate 继续评估。
 
+P6-03 证据：`tests/fault-injection/p6-provider-recovery.test.mjs` 已验证 Hermes provider disabled 后采用 seeded platform plan 的 lightweight route，任务仍经 OpenClaw inbound、Coordinator/Policy-Gate、DSH executor、Artifact Store、Event Bus/audit 和 OpenClaw queued outbound intent 完成；同一测试覆盖 DSH canary throw、timeout、resource exhaustion、破坏性返回清洗、duplicate events dead-letter 和 memory expected_version conflict。`tests/fault-injection/p6-real-service-drill.sh` 已用 `deploy/docker-compose.dev.yml` 执行真实 dev service lifecycle drill，在停止 `hermes-adapter` 后确认 `platform-api`、`openclaw-adapter`、`dsh-adapter`、`memory-gateway`、`artifact-store` 和 `event-bus` 仍健康并可恢复 Hermes。该证据关闭 P6 最小故障注入/降级验收，但 Temporal/Cadence、生产 durable workflow、生产消息/存储和发布运维手册仍留 P8 复核。
+
 ## OQ-PLUGIN-001：P6 恶意插件隔离证据
 
 推荐处理：P6-02 仍沿用 P5 默认结论，即平台管理员白名单治理、租户不得自助安装第三方插件；恶意插件 fixture 采用“双格式覆盖”：平台中性 mock manifest/payload + Hermes/OpenClaw Plugin Bridge fixture 变体。P6 只验证恶意 fixture 不能穿透凭据、memory、artifact、provider runtime 或原生 agent/tool/memory/runtime，不运行真实插件包、不联网、不引入生产 sidecar。
@@ -31,6 +33,8 @@ P6-02 证据：`tests/security/p6-anti-corruption-bypass.test.mjs` 与 `tests/se
 关闭证据：P6-02 提供恶意插件隔离和防绕过证据，但 `OQ-PLUGIN-001` 仍不最终关闭；真实 sidecar/OS 隔离、插件升级/禁用/兼容矩阵、许可证发布包和生产回滚手册继续由 P8 关闭。
 
 P6-02 证据：`tests/security/p6-plugin-isolation.test.mjs` 验证平台中性 mock 恶意 manifest/payload、Hermes Plugin Bridge 变体和 OpenClaw Plugin Bridge 变体均无法注入 `native_agent`、`native_tool`、`native_memory`、`provider_runtime`、`plugin_subagent`、env secret、raw/native manifest 或未批准 capability；`platform/adapters/hermes/plugin-bridge.ts` 与 `platform/adapters/openclaw/plugin-bridge.ts` 已补输入侧 denylist，内部只读 bridge hint 仍保持平台内投影，不进入产品公共面。
+
+P6-03 证据：`tests/fault-injection/p6-plugin-provider-rollback.test.mjs` 已验证 `LocalPluginGovernance` 中 seeded plugin 可通过 approve/disable/reject 控制 tenant capability visibility；禁用或拒绝插件后能力不可见，重新批准后能力恢复。导入 metadata-only plugin 后即使 approve/disable/reject 也不会创建 tenant-visible capability，且 public projection 不含 raw credential、native URL/path/session/error、provider runtime、真实网络 URL 或本地路径。该证据补齐 P6 插件禁用和 plugin rollback 验收，但真实 sidecar/OS 隔离、插件升级兼容矩阵、生产回滚手册和许可证发布包仍留 P8。
 
 ## OQ-PRODUCT-001：P7 高级能力是否进入首版
 
@@ -47,3 +51,5 @@ P6-02 证据：`tests/security/p6-plugin-isolation.test.mjs` 验证平台中性 
 P6-01 证据：基础业务闭环只覆盖 MVP 主链路，未引入 P7 高级能力、真实业务评测集、流式交互、自动评测或高级记忆策略。`tests/smoke/P6.sh` 将 P6-01 deterministic in-process E2E 纳入阶段门禁，并保留 P7 高级能力默认延后结论；最终 P7 裁剪清单仍由 P6 gate 或项目负责人明确覆盖。
 
 P6-02 证据：安全攻击矩阵只补防腐层、防绕过、越权和恶意插件隔离，不新增 P7 高级能力、真实业务评测集、streaming、自动评测、高级记忆策略或用户可见产品能力。P7 高级能力继续默认延后，最终 MVP 裁剪清单仍由 P6 gate 或项目负责人确认。
+
+P6-03/P6 gate 证据：`docs/planning/phase-gates/P6-gate-review.md` 明确 P6 MVP 门禁只依赖基础闭环、安全/防绕过、故障注入、轻量化降级路线和 provider/plugin rollback；P7 高级能力默认不进入 MVP。若项目负责人要求某项 P7 能力进入首版，必须另建任务并提供开关、指标、预算和回滚说明，不得改变 P6 已验证的平台 contracts 或内部 provider 边界。

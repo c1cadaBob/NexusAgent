@@ -38,6 +38,16 @@ DSH 不作为稳定平台契约，只作为内部 executor provider。P2 必须�
 - R-012：`tests/smoke/P6.sh` 已扩展 P6-02 required files、审计无占位、attack matrix marker、dual-format malicious plugin marker、denied audit/trace marker、Date.now 禁用扫描和 targeted security tests。
 - 遗留风险：P6-02 不关闭故障注入、降级路线、生产 sidecar/OS 隔离、真实插件运行时、真实业务评测集、真实渠道网络、生产 durable workflow 或插件升级回滚矩阵；这些继续由 P6-03、P6 gate 和 P8 关闭。
 
+## P6-03 故障注入与降级路径更新
+
+- R-001/R-016：P6-03 新增 `tests/fault-injection/p6-provider-recovery.test.mjs` 和 `tests/fault-injection/p6-plugin-provider-rollback.test.mjs`，验证 DSH canary throw、timeout、resource exhaustion、破坏性返回清洗和 `rollbackDefault()` 恢复，同时验证 Hermes/OpenClaw/DSH provider 回滚不改变平台契约。
+- R-003/R-004/R-007：Hermes disabled lightweight route 使用 seeded platform plan，不调用 Hermes planner adapter，任务仍经 OpenClaw inbound、Coordinator/Policy-Gate、DSH executor、Artifact Store、Event Bus/audit 和 OpenClaw queued outbound intent；故障路径 payload 不含 raw credential、native URL/path/session/error、provider runtime、真实网络 URL 或 `/opt/` 路径。
+- R-005/R-014：P6-03 验证 duplicate events dead-letter、memory expected_version conflict、metadata-only artifact 归档和破坏性 provider output sanitizer，避免 memory/artifact/audit 在故障退出路径泄漏 credential material 或 native/provider 字段。
+- R-006：`tests/fault-injection/p6-real-service-drill.sh` 用真实 Docker Compose dev service lifecycle drill 停止 `hermes-adapter`，确认 `platform-api`、`openclaw-adapter`、`dsh-adapter`、`memory-gateway`、`artifact-store` 和 `event-bus` 保持健康并可恢复 Hermes，降低跨栈基础服务恢复风险。
+- R-013/R-014/R-016：`LocalPluginGovernance` approve/disable/reject 测试证明 plugin rollback 控制 capability visibility，metadata-only import 不创建 tenant-visible capability，禁用或拒绝插件不暴露 raw credential、native URL/path/session/error 或 provider runtime。
+- R-012：`tests/smoke/P6.sh` 已扩展 P6-03 required files、P6-03 审计无占位、fault matrix markers、real-service drill marker、P6 gate report marker、Date.now 禁用扫描、targeted fault tests 和 Docker Compose dev lifecycle drill。
+- 遗留风险：P6-03 关闭 P6 最小故障注入、降级路线、provider 回滚和插件禁用证据；生产 durable workflow、真实业务评测集、生产 sidecar/OS 隔离、真实渠道网络、插件升级兼容矩阵、许可证发布包和发布运维手册仍待 P8 或后续任务。
+
 ## P6-01 内部业务闭环更新
 
 - R-003/R-007：P6-01 新增 deterministic in-process `tests/integration/p6-business-closed-loop.test.mjs`，断言 closed-loop Event Bus/audit timeline 不含 raw credential、native URL/path/session/error、provider runtime、真实网络 URL 或 `/opt/` 路径；公共 API、SDK、控制台和 OpenAPI 未在本任务变更。
