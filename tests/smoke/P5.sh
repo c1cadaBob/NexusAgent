@@ -64,6 +64,7 @@ required_files=(
   docs/planning/task-prompts/P5/P5-02.md
   docs/planning/task-prompts/P5/P5-03.md
   docs/planning/task-prompts/P5/P5-04.md
+  docs/planning/phase-gates/P5-gate-review.md
   docs/planning/open-questions/P5-resolution-plan.md
   docs/planning/open-questions-register.md
   docs/contracts/openapi.yaml
@@ -168,6 +169,19 @@ for marker in \
   'dev-operator-alpha' \
   'PLATFORM_API_SCHEMA_VERSION'; do
   rg -q "$marker" product/api/index.ts product/api/README.md tests/integration/platform-api-rest.test.mjs || fail "P5 API marker missing: $marker"
+done
+
+for marker in \
+  'P5 阶段门禁报告' \
+  'P5-01' \
+  'P5-02' \
+  'P5-03' \
+  'P5-04' \
+  'OQ-API-002' \
+  'OQ-PLUGIN-001' \
+  'OQ-LEGAL-001' \
+  'bash tests/smoke/P5.sh'; do
+  rg -q "$marker" docs/planning/phase-gates/P5-gate-review.md || fail "P5 phase gate report marker missing: $marker"
 done
 
 for marker in \
