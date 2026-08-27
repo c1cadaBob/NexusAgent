@@ -61,3 +61,5 @@ P7-02 证据：用户明确选择将主动遗忘与保留策略作为 P7 增量�
 P7-03 证据：用户明确选择将技能自动评测作为 P7 增量交付到 API+Console，但实现采用 Default Off、管理员显式启用、manual run、Approved + Rejected deterministic corpus 和 metadata-only report；评测失败或 runner warning 只影响 evaluation report 与 Observability 记录，不自动运行任务链路、不调用真实模型、不引入真实业务成功率阈值，也不改变 P6 MVP 基础闭环。
 
 P7-04 证据：用户明确选择将 Token 预算与记忆冲突检测作为 P7 增量交付到 API+SDK+Console。实现采用 Default On、All configured 预算维度、Task+adapter+API enforcement 和 Admin resolve queue；超预算时 Coordinator 进入 blocked/degraded 或 adapter dispatch 前 fail closed，memory expected_version mismatch 只创建 metadata-only conflict record，不调用真实模型、不接外部网络、不改变 P6 MVP 基础闭环。
+
+P7-05 证据：用户明确选择将定时长期目标任务作为 P7 增量交付到 API+SDK+Console。实现采用 Default Off + manual tick、UTC 5-field Cron-like alpha 子集和 ordinary scheduler-source `TaskRequest`，due scan 统一经过 Coordinator、Policy-Gate、Token Budget、Event Bus、Audit 和 Observability；没有后台 daemon、durable scheduler、真实外部网络或真实凭据，不改变 P6 MVP 基础闭环。

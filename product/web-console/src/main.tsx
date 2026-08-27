@@ -21,6 +21,9 @@ import {
   type PlatformTask,
   type PluginInventoryEntry,
   type PrincipalProfile,
+  type ScheduledGoalRecord,
+  type ScheduledGoalRunDueResult,
+  type ScheduledGoalsConfig,
   type SkillEvaluationConfig,
   type SkillEvaluationRunReport,
   type SkillRecord,
@@ -39,6 +42,7 @@ const initialDataset: ConsoleDataset = {
   tenants: [],
   tenantUsers: [],
   channels: [],
+  scheduledGoals: [],
   approvals: [],
   skills: [],
   capabilities: [],
@@ -62,6 +66,9 @@ function App() {
   const [taskInput, setTaskInput] = useState("Review current platform task queue");
   const [conversationId, setConversationId] = useState("conv_console01");
   const [agentId, setAgentId] = useState("agent_alpha01");
+  const [scheduledGoalInput, setScheduledGoalInput] = useState("Review current platform task queue");
+  const [scheduledGoalCron, setScheduledGoalCron] = useState("*/5 * * * *");
+  const [scheduledGoalBudgetUnits, setScheduledGoalBudgetUnits] = useState("10");
   const [memoryText, setMemoryText] = useState("Platform console memory note");
   const [memoryQuery, setMemoryQuery] = useState("platform console");
   const [budgetUnits, setBudgetUnits] = useState("10");
@@ -97,6 +104,8 @@ function App() {
       const task_id = selectedTaskId || tasks.items[0]?.task_id || "";
       const taskEvents = task_id ? await client.listTaskEvents(task_id) : { items: [] as PlatformEvent[] };
       const channels = profile.canReadChannels ? await client.listChannels({ tenant_id: profile.tenant_id }) : { items: [] as ChannelConfigRecord[] };
+      const scheduledGoalsConfig = profile.canReadScheduledGoals ? await client.getScheduledGoalsConfig({ tenant_id: profile.tenant_id, trace_id: traceRef.current() }) : undefined;
+      const scheduledGoals = profile.canReadScheduledGoals ? await client.listScheduledGoals({ tenant_id: profile.tenant_id }) : { items: [] as ScheduledGoalRecord[] };
       const plugins = profile.canManagePlugins ? await client.listPlugins() : { items: [] as PluginInventoryEntry[] };
       const skillEvaluationConfig = profile.canManageSkillEvaluation ? await client.getSkillEvaluationConfig({ tenant_id: profile.tenant_id, trace_id: traceRef.current() }) : undefined;
       const skillEvaluationRuns = profile.canManageSkillEvaluation ? await client.listSkillEvaluationRuns({ tenant_id: profile.tenant_id }) : { items: [] as SkillEvaluationRunReport[] };
@@ -112,6 +121,8 @@ function App() {
         tenants: tenants.items,
         tenantUsers: tenantUsers.items,
         channels: channels.items,
+        scheduledGoals: scheduledGoals.items,
+        scheduledGoalsConfig,
         approvals: approvals.items,
         skills: skills.items,
         capabilities: capabilities.items,
@@ -212,6 +223,36 @@ function App() {
               const result = await client.testChannel(channel_config_id, { trace_id: traceRef.current() });
               setData((previous) => ({ ...previous, channelTest: result }));
             }, "Channel test complete")}
+          />
+        )}
+        {activeView === "scheduled-goals" && profile.canReadScheduledGoals && (
+          <ScheduledGoals
+            profile={profile}
+            config={data.scheduledGoalsConfig}
+            goals={data.scheduledGoals}
+            goalRows={dashboard.scheduledGoalRows}
+            configRows={dashboard.scheduledGoalConfigRows}
+            runDueRows={dashboard.scheduledGoalRunDueRows}
+            goalInput={scheduledGoalInput}
+            setGoalInput={setScheduledGoalInput}
+            cron={scheduledGoalCron}
+            setCron={setScheduledGoalCron}
+            conversationId={conversationId}
+            setConversationId={setConversationId}
+            agentId={agentId}
+            setAgentId={setAgentId}
+            budgetUnits={scheduledGoalBudgetUnits}
+            setBudgetUnits={setScheduledGoalBudgetUnits}
+            onEnable={(enabled) => runAction(() => client.updateScheduledGoalsConfig({ enabled, trace_id: traceRef.current() }), "Scheduled goals config updated")}
+            onCreate={() => runAction(() => client.createScheduledGoal({ input: scheduledGoalInput, cron: scheduledGoalCron, conversation_id: conversationId, agent_id: agentId, trace_id: traceRef.current(), ...(scheduledGoalBudgetUnits ? { budget_units: Number(scheduledGoalBudgetUnits) } : {}) }), "Scheduled goal created")}
+            onPause={(scheduled_goal_id) => runAction(() => client.updateScheduledGoal(scheduled_goal_id, { status: "paused", trace_id: traceRef.current() }), "Scheduled goal paused")}
+            onResume={(scheduled_goal_id) => runAction(() => client.updateScheduledGoal(scheduled_goal_id, { status: "scheduled", trace_id: traceRef.current() }), "Scheduled goal resumed")}
+            onCancel={(scheduled_goal_id) => runAction(() => client.cancelScheduledGoal(scheduled_goal_id, { reason: "Console scheduled goal cancellation", trace_id: traceRef.current() }), "Scheduled goal cancelled")}
+            onRetry={(scheduled_goal_id) => runAction(() => client.retryScheduledGoal(scheduled_goal_id, { reason: "Console scheduled goal retry", trace_id: traceRef.current() }), "Scheduled goal retried")}
+            onRunDue={() => runAction(async () => {
+              const result = await client.runDueScheduledGoals({ trace_id: traceRef.current() });
+              setData((previous) => ({ ...previous, scheduledGoalsRunDue: result }));
+            }, "Scheduled goals due scan complete")}
           />
         )}
         {activeView === "tasks" && (
@@ -335,6 +376,7 @@ function Overview({ health, dashboard }: { health?: HealthStatus; dashboard: Ret
     <Metric label="Pending approvals" value={dashboard.counters.pending_approvals} />
     <Metric label="Approved capabilities" value={dashboard.counters.approved_capabilities} />
     <Metric label="Channels" value={dashboard.counters.channel_configs} />
+    <Metric label="Scheduled goals" value={dashboard.counters.scheduled_goals} />
     <Metric label="Plugin entries" value={dashboard.counters.plugin_entries} />
     <Metric label="Evaluation runs" value={dashboard.counters.skill_evaluation_runs} />
     <Metric label="Memory conflicts" value={dashboard.counters.memory_conflicts} />
@@ -386,6 +428,49 @@ function Channels(props: {
     <Table title="Channels" rows={props.channelRows} columns={["channel_config_id", "tenant_id", "channel_name", "display_name", "status", "capability_id", "account_ref", "conversation_ref", "credential_status", "updated_at", "trace_id"]} />
     <div className="button-row">{props.channels.map((channel) => <React.Fragment key={channel.channel_config_id}><button type="button" disabled={!canManage || channel.status === "enabled"} onClick={() => props.onStatus(channel.channel_config_id, "enabled")}>Enable {channel.channel_config_id}</button><button type="button" disabled={!canManage || channel.status === "disabled"} onClick={() => props.onStatus(channel.channel_config_id, "disabled")}>Disable {channel.channel_config_id}</button><button type="button" disabled={!canManage || channel.status !== "enabled"} onClick={() => props.onTest(channel.channel_config_id)}>Test {channel.channel_config_id}</button></React.Fragment>)}</div>
     {props.lastTest ? <Table title="Channel test" rows={[props.lastTest]} columns={["channel_config_id", "tenant_id", "channel_name", "test_status", "policy_gate_status", "delivery_outcome", "checked_at", "trace_id"]} /> : <EmptyState text="No channel test result" />}
+  </section>;
+}
+
+function ScheduledGoals(props: {
+  profile: PrincipalProfile;
+  config?: ScheduledGoalsConfig;
+  goals: readonly ScheduledGoalRecord[];
+  goalRows: readonly Record<string, unknown>[];
+  configRows: readonly Record<string, unknown>[];
+  runDueRows: readonly Record<string, unknown>[];
+  goalInput: string;
+  setGoalInput: (value: string) => void;
+  cron: string;
+  setCron: (value: string) => void;
+  conversationId: string;
+  setConversationId: (value: string) => void;
+  agentId: string;
+  setAgentId: (value: string) => void;
+  budgetUnits: string;
+  setBudgetUnits: (value: string) => void;
+  onEnable: (enabled: boolean) => void;
+  onCreate: () => void;
+  onPause: (scheduled_goal_id: string) => void;
+  onResume: (scheduled_goal_id: string) => void;
+  onCancel: (scheduled_goal_id: string) => void;
+  onRetry: (scheduled_goal_id: string) => void;
+  onRunDue: () => void;
+}) {
+  const canManage = actionEnabled(props.profile, "manage_scheduled_goals");
+  return <section className="stack">
+    <Table title="Scheduled goal config" rows={props.configRows} columns={["tenant_id", "enabled", "schedule_mode", "execution_mode", "budget_mode", "max_active_goals", "max_due_per_tick", "min_interval_minutes", "updated_at_utc", "trace_id"]} />
+    <div className="button-row"><button type="button" disabled={!canManage || props.config?.enabled === true} onClick={() => props.onEnable(true)}>Enable scheduled goals</button><button type="button" disabled={!canManage || props.config?.enabled === false} onClick={() => props.onEnable(false)}>Disable scheduled goals</button><button type="button" disabled={!canManage || props.config?.enabled !== true} onClick={props.onRunDue}>Run due scan</button></div>
+    <form className="form-grid" onSubmit={(event) => { event.preventDefault(); props.onCreate(); }}>
+      <label>Goal input<input value={props.goalInput} onChange={(event) => props.setGoalInput(event.target.value)} disabled={!canManage} /></label>
+      <label>Cron UTC<input value={props.cron} onChange={(event) => props.setCron(event.target.value)} disabled={!canManage} /></label>
+      <label>Conversation ID<input value={props.conversationId} onChange={(event) => props.setConversationId(event.target.value)} disabled={!canManage} /></label>
+      <label>Agent ID<input value={props.agentId} onChange={(event) => props.setAgentId(event.target.value)} disabled={!canManage} /></label>
+      <label>Budget units<input type="number" min="1" value={props.budgetUnits} onChange={(event) => props.setBudgetUnits(event.target.value)} disabled={!canManage} /></label>
+      <button type="submit" disabled={!canManage}>Create scheduled goal</button>
+    </form>
+    <Table title="Scheduled goals" rows={props.goalRows} columns={["scheduled_goal_id", "tenant_id", "user_id", "agent_id", "conversation_id", "status", "cron", "next_run_at_utc", "last_run_status", "last_task_id", "run_count", "failure_count", "budget_units", "reason_codes", "trace_id"]} />
+    <div className="button-row">{props.goals.map((goal) => <React.Fragment key={goal.scheduled_goal_id}><button type="button" disabled={!canManage || goal.status !== "scheduled"} onClick={() => props.onPause(goal.scheduled_goal_id)}>Pause {goal.scheduled_goal_id}</button><button type="button" disabled={!canManage || goal.status !== "paused"} onClick={() => props.onResume(goal.scheduled_goal_id)}>Resume {goal.scheduled_goal_id}</button><button type="button" disabled={!canManage || goal.status === "cancelled"} onClick={() => props.onCancel(goal.scheduled_goal_id)}>Cancel {goal.scheduled_goal_id}</button><button type="button" disabled={!canManage} onClick={() => props.onRetry(goal.scheduled_goal_id)}>Retry {goal.scheduled_goal_id}</button></React.Fragment>)}</div>
+    {props.runDueRows.length > 0 ? <Table title="Scheduled due scan" rows={props.runDueRows} columns={["scheduled_goal_id", "tenant_id", "user_id", "agent_id", "task_id", "status", "next_run_at_utc", "reason_codes", "trace_id", "scanned_count", "due_count", "submitted_count", "blocked_count", "failed_count", "checked_at_utc"]} /> : <EmptyState text="No scheduled due scan result" />}
   </section>;
 }
 

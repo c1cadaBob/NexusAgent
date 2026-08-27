@@ -23,6 +23,12 @@ export type PlatformEventType =
   | "budget.degraded"
   | "memory.conflict_detected"
   | "memory.conflict_decided"
+  | "scheduled_goal.created"
+  | "scheduled_goal.updated"
+  | "scheduled_goal.started"
+  | "scheduled_goal.completed"
+  | "scheduled_goal.cancelled"
+  | "scheduled_goal.blocked"
   | "audit.recorded";
 
 export interface PlatformEventEnvelope {
@@ -39,7 +45,7 @@ export interface PlatformEventEnvelope {
     provider_binding_id?: string;
   };
   subject: {
-    kind: "task" | "attempt" | "execution" | "artifact" | "credential" | "approval" | "audit";
+    kind: "task" | "attempt" | "execution" | "artifact" | "credential" | "approval" | "audit" | "scheduled_goal";
     id: string;
   };
   payload: Record<string, unknown>;

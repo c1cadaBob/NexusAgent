@@ -20,7 +20,7 @@ function clientFor(accessToken = 'dev-operator-alpha') {
       json: async () => response.body,
     };
   };
-  return { client: new NexusAgentClient({ baseUrl: 'http://sdk.test', accessToken, fetchImpl }), calls };
+  return { app, client: new NexusAgentClient({ baseUrl: 'http://sdk.test', accessToken, fetchImpl }), calls };
 }
 
 function assertClean(value) {
@@ -127,6 +127,56 @@ test('TypeScript SDK tenant admin manages channels without credential echo', asy
   assert.equal(tested.test_status, 'passed');
   assert.equal(tested.delivery_outcome, 'queued');
   assertClean({ created, enabled, tested });
+});
+
+test('TypeScript SDK manages scheduled goals with cron-like UTC manual due scans', async () => {
+  const { app, client } = clientFor('dev-operator-alpha');
+  const admin = new NexusAgentClient({
+    baseUrl: 'http://sdk.test',
+    accessToken: 'dev-tenant-admin-alpha',
+    fetchImpl: async (url, init = {}) => {
+      const parsed = new URL(String(url));
+      const headers = Object.fromEntries(Object.entries(init.headers ?? {}).map(([key, value]) => [key.toLowerCase(), String(value)]));
+      const body = init.body === undefined ? undefined : JSON.parse(String(init.body));
+      const response = await app.handle({ method: init.method ?? 'GET', path: `${parsed.pathname}${parsed.search}`, headers, body });
+      return { ok: response.status >= 200 && response.status < 300, status: response.status, json: async () => response.body };
+    },
+  });
+  const trace = createTraceFactory('trace_sdk_scheduled_test');
+
+  const config = await client.getScheduledGoalsConfig({ tenant_id: 'tenant_alpha01', trace_id: trace() });
+  assert.equal(config.schema_version, 'nexus.scheduled_goal.p7.v1');
+  assert.equal(config.enabled, false);
+
+  const created = await client.createScheduledGoal({
+    tenant_id: 'tenant_alpha01',
+    user_id: 'user_alpha01',
+    agent_id: 'agent_alpha01',
+    conversation_id: 'conv_sdk_scheduled01',
+    cron: '*/5 * * * *',
+    input: 'SDK scheduled goal task',
+    budget_units: 10,
+    trace_id: trace(),
+  });
+  assert.equal(created.status, 'scheduled');
+
+  app.clock.set({ utc_timestamp: created.next_run_at_utc, monotonic_ms: 1500 });
+  const skipped = await client.runDueScheduledGoals({ tenant_id: 'tenant_alpha01', trace_id: trace() });
+  assert.equal(skipped.status, 'skipped');
+  await admin.updateScheduledGoalsConfig({ tenant_id: 'tenant_alpha01', trace_id: trace(), enabled: true });
+  const due = await client.runDueScheduledGoals({ tenant_id: 'tenant_alpha01', trace_id: trace() });
+  assert.equal(due.submitted_count, 1);
+  const listed = await client.listScheduledGoals({ tenant_id: 'tenant_alpha01' });
+  assert.equal(listed.items.some((item) => item.scheduled_goal_id === created.scheduled_goal_id), true);
+  const read = await client.getScheduledGoal(created.scheduled_goal_id);
+  assert.equal(read.scheduled_goal_id, created.scheduled_goal_id);
+  const paused = await client.updateScheduledGoal(created.scheduled_goal_id, { status: 'paused', trace_id: trace() });
+  assert.equal(paused.status, 'paused');
+  const cancelled = await client.cancelScheduledGoal(created.scheduled_goal_id, { reason: 'SDK scheduled cancellation', trace_id: trace() });
+  assert.equal(cancelled.status, 'cancelled');
+  const retried = await client.retryScheduledGoal(created.scheduled_goal_id, { reason: 'SDK scheduled retry', trace_id: trace() });
+  assert.equal(retried.status, 'scheduled');
+  assertClean({ config, created, skipped, due, listed, read, paused, cancelled, retried });
 });
 
 test('TypeScript SDK tenant admin manages memory retention without memory text echo', async () => {

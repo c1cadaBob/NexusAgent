@@ -18,6 +18,8 @@ export interface PrincipalProfile {
   canManageMemoryConflicts: boolean;
   canManageTokenBudget: boolean;
   canManageSkillEvaluation: boolean;
+  canReadScheduledGoals: boolean;
+  canManageScheduledGoals: boolean;
 }
 
 export const DEV_PRINCIPALS: readonly PrincipalProfile[] = Object.freeze([
@@ -37,6 +39,8 @@ export const DEV_PRINCIPALS: readonly PrincipalProfile[] = Object.freeze([
     canManageMemoryConflicts: true,
     canManageTokenBudget: true,
     canManageSkillEvaluation: true,
+    canReadScheduledGoals: true,
+    canManageScheduledGoals: true,
   },
   {
     key: "tenant-admin",
@@ -54,6 +58,8 @@ export const DEV_PRINCIPALS: readonly PrincipalProfile[] = Object.freeze([
     canManageMemoryConflicts: true,
     canManageTokenBudget: true,
     canManageSkillEvaluation: true,
+    canReadScheduledGoals: true,
+    canManageScheduledGoals: true,
   },
   {
     key: "operator",
@@ -71,6 +77,8 @@ export const DEV_PRINCIPALS: readonly PrincipalProfile[] = Object.freeze([
     canManageMemoryConflicts: false,
     canManageTokenBudget: false,
     canManageSkillEvaluation: false,
+    canReadScheduledGoals: true,
+    canManageScheduledGoals: true,
   },
   {
     key: "viewer",
@@ -88,6 +96,8 @@ export const DEV_PRINCIPALS: readonly PrincipalProfile[] = Object.freeze([
     canManageMemoryConflicts: false,
     canManageTokenBudget: false,
     canManageSkillEvaluation: false,
+    canReadScheduledGoals: true,
+    canManageScheduledGoals: false,
   },
 ]);
 
@@ -98,6 +108,12 @@ export const PLATFORM_API_ROUTES = Object.freeze([
   "/v1/tasks/{task_id}/cancel",
   "/v1/tasks/{task_id}/retry",
   "/v1/tasks/{task_id}/events",
+  "/v1/scheduled-goals/config",
+  "/v1/scheduled-goals",
+  "/v1/scheduled-goals/{scheduled_goal_id}",
+  "/v1/scheduled-goals/{scheduled_goal_id}/cancel",
+  "/v1/scheduled-goals/{scheduled_goal_id}/retry",
+  "/v1/scheduled-goals/run-due",
   "/v1/skills",
   "/v1/capabilities",
   "/v1/skill-evaluations/config",
@@ -168,6 +184,83 @@ export interface PlatformEvent {
   trace_id: string;
   occurred_at: string;
   payload: Record<string, unknown>;
+}
+
+export type ScheduledGoalStatus = "scheduled" | "running" | "completed" | "cancelled" | "failed" | "paused" | "blocked";
+export type ScheduledGoalRunStatus = "submitted" | "blocked" | "failed" | "skipped";
+
+export interface ScheduledGoalsConfig {
+  schema_version: "nexus.scheduled_goal.p7.v1";
+  tenant_id: string;
+  enabled: boolean;
+  schedule_mode: "cron_like_utc";
+  execution_mode: "manual_tick";
+  resource_budget: {
+    budget_mode: "alpha_in_memory_limits";
+    max_active_goals: number;
+    max_due_per_tick: number;
+    min_interval_minutes: number;
+  };
+  updated_at_utc: string;
+  monotonic_ms: number;
+  trace_id: string;
+}
+
+export interface ScheduledGoalRecord {
+  schema_version: "nexus.scheduled_goal.p7.v1";
+  scheduled_goal_id: string;
+  tenant_id: string;
+  user_id?: string;
+  agent_id?: string;
+  conversation_id?: string;
+  trace_id: string;
+  status: ScheduledGoalStatus;
+  cron: string;
+  input: string;
+  next_run_at_utc: string;
+  last_run_at_utc?: string;
+  last_run_status?: ScheduledGoalRunStatus;
+  last_task_id?: string;
+  last_attempt_id?: string;
+  last_execution_id?: string;
+  run_count: number;
+  failure_count: number;
+  budget_units: number;
+  reason_codes: readonly string[];
+  created_at_utc: string;
+  updated_at_utc: string;
+  monotonic_ms: number;
+}
+
+export interface ScheduledGoalRunDueItem {
+  scheduled_goal_id: string;
+  tenant_id: string;
+  user_id?: string;
+  agent_id?: string;
+  task_id?: string;
+  attempt_id?: string;
+  execution_id?: string;
+  conversation_id?: string;
+  trace_id: string;
+  status: ScheduledGoalRunStatus;
+  next_run_at_utc?: string;
+  reason_codes: readonly string[];
+}
+
+export interface ScheduledGoalRunDueResult {
+  schema_version: "nexus.scheduled_goal.p7.v1";
+  tenant_id: string;
+  trace_id: string;
+  status: "completed" | "skipped";
+  scanned_count: number;
+  due_count: number;
+  submitted_count: number;
+  blocked_count: number;
+  failed_count: number;
+  items: readonly ScheduledGoalRunDueItem[];
+  resource_budget: ScheduledGoalsConfig["resource_budget"];
+  checked_at_utc: string;
+  monotonic_ms: number;
 }
 
 export interface PlatformList<T> {
@@ -550,6 +643,48 @@ export class PlatformApiClient {
 
   listTaskEvents(task_id: string, params: { limit?: number; cursor?: string } = {}): Promise<PlatformList<PlatformEvent>> {
     return this.#request<PlatformList<PlatformEvent>>("GET", withQuery(`/v1/tasks/${encodeURIComponent(task_id)}/events`, params));
+  }
+
+  getScheduledGoalsConfig(input: { tenant_id?: string; trace_id?: string } = {}): Promise<ScheduledGoalsConfig> {
+    return this.#request<ScheduledGoalsConfig>("GET", withQuery("/v1/scheduled-goals/config", { tenant_id: input.tenant_id ?? this.profile.tenant_id, trace_id: input.trace_id }));
+  }
+
+  updateScheduledGoalsConfig(input: { tenant_id?: string; trace_id: string; enabled?: boolean; max_active_goals?: number; max_due_per_tick?: number; min_interval_minutes?: number }): Promise<ScheduledGoalsConfig> {
+    return this.#request<ScheduledGoalsConfig>("PATCH", "/v1/scheduled-goals/config", {
+      body: { tenant_id: input.tenant_id ?? this.profile.tenant_id, ...input },
+    });
+  }
+
+  listScheduledGoals(params: { tenant_id?: string; user_id?: string; status?: ScheduledGoalStatus; limit?: number; cursor?: string } = {}): Promise<PlatformList<ScheduledGoalRecord>> {
+    return this.#request<PlatformList<ScheduledGoalRecord>>("GET", withQuery("/v1/scheduled-goals", { tenant_id: params.tenant_id ?? this.profile.tenant_id, user_id: params.user_id, status: params.status, limit: params.limit, cursor: params.cursor }));
+  }
+
+  createScheduledGoal(input: { agent_id: string; conversation_id: string; cron: string; input: string; trace_id: string; tenant_id?: string; user_id?: string; budget_units?: number }): Promise<ScheduledGoalRecord> {
+    return this.#request<ScheduledGoalRecord>("POST", "/v1/scheduled-goals", {
+      body: { tenant_id: input.tenant_id ?? this.profile.tenant_id, user_id: input.user_id ?? this.profile.user_id, ...input },
+    });
+  }
+
+  getScheduledGoal(scheduled_goal_id: string): Promise<ScheduledGoalRecord> {
+    return this.#request<ScheduledGoalRecord>("GET", `/v1/scheduled-goals/${encodeURIComponent(scheduled_goal_id)}`);
+  }
+
+  updateScheduledGoal(scheduled_goal_id: string, input: { trace_id: string; cron?: string; input?: string; agent_id?: string; conversation_id?: string; budget_units?: number; status?: "scheduled" | "paused" }): Promise<ScheduledGoalRecord> {
+    return this.#request<ScheduledGoalRecord>("PATCH", `/v1/scheduled-goals/${encodeURIComponent(scheduled_goal_id)}`, { body: input });
+  }
+
+  cancelScheduledGoal(scheduled_goal_id: string, input: { reason: string; trace_id: string }): Promise<ScheduledGoalRecord> {
+    return this.#request<ScheduledGoalRecord>("POST", `/v1/scheduled-goals/${encodeURIComponent(scheduled_goal_id)}/cancel`, { body: input });
+  }
+
+  retryScheduledGoal(scheduled_goal_id: string, input: { reason: string; trace_id: string }): Promise<ScheduledGoalRecord> {
+    return this.#request<ScheduledGoalRecord>("POST", `/v1/scheduled-goals/${encodeURIComponent(scheduled_goal_id)}/retry`, { body: input });
+  }
+
+  runDueScheduledGoals(input: { tenant_id?: string; trace_id: string; user_id?: string }): Promise<ScheduledGoalRunDueResult> {
+    return this.#request<ScheduledGoalRunDueResult>("POST", "/v1/scheduled-goals/run-due", {
+      body: { tenant_id: input.tenant_id ?? this.profile.tenant_id, ...input },
+    });
   }
 
   listSkills(params: { tenant_id?: string; limit?: number; cursor?: string } = {}): Promise<PlatformList<SkillRecord>> {

@@ -7,7 +7,12 @@ import {
   CoordinatorError,
   estimateTokenBudgetUnits,
   LocalTokenBudget,
+  LocalScheduledGoals,
+  ScheduledGoalsError,
   type CoordinatorTaskCommandRequest,
+  type ScheduledGoalRecord,
+  type ScheduledGoalRunDueItem,
+  type ScheduledGoalStatus,
   type TokenBudgetLimits,
 } from "../../platform/coordinator/index.ts";
 import { LocalCredentialCenter } from "../../platform/credentials/index.ts";
@@ -110,6 +115,7 @@ export class PlatformApiApp {
   readonly audit: LocalAuditLog;
   readonly observability: LocalObservability;
   readonly tokenBudget: LocalTokenBudget;
+  readonly scheduledGoals: LocalScheduledGoals;
   readonly pluginGovernance = new LocalPluginGovernance({ tenant_id: "tenant_alpha01", trace_id: "trace_plugin01" });
   readonly channelManagement: LocalChannelManagement;
   readonly skillEvaluation: LocalSkillEvaluation;
@@ -133,6 +139,7 @@ export class PlatformApiApp {
     this.memory = new LocalMemoryGateway({ clock: this.clock, eventBus: this.eventBus, observability: this.observability });
     this.credentials = new LocalCredentialCenter({ clock: this.clock, eventBus: this.eventBus });
     this.audit = new LocalAuditLog({ clock: this.clock, eventBus: this.eventBus });
+    this.scheduledGoals = new LocalScheduledGoals({ clock: this.clock, coordinator: this.coordinator, eventBus: this.eventBus, observability: this.observability });
     this.channelManagement = new LocalChannelManagement({ clock: this.clock, coordinator: this.coordinator, eventBus: this.eventBus });
     this.skillEvaluation = new LocalSkillEvaluation({ clock: this.clock, catalog: this.pluginGovernance, observability: this.observability });
     this.#seedIdentity();
@@ -165,6 +172,16 @@ export class PlatformApiApp {
       if (method === "POST" && /^\/v1\/tasks\/[^/]+\/cancel$/.test(parsed.pathname)) return ok(this.#taskCommand(pathPart(parsed.pathname, 3), asObject(body), principal, "cancel_attempt"), 202);
       if (method === "POST" && /^\/v1\/tasks\/[^/]+\/retry$/.test(parsed.pathname)) return ok(this.#taskCommand(pathPart(parsed.pathname, 3), asObject(body), principal, "redo_attempt"), 202);
       if (method === "GET" && /^\/v1\/tasks\/[^/]+\/events$/.test(parsed.pathname)) return ok(paginate(this.#taskEvents(pathPart(parsed.pathname, 3), principal), parsed.query));
+
+      if (method === "GET" && parsed.pathname === "/v1/scheduled-goals/config") return ok(this.#getScheduledGoalsConfig(parsed.query, principal));
+      if (method === "PATCH" && parsed.pathname === "/v1/scheduled-goals/config") return ok(this.#updateScheduledGoalsConfig(asObject(body), principal));
+      if (method === "GET" && parsed.pathname === "/v1/scheduled-goals") return ok(paginate(this.#listScheduledGoals(parsed.query, principal), parsed.query));
+      if (method === "POST" && parsed.pathname === "/v1/scheduled-goals") return ok(this.#createScheduledGoal(asObject(body), principal), 201);
+      if (method === "POST" && parsed.pathname === "/v1/scheduled-goals/run-due") return ok(this.#runDueScheduledGoals(asObject(body), principal), 202);
+      if (method === "GET" && /^\/v1\/scheduled-goals\/[^/]+$/.test(parsed.pathname)) return ok(this.#getScheduledGoal(pathPart(parsed.pathname, 3), principal));
+      if (method === "PATCH" && /^\/v1\/scheduled-goals\/[^/]+$/.test(parsed.pathname)) return ok(this.#updateScheduledGoal(pathPart(parsed.pathname, 3), asObject(body), principal));
+      if (method === "POST" && /^\/v1\/scheduled-goals\/[^/]+\/cancel$/.test(parsed.pathname)) return ok(this.#cancelScheduledGoal(pathPart(parsed.pathname, 3), asObject(body), principal), 202);
+      if (method === "POST" && /^\/v1\/scheduled-goals\/[^/]+\/retry$/.test(parsed.pathname)) return ok(this.#retryScheduledGoal(pathPart(parsed.pathname, 3), asObject(body), principal), 202);
 
       if (method === "GET" && parsed.pathname === "/v1/skills") return ok(paginate(this.#skills(parsed.query, principal), parsed.query));
       if (method === "GET" && parsed.pathname === "/v1/capabilities") return ok(paginate(this.#capabilities(parsed.query, principal), parsed.query));
@@ -341,6 +358,129 @@ export class PlatformApiApp {
     return this.coordinator.events()
       .filter((event) => event.task_id === task.task_id)
       .map(projectEvent);
+  }
+
+  #getScheduledGoalsConfig(query: URLSearchParams, principal: Principal): JsonObject {
+    const tenant_id = query.get("tenant_id") ?? principal.tenant_id;
+    this.#assertTenant(principal, tenant_id);
+    if (!principal.permissions.includes("tenant:read")) this.#require(principal, "task:submit");
+    const trace_id = query.get("trace_id") ?? "trace_scheduled_goals01";
+    return this.scheduledGoals.getConfig(tenant_id, requiredId("trace_id", trace_id)) as unknown as JsonObject;
+  }
+
+  #updateScheduledGoalsConfig(body: JsonObject, principal: Principal): JsonObject {
+    const tenant_id = requiredId("tenant_id", body.tenant_id);
+    this.#assertTenant(principal, tenant_id);
+    this.#require(principal, "tenant:manage");
+    const config = this.scheduledGoals.updateConfig({
+      tenant_id,
+      trace_id: requiredId("trace_id", body.trace_id),
+      ...(body.enabled === undefined ? {} : { enabled: requiredBoolean(body.enabled, "enabled") }),
+      ...(body.max_active_goals === undefined ? {} : { max_active_goals: positiveInteger(body.max_active_goals, "max_active_goals") }),
+      ...(body.max_due_per_tick === undefined ? {} : { max_due_per_tick: positiveInteger(body.max_due_per_tick, "max_due_per_tick") }),
+      ...(body.min_interval_minutes === undefined ? {} : { min_interval_minutes: positiveInteger(body.min_interval_minutes, "min_interval_minutes") }),
+    });
+    this.#audit(principal, "scheduled_goal.config.update", "allowed", { kind: "policy", id: `scheduled_goals_${tenant_id}`, tenant_id }, config.trace_id);
+    return config as unknown as JsonObject;
+  }
+
+  #listScheduledGoals(query: URLSearchParams, principal: Principal): readonly JsonObject[] {
+    const tenant_id = query.get("tenant_id") ?? principal.tenant_id;
+    this.#assertTenant(principal, tenant_id);
+    const user_id = isTenantAdmin(principal) || isPlatformAdmin(principal) || principal.permissions.includes("tenant:read")
+      ? optionalId("user_id", query.get("user_id") ?? undefined)
+      : principal.user_id;
+    const status = query.get("status") ?? undefined;
+    if (!isTenantAdmin(principal) && !isPlatformAdmin(principal) && !principal.permissions.includes("tenant:read")) this.#require(principal, "task:submit");
+    return this.scheduledGoals.list({ tenant_id, user_id, status: optionalScheduledGoalStatus(status) }) as unknown as JsonObject[];
+  }
+
+  #createScheduledGoal(body: JsonObject, principal: Principal): JsonObject {
+    const tenant_id = requiredId("tenant_id", body.tenant_id);
+    this.#assertTenant(principal, tenant_id);
+    this.#require(principal, "task:submit");
+    const user_id = optionalId("user_id", body.user_id) ?? principal.user_id;
+    if (principal.user_id !== user_id && !isTenantAdmin(principal) && !isPlatformAdmin(principal)) {
+      throw new PlatformApiError("PLATFORM_FORBIDDEN", "Principal cannot schedule a goal for another user", { user_id });
+    }
+    const goal = this.scheduledGoals.create({
+      tenant_id,
+      user_id,
+      agent_id: requiredId("agent_id", body.agent_id),
+      conversation_id: requiredId("conversation_id", body.conversation_id),
+      trace_id: requiredId("trace_id", body.trace_id),
+      cron: requiredText(body.cron, "cron"),
+      input: requiredText(body.input, "input"),
+      ...(body.budget_units === undefined ? {} : { budget_units: positiveInteger(body.budget_units, "budget_units") }),
+    });
+    this.#audit(principal, "scheduled_goal.create", "allowed", { kind: "task", id: goal.scheduled_goal_id, tenant_id }, goal.trace_id);
+    return goal as unknown as JsonObject;
+  }
+
+  #getScheduledGoal(scheduled_goal_id: string, principal: Principal): JsonObject {
+    const goal = this.scheduledGoals.get(scheduled_goal_id);
+    this.#assertScheduledGoalAccess(goal, principal, false);
+    return goal as unknown as JsonObject;
+  }
+
+  #updateScheduledGoal(scheduled_goal_id: string, body: JsonObject, principal: Principal): JsonObject {
+    const existing = this.scheduledGoals.get(scheduled_goal_id);
+    this.#assertScheduledGoalAccess(existing, principal, true);
+    const goal = this.scheduledGoals.update(scheduled_goal_id, {
+      trace_id: requiredId("trace_id", body.trace_id),
+      ...(body.cron === undefined ? {} : { cron: requiredText(body.cron, "cron") }),
+      ...(body.input === undefined ? {} : { input: requiredText(body.input, "input") }),
+      ...(body.agent_id === undefined ? {} : { agent_id: requiredId("agent_id", body.agent_id) }),
+      ...(body.conversation_id === undefined ? {} : { conversation_id: requiredId("conversation_id", body.conversation_id) }),
+      ...(body.budget_units === undefined ? {} : { budget_units: positiveInteger(body.budget_units, "budget_units") }),
+      ...(body.status === undefined ? {} : { status: requiredScheduledGoalPatchStatus(body.status) }),
+    });
+    this.#audit(principal, "scheduled_goal.update", "allowed", { kind: "task", id: goal.scheduled_goal_id, tenant_id: goal.tenant_id }, goal.trace_id);
+    return goal as unknown as JsonObject;
+  }
+
+  #cancelScheduledGoal(scheduled_goal_id: string, body: JsonObject, principal: Principal): JsonObject {
+    const existing = this.scheduledGoals.get(scheduled_goal_id);
+    this.#assertScheduledGoalAccess(existing, principal, true);
+    const goal = this.scheduledGoals.cancel(scheduled_goal_id, {
+      trace_id: requiredId("trace_id", body.trace_id),
+      reason: requiredText(body.reason, "reason"),
+    }, principal);
+    this.#syncScheduledTaskFromGoal(goal as unknown as ScheduledGoalRunDueItem, "cancelled");
+    this.#audit(principal, "scheduled_goal.cancel", "allowed", { kind: "task", id: goal.scheduled_goal_id, tenant_id: goal.tenant_id }, goal.trace_id, goal.last_task_id, goal.last_attempt_id, goal.last_execution_id, goal.conversation_id);
+    return goal as unknown as JsonObject;
+  }
+
+  #retryScheduledGoal(scheduled_goal_id: string, body: JsonObject, principal: Principal): JsonObject {
+    const existing = this.scheduledGoals.get(scheduled_goal_id);
+    this.#assertScheduledGoalAccess(existing, principal, true);
+    const goal = this.scheduledGoals.retry(scheduled_goal_id, {
+      trace_id: requiredId("trace_id", body.trace_id),
+      reason: requiredText(body.reason, "reason"),
+    });
+    this.#audit(principal, "scheduled_goal.retry", "allowed", { kind: "task", id: goal.scheduled_goal_id, tenant_id: goal.tenant_id }, goal.trace_id);
+    return goal as unknown as JsonObject;
+  }
+
+  #runDueScheduledGoals(body: JsonObject, principal: Principal): JsonObject {
+    const tenant_id = requiredId("tenant_id", body.tenant_id);
+    this.#assertTenant(principal, tenant_id);
+    this.#require(principal, "task:submit");
+    const owner_user_id = isTenantAdmin(principal) || isPlatformAdmin(principal)
+      ? optionalId("user_id", body.user_id)
+      : principal.user_id;
+    if (body.user_id !== undefined && owner_user_id !== body.user_id) {
+      throw new PlatformApiError("PLATFORM_FORBIDDEN", "Principal cannot run due goals for another user", { user_id: body.user_id });
+    }
+    const result = this.scheduledGoals.runDue({
+      tenant_id,
+      trace_id: requiredId("trace_id", body.trace_id),
+      principal,
+      owner_user_id,
+    });
+    for (const item of result.items) this.#syncScheduledTaskFromGoal(item, item.status === "submitted" ? "admitted" : item.status === "blocked" ? "blocked" : "failed");
+    this.#audit(principal, "scheduled_goal.run_due", "allowed", { kind: "task", id: `scheduled_goal_tick_${tenant_id}`, tenant_id }, result.trace_id);
+    return result as unknown as JsonObject;
   }
 
   #skills(query: URLSearchParams, principal: Principal): readonly JsonObject[] {
@@ -802,6 +942,45 @@ export class PlatformApiApp {
     return task;
   }
 
+  #assertScheduledGoalAccess(goal: ScheduledGoalRecord, principal: Principal, manage: boolean): void {
+    this.#assertTenant(principal, goal.tenant_id);
+    if (manage) {
+      if (goal.user_id === principal.user_id) {
+        this.#require(principal, "task:submit");
+        return;
+      }
+      this.#require(principal, "tenant:manage");
+      return;
+    }
+    if (goal.user_id !== principal.user_id && !isTenantAdmin(principal) && !isPlatformAdmin(principal)) {
+      this.#require(principal, "tenant:read");
+    }
+  }
+
+  #syncScheduledTaskFromGoal(item: ScheduledGoalRunDueItem | ScheduledGoalRecord, state: TaskState): void {
+    const task_id = "task_id" in item && item.task_id ? item.task_id : "last_task_id" in item ? item.last_task_id : undefined;
+    const attempt_id = "attempt_id" in item && item.attempt_id ? item.attempt_id : "last_attempt_id" in item ? item.last_attempt_id : undefined;
+    const execution_id = "execution_id" in item && item.execution_id ? item.execution_id : "last_execution_id" in item ? item.last_execution_id : undefined;
+    if (!task_id || !attempt_id || !execution_id) return;
+    const existing = this.#tasks.get(task_id);
+    const reading = this.clock.now();
+    this.#tasks.set(task_id, {
+      tenant_id: item.tenant_id,
+      user_id: item.user_id ?? "user_scheduled_goals",
+      agent_id: item.agent_id ?? "agent_scheduled_goals",
+      task_id,
+      attempt_id,
+      execution_id,
+      conversation_id: item.conversation_id ?? "conv_scheduled_goals",
+      state,
+      trace_id: item.trace_id,
+      summary: "Scheduled goal task",
+      artifact_ids: existing?.artifact_ids ?? [],
+      created_at: existing?.created_at ?? reading.utc_timestamp,
+      updated_at: reading.utc_timestamp,
+    });
+  }
+
   #assertTenant(principal: Principal, tenant_id: string): void {
     assertPlatformId("tenant_id", tenant_id);
     if (principal.tenant_id !== tenant_id && !isPlatformAdmin(principal)) {
@@ -856,7 +1035,7 @@ export class PlatformApiApp {
     conversation_id?: string,
   ): void {
     this.audit.append({
-      tenant_id: principal.tenant_id,
+      tenant_id: resource.tenant_id ?? principal.tenant_id,
       user_id: principal.user_id,
       trace_id,
       action,
@@ -949,7 +1128,7 @@ function errorResponse(error: unknown, trace_id: string): PlatformApiResponse {
 }
 
 function errorCode(error: unknown): string {
-  if (error instanceof PlatformApiError || error instanceof PublicSurfaceError || error instanceof CoordinatorError || error instanceof PluginGovernanceError) return error.code;
+  if (error instanceof PlatformApiError || error instanceof PublicSurfaceError || error instanceof CoordinatorError || error instanceof PluginGovernanceError || error instanceof ScheduledGoalsError) return error.code;
   if (error && typeof error === "object" && "code" in error && typeof (error as { code?: unknown }).code === "string") return (error as { code: string }).code;
   return "PLATFORM_INTERNAL_ERROR";
 }
@@ -1070,6 +1249,17 @@ function optionalMemoryConflictStatus(value: unknown): "open" | "resolved" | "ig
   if (value === undefined) return undefined;
   if (["open", "resolved", "ignored"].includes(String(value))) return value as "open" | "resolved" | "ignored";
   throw new PlatformApiError("PLATFORM_INVALID_REQUEST", "Memory conflict status is unsupported", { status: value });
+}
+
+function optionalScheduledGoalStatus(value: unknown): ScheduledGoalStatus | undefined {
+  if (value === undefined) return undefined;
+  if (["scheduled", "running", "completed", "cancelled", "failed", "paused", "blocked"].includes(String(value))) return value as ScheduledGoalStatus;
+  throw new PlatformApiError("PLATFORM_INVALID_REQUEST", "Scheduled goal status is unsupported", { status: value });
+}
+
+function requiredScheduledGoalPatchStatus(value: unknown): "scheduled" | "paused" {
+  if (value === "scheduled" || value === "paused") return value;
+  throw new PlatformApiError("PLATFORM_INVALID_REQUEST", "Scheduled goal patch status is unsupported", { status: value });
 }
 
 function requiredMemoryConflictDecision(value: unknown): "resolve" | "ignore" {

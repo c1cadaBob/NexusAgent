@@ -64,3 +64,17 @@ Skill evaluation is a Default Off P7 advanced capability. Tenant or platform adm
 - `POST /v1/memory/conflicts/{conflict_id}/decision`
 
 Token budget is Default On in P7-04 with All configured tenant, user, agent, and task ledger dimensions. Task submit, planner/executor adapter dispatch, and API budget checks share the same deterministic accounting path; exceeded budget returns platform errors or blocked/degraded task state without calling the adapter. Memory conflict detection is also Default On and uses an Admin resolve queue. `expected_version` mismatches create metadata-only conflict records and never return memory rejected text, stale payload, credential material, native fields, provider runtime, or local paths.
+
+## P7-05 scheduled goal routes
+
+- `GET /v1/scheduled-goals/config`
+- `PATCH /v1/scheduled-goals/config`
+- `GET /v1/scheduled-goals`
+- `POST /v1/scheduled-goals`
+- `GET /v1/scheduled-goals/{scheduled_goal_id}`
+- `PATCH /v1/scheduled-goals/{scheduled_goal_id}`
+- `POST /v1/scheduled-goals/{scheduled_goal_id}/cancel`
+- `POST /v1/scheduled-goals/{scheduled_goal_id}/retry`
+- `POST /v1/scheduled-goals/run-due`
+
+Scheduled goals are Default Off in P7-05 and execute only through manual due scans. The alpha scheduler accepts UTC 5-field Cron-like recurrence, creates ordinary platform tasks with scheduler source metadata, and reuses Coordinator, Policy-Gate, token budget, audit, events, and observability. It does not run a background daemon, contact external networks, use real credentials, or expose implementation-specific fields.

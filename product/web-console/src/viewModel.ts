@@ -13,6 +13,9 @@ import type {
   PlatformTask,
   PluginInventoryEntry,
   PrincipalProfile,
+  ScheduledGoalRecord,
+  ScheduledGoalRunDueResult,
+  ScheduledGoalsConfig,
   SkillEvaluationConfig,
   SkillEvaluationRunReport,
   SkillRecord,
@@ -28,6 +31,7 @@ export const NAV_ITEMS = Object.freeze([
   { id: "overview", label: "Overview" },
   { id: "tenants", label: "Tenants" },
   { id: "channels", label: "Channels" },
+  { id: "scheduled-goals", label: "Scheduled Goals" },
   { id: "tasks", label: "Tasks" },
   { id: "approvals", label: "Approvals" },
   { id: "skills", label: "Skills" },
@@ -74,6 +78,9 @@ export interface ConsoleDataset {
   tenantUsers: readonly TenantUserRecord[];
   channels: readonly ChannelConfigRecord[];
   channelTest?: ChannelConnectionTestResult;
+  scheduledGoals: readonly ScheduledGoalRecord[];
+  scheduledGoalsConfig?: ScheduledGoalsConfig;
+  scheduledGoalsRunDue?: ScheduledGoalRunDueResult;
   approvals: readonly ApprovalRecord[];
   skills: readonly SkillRecord[];
   capabilities: readonly CapabilityDescriptor[];
@@ -115,9 +122,13 @@ export interface ConsoleDashboardModel {
     skill_evaluation_runs: number;
     memory_conflicts: number;
     budget_ledger_entries: number;
+    scheduled_goals: number;
   };
   agents: readonly AgentSummary[];
   channelRows: readonly Pick<ChannelConfigRecord, typeof CHANNEL_PUBLIC_COLUMNS[number]>[];
+  scheduledGoalRows: readonly Record<string, unknown>[];
+  scheduledGoalConfigRows: readonly Record<string, unknown>[];
+  scheduledGoalRunDueRows: readonly Record<string, unknown>[];
   pluginRows: readonly Pick<PluginInventoryEntry, typeof PLUGIN_PUBLIC_COLUMNS[number]>[];
   memoryRetentionRows: readonly Record<string, unknown>[];
   memoryConflictRows: readonly Record<string, unknown>[];
@@ -146,9 +157,13 @@ export function buildConsoleDashboardModel(profile: PrincipalProfile, data: Cons
       skill_evaluation_runs: data.skillEvaluationRuns?.length ?? 0,
       memory_conflicts: data.memoryConflicts?.length ?? 0,
       budget_ledger_entries: data.budgetLedger?.length ?? 0,
+      scheduled_goals: (data.scheduledGoals ?? []).length,
     },
     agents: summarizeAgents(data.tasks),
     channelRows: data.channels.map(projectChannelRow),
+    scheduledGoalRows: projectScheduledGoalRows(data.scheduledGoals ?? []),
+    scheduledGoalConfigRows: projectScheduledGoalConfigRows(data.scheduledGoalsConfig),
+    scheduledGoalRunDueRows: projectScheduledGoalRunDueRows(data.scheduledGoalsRunDue),
     pluginRows: data.plugins.map(projectPluginRow),
     memoryRetentionRows: projectMemoryRetentionRows(data.memoryRetentionPolicy),
     memoryConflictRows: projectMemoryConflictRows(data.memoryConflicts ?? []),
@@ -198,6 +213,75 @@ export function projectChannelRow(entry: ChannelConfigRecord): Pick<ChannelConfi
   return row;
 }
 
+export function projectScheduledGoalRows(goals: readonly ScheduledGoalRecord[]): readonly Record<string, unknown>[] {
+  const rows = goals.map((goal) => ({
+    scheduled_goal_id: goal.scheduled_goal_id,
+    tenant_id: goal.tenant_id,
+    user_id: goal.user_id,
+    agent_id: goal.agent_id,
+    conversation_id: goal.conversation_id,
+    status: goal.status,
+    cron: goal.cron,
+    next_run_at_utc: goal.next_run_at_utc,
+    last_run_status: goal.last_run_status,
+    last_task_id: goal.last_task_id,
+    run_count: goal.run_count,
+    failure_count: goal.failure_count,
+    budget_units: goal.budget_units,
+    reason_codes: [...goal.reason_codes],
+    trace_id: goal.trace_id,
+  }));
+  assertConsolePublicValue(rows);
+  return rows;
+}
+
+export function projectScheduledGoalConfigRows(config: ScheduledGoalsConfig | undefined): readonly Record<string, unknown>[] {
+  if (!config) return [];
+  const rows = [{
+    tenant_id: config.tenant_id,
+    enabled: config.enabled,
+    schedule_mode: config.schedule_mode,
+    execution_mode: config.execution_mode,
+    budget_mode: config.resource_budget.budget_mode,
+    max_active_goals: config.resource_budget.max_active_goals,
+    max_due_per_tick: config.resource_budget.max_due_per_tick,
+    min_interval_minutes: config.resource_budget.min_interval_minutes,
+    updated_at_utc: config.updated_at_utc,
+    trace_id: config.trace_id,
+  }];
+  assertConsolePublicValue(rows);
+  return rows;
+}
+
+export function projectScheduledGoalRunDueRows(result: ScheduledGoalRunDueResult | undefined): readonly Record<string, unknown>[] {
+  if (!result) return [];
+  const rows = result.items.length === 0
+    ? [{
+      tenant_id: result.tenant_id,
+      status: result.status,
+      scanned_count: result.scanned_count,
+      due_count: result.due_count,
+      submitted_count: result.submitted_count,
+      blocked_count: result.blocked_count,
+      failed_count: result.failed_count,
+      checked_at_utc: result.checked_at_utc,
+      trace_id: result.trace_id,
+    }]
+    : result.items.map((item) => ({
+      scheduled_goal_id: item.scheduled_goal_id,
+      tenant_id: item.tenant_id,
+      user_id: item.user_id,
+      agent_id: item.agent_id,
+      task_id: item.task_id,
+      status: item.status,
+      next_run_at_utc: item.next_run_at_utc,
+      reason_codes: [...item.reason_codes],
+      trace_id: item.trace_id,
+    }));
+  assertConsolePublicValue(rows);
+  return rows;
+}
+
 export function projectPluginRow(entry: PluginInventoryEntry): Pick<PluginInventoryEntry, typeof PLUGIN_PUBLIC_COLUMNS[number]> {
   const row = {
     plugin_id: entry.plugin_id,
@@ -219,16 +303,18 @@ export function visibleNavigation(profile: PrincipalProfile): readonly typeof NA
   return NAV_ITEMS.filter((item) => {
     if (item.id === "plugins") return profile.canManagePlugins;
     if (item.id === "channels") return profile.canReadChannels;
+    if (item.id === "scheduled-goals") return profile.canReadScheduledGoals;
     if (item.id === "evaluations") return profile.canManageSkillEvaluation;
     if (item.id === "budget") return profile.canSubmitTask || profile.canManageTokenBudget;
     return true;
   });
 }
 
-export function actionEnabled(profile: PrincipalProfile, action: "submit_task" | "write_memory" | "manage_plugins" | "manage_channels" | "manage_memory_retention" | "manage_memory_conflicts" | "manage_skill_evaluation" | "manage_token_budget"): boolean {
+export function actionEnabled(profile: PrincipalProfile, action: "submit_task" | "write_memory" | "manage_plugins" | "manage_channels" | "manage_scheduled_goals" | "manage_memory_retention" | "manage_memory_conflicts" | "manage_skill_evaluation" | "manage_token_budget"): boolean {
   if (action === "submit_task") return profile.canSubmitTask;
   if (action === "write_memory") return profile.canWriteMemory;
   if (action === "manage_channels") return profile.canManageChannels;
+  if (action === "manage_scheduled_goals") return profile.canManageScheduledGoals;
   if (action === "manage_memory_retention") return profile.canManageMemoryRetention;
   if (action === "manage_memory_conflicts") return profile.canManageMemoryConflicts;
   if (action === "manage_skill_evaluation") return profile.canManageSkillEvaluation;

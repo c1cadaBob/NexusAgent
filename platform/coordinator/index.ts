@@ -78,6 +78,29 @@ export {
   type TokenBudgetReasonCode,
 } from "./token-budget.ts";
 
+export {
+  assertScheduledGoalId,
+  LocalScheduledGoals,
+  SCHEDULED_GOALS_DEFAULT_ENABLED,
+  SCHEDULED_GOALS_EXECUTION_MODE,
+  SCHEDULED_GOALS_RESOURCE_BUDGET_MODE,
+  SCHEDULED_GOALS_SCHEMA_VERSION,
+  SCHEDULED_GOALS_SCHEDULE_MODE,
+  ScheduledGoalsError,
+  type ScheduledGoalActionInput,
+  type ScheduledGoalCreateInput,
+  type ScheduledGoalObservability,
+  type ScheduledGoalReasonCode,
+  type ScheduledGoalRecord,
+  type ScheduledGoalRunDueInput,
+  type ScheduledGoalRunDueItem,
+  type ScheduledGoalRunDueResult,
+  type ScheduledGoalRunStatus,
+  type ScheduledGoalsConfig,
+  type ScheduledGoalStatus,
+  type ScheduledGoalUpdateInput,
+} from "./scheduled-goals.ts";
+
 export type AdapterKind = "channel" | "planner" | "executor" | "memory" | "artifact" | "credential";
 
 export interface CoordinatorTaskRequest {

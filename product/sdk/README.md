@@ -61,3 +61,7 @@ The SDK includes administrator skill evaluation helpers: `getSkillEvaluationConf
 The SDK includes token budget helpers: `getBudgetPolicy`, `updateBudgetPolicy`, `listBudgetLedger`, and the extended `checkBudget`. P7-04 budget accounting is Default On and All configured across tenant, user, agent, and task dimensions; task submit can pass optional `budget_units`, otherwise the platform estimates units deterministically.
 
 The SDK also includes memory conflict helpers: `listMemoryConflicts`, `getMemoryConflict`, and `decideMemoryConflict`. `writeMemory` supports `expected_version`; mismatches create metadata-only Admin resolve queue records. SDK types and examples expose only platform fields and do not include memory rejected text, stale payload, secret material, internal implementation markers, or local filesystem references.
+
+## P7-05 Scheduled Goals
+
+The SDK includes scheduled goal helpers: `getScheduledGoalsConfig`, `updateScheduledGoalsConfig`, `createScheduledGoal`, `listScheduledGoals`, `getScheduledGoal`, `updateScheduledGoal`, `cancelScheduledGoal`, `retryScheduledGoal`, and `runDueScheduledGoals`. P7-05 scheduled goals are Default Off and run only when an authorized principal triggers a manual due scan. The SDK sends UTC 5-field Cron-like recurrence and platform task metadata to `/v1/scheduled-goals*` routes only; no background scheduler, real channel network, real credential, or implementation-specific field is exposed.

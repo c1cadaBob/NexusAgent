@@ -22,7 +22,7 @@ function clientFor(profileKey) {
       json: async () => response.body,
     };
   };
-  return { client: new PlatformApiClient(profile, { baseUrl: 'http://console.test', fetchImpl }), calls, profile };
+  return { app, client: new PlatformApiClient(profile, { baseUrl: 'http://console.test', fetchImpl }), calls, profile };
 }
 
 test('web console API client attaches bearer tokens and uses platform routes', async () => {
@@ -157,6 +157,50 @@ test('tenant admin workflow manages channel configuration while viewer write acc
     conversation_ref: 'channel_conversation_viewer01',
     trace_id: 'trace_console15',
   }), (error) => {
+    assert.equal(error instanceof PlatformApiError, true);
+    assert.equal(error.status, 403);
+    assert.equal(error.code, 'PLATFORM_FORBIDDEN');
+    return true;
+  });
+});
+
+test('operator workflow manages scheduled goals with default-off manual due scan', async () => {
+  const { app, client } = clientFor('operator');
+  const tenantAdmin = new PlatformApiClient(DEV_PRINCIPALS.find((item) => item.key === 'tenant-admin'), {
+    baseUrl: 'http://console.test',
+    fetchImpl: async (url, init = {}) => {
+      const parsed = new URL(String(url));
+      const headers = Object.fromEntries(Object.entries(init.headers ?? {}).map(([key, value]) => [key.toLowerCase(), String(value)]));
+      const body = init.body === undefined ? undefined : JSON.parse(String(init.body));
+      const response = await app.handle({ method: init.method ?? 'GET', path: `${parsed.pathname}${parsed.search}`, headers, body });
+      return { ok: response.status >= 200 && response.status < 300, status: response.status, json: async () => response.body };
+    },
+  });
+
+  const config = await client.getScheduledGoalsConfig({ trace_id: 'trace_console_scheduled01' });
+  assert.equal(config.schema_version, 'nexus.scheduled_goal.p7.v1');
+  assert.equal(config.enabled, false);
+  const created = await client.createScheduledGoal({ cron: '*/5 * * * *', input: 'console scheduled task', conversation_id: 'conv_console_scheduled01', agent_id: 'agent_alpha01', budget_units: 10, trace_id: 'trace_console_scheduled02' });
+  assert.equal(created.status, 'scheduled');
+
+  app.clock.set({ utc_timestamp: created.next_run_at_utc, monotonic_ms: 1000 });
+  const skipped = await client.runDueScheduledGoals({ trace_id: 'trace_console_scheduled03' });
+  assert.equal(skipped.status, 'skipped');
+  await tenantAdmin.updateScheduledGoalsConfig({ enabled: true, trace_id: 'trace_console_scheduled04' });
+  const due = await client.runDueScheduledGoals({ trace_id: 'trace_console_scheduled05' });
+  assert.equal(due.submitted_count, 1);
+
+  const cancelled = await client.cancelScheduledGoal(created.scheduled_goal_id, { reason: 'console scheduled cancel', trace_id: 'trace_console_scheduled06' });
+  assert.equal(cancelled.status, 'cancelled');
+  const retried = await client.retryScheduledGoal(created.scheduled_goal_id, { reason: 'console scheduled retry', trace_id: 'trace_console_scheduled07' });
+  assert.equal(retried.status, 'scheduled');
+});
+
+test('viewer scheduled goal writes fail closed', async () => {
+  const viewer = clientFor('viewer').client;
+  const config = await viewer.getScheduledGoalsConfig({ trace_id: 'trace_console_scheduled08' });
+  assert.equal(config.enabled, false);
+  await assert.rejects(() => viewer.createScheduledGoal({ cron: '*/5 * * * *', input: 'viewer scheduled task', conversation_id: 'conv_console_scheduled02', agent_id: 'agent_alpha01', trace_id: 'trace_console_scheduled09' }), (error) => {
     assert.equal(error instanceof PlatformApiError, true);
     assert.equal(error.status, 403);
     assert.equal(error.code, 'PLATFORM_FORBIDDEN');
