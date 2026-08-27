@@ -11,6 +11,7 @@ import { LocalPluginGovernance, PluginGovernanceError } from "../../platform/plu
 import { PolicyGate } from "../../platform/policy-gate/index.ts";
 import { assertPublicRequestPayload, assertPublicResponsePayload, PublicSurfaceError, sanitizePublicDetails } from "../../platform/public-surface/index.ts";
 import { LocalRbacPolicy, PLATFORM_PERMISSIONS, type PlatformPermission } from "../../platform/rbac/index.ts";
+import { LocalSkillEvaluation } from "../../platform/skill-evaluation/index.ts";
 import { assertPlatformId, type TaskState } from "../../platform/task-state/index.ts";
 import { LocalTenantRegistry } from "../../platform/tenancy/index.ts";
 
@@ -103,6 +104,7 @@ export class PlatformApiApp {
   readonly observability: LocalObservability;
   readonly pluginGovernance = new LocalPluginGovernance({ tenant_id: "tenant_alpha01", trace_id: "trace_plugin01" });
   readonly channelManagement: LocalChannelManagement;
+  readonly skillEvaluation: LocalSkillEvaluation;
 
   readonly #tasks = new Map<string, StoredTask>();
   readonly #approvals = new Map<string, ApprovalRecord>();
@@ -118,6 +120,7 @@ export class PlatformApiApp {
     this.credentials = new LocalCredentialCenter({ clock: this.clock, eventBus: this.eventBus });
     this.audit = new LocalAuditLog({ clock: this.clock, eventBus: this.eventBus });
     this.channelManagement = new LocalChannelManagement({ clock: this.clock, coordinator: this.coordinator, eventBus: this.eventBus });
+    this.skillEvaluation = new LocalSkillEvaluation({ clock: this.clock, catalog: this.pluginGovernance, observability: this.observability });
     this.#seedIdentity();
     this.#seedApprovals();
   }
@@ -151,6 +154,12 @@ export class PlatformApiApp {
 
       if (method === "GET" && parsed.pathname === "/v1/skills") return ok(paginate(this.#skills(parsed.query, principal), parsed.query));
       if (method === "GET" && parsed.pathname === "/v1/capabilities") return ok(paginate(this.#capabilities(parsed.query, principal), parsed.query));
+
+      if (method === "GET" && parsed.pathname === "/v1/skill-evaluations/config") return ok(this.#getSkillEvaluationConfig(parsed.query, principal));
+      if (method === "PATCH" && parsed.pathname === "/v1/skill-evaluations/config") return ok(this.#updateSkillEvaluationConfig(asObject(body), principal));
+      if (method === "POST" && parsed.pathname === "/v1/skill-evaluations/runs") return ok(this.#runSkillEvaluation(asObject(body), principal), 202);
+      if (method === "GET" && parsed.pathname === "/v1/skill-evaluations/runs") return ok(paginate(this.#listSkillEvaluationRuns(parsed.query, principal), parsed.query));
+      if (method === "GET" && /^\/v1\/skill-evaluations\/runs\/[^/]+$/.test(parsed.pathname)) return ok(this.#getSkillEvaluationRun(pathPart(parsed.pathname, 4), parsed.query, principal));
 
       if (method === "POST" && parsed.pathname === "/v1/memory/search") return ok({ items: this.#searchMemory(asObject(body), principal) });
       if (method === "POST" && parsed.pathname === "/v1/memory") return ok(this.#writeMemory(asObject(body), principal), 201);
@@ -332,6 +341,51 @@ export class PlatformApiApp {
     const tenant_id = query.get("tenant_id") ?? principal.tenant_id;
     this.#assertTenant(principal, tenant_id);
     return this.pluginGovernance.listCapabilities({ tenant_id }).map((capability) => ({ ...capability }));
+  }
+
+  #getSkillEvaluationConfig(query: URLSearchParams, principal: Principal): JsonObject {
+    const tenant_id = query.get("tenant_id") ?? principal.tenant_id;
+    this.#assertTenant(principal, tenant_id);
+    this.#require(principal, "tenant:manage");
+    const trace_id = query.get("trace_id") ?? "trace_skill_eval01";
+    return this.skillEvaluation.getConfig(tenant_id, requiredId("trace_id", trace_id)) as unknown as JsonObject;
+  }
+
+  #updateSkillEvaluationConfig(body: JsonObject, principal: Principal): JsonObject {
+    const tenant_id = requiredId("tenant_id", body.tenant_id);
+    this.#assertTenant(principal, tenant_id);
+    this.#require(principal, "tenant:manage");
+    return this.skillEvaluation.updateConfig({
+      tenant_id,
+      trace_id: requiredId("trace_id", body.trace_id),
+      ...(body.enabled === undefined ? {} : { enabled: requiredBoolean(body.enabled, "enabled") }),
+      ...(body.max_cases === undefined ? {} : { max_cases: positiveInteger(body.max_cases, "max_cases") }),
+    }) as unknown as JsonObject;
+  }
+
+  #runSkillEvaluation(body: JsonObject, principal: Principal): JsonObject {
+    const tenant_id = requiredId("tenant_id", body.tenant_id);
+    this.#assertTenant(principal, tenant_id);
+    this.#require(principal, "tenant:manage");
+    return this.skillEvaluation.run({
+      tenant_id,
+      trace_id: requiredId("trace_id", body.trace_id),
+      requested_by_user_id: principal.user_id,
+    }) as unknown as JsonObject;
+  }
+
+  #listSkillEvaluationRuns(query: URLSearchParams, principal: Principal): readonly JsonObject[] {
+    const tenant_id = query.get("tenant_id") ?? principal.tenant_id;
+    this.#assertTenant(principal, tenant_id);
+    this.#require(principal, "tenant:manage");
+    return this.skillEvaluation.listRuns(tenant_id) as unknown as JsonObject[];
+  }
+
+  #getSkillEvaluationRun(run_id: string, query: URLSearchParams, principal: Principal): JsonObject {
+    const tenant_id = query.get("tenant_id") ?? principal.tenant_id;
+    this.#assertTenant(principal, tenant_id);
+    this.#require(principal, "tenant:manage");
+    return this.skillEvaluation.getRun(tenant_id, run_id) as unknown as JsonObject;
   }
 
   #searchMemory(body: JsonObject, principal: Principal): readonly JsonObject[] {

@@ -6,7 +6,7 @@ info:
   description: >-
     P5 REST MVP of the public NexusAgent API. The contract exposes only platform
     resources: tasks, attempts, executions, skills, capabilities, memory,
-    tenants, approvals, channel management, plugin governance, artifacts, audit references, and
+    skill evaluations, tenants, approvals, channel management, plugin governance, artifacts, audit references, and
     health. Internal implementation details, internal component brands, raw
     endpoint references, internal error identifiers, and internal storage
     locations are intentionally excluded. P5-04 TypeScript SDK and developer
@@ -30,6 +30,8 @@ tags:
     description: Platform skill catalog operations.
   - name: capabilities
     description: Approved platform capabilities available to callers.
+  - name: skill-evaluations
+    description: Administrator-triggered deterministic skill regression checks.
   - name: memory
     description: Memory access through the platform memory gateway.
   - name: tenants
@@ -247,6 +249,115 @@ paths:
         '401':
           $ref: '#/components/responses/PlatformError'
         '403':
+          $ref: '#/components/responses/PlatformError'
+  /v1/skill-evaluations/config:
+    get:
+      tags: [skill-evaluations]
+      operationId: getSkillEvaluationConfig
+      summary: Read tenant skill evaluation configuration.
+      parameters:
+        - $ref: '#/components/parameters/TenantIdQuery'
+        - name: trace_id
+          in: query
+          schema:
+            $ref: '#/components/schemas/TraceId'
+      responses:
+        '200':
+          description: Skill evaluation configuration.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SkillEvaluationConfig'
+        '401':
+          $ref: '#/components/responses/PlatformError'
+        '403':
+          $ref: '#/components/responses/PlatformError'
+    patch:
+      tags: [skill-evaluations]
+      operationId: updateSkillEvaluationConfig
+      summary: Enable or disable manual skill evaluation for one tenant.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SkillEvaluationConfigUpdateRequest'
+      responses:
+        '200':
+          description: Updated skill evaluation configuration.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SkillEvaluationConfig'
+        '400':
+          $ref: '#/components/responses/PlatformError'
+        '401':
+          $ref: '#/components/responses/PlatformError'
+        '403':
+          $ref: '#/components/responses/PlatformError'
+  /v1/skill-evaluations/runs:
+    post:
+      tags: [skill-evaluations]
+      operationId: runSkillEvaluation
+      summary: Run deterministic skill evaluation manually.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SkillEvaluationRunRequest'
+      responses:
+        '202':
+          description: Skill evaluation run completed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SkillEvaluationRunReport'
+        '400':
+          $ref: '#/components/responses/PlatformError'
+        '401':
+          $ref: '#/components/responses/PlatformError'
+        '403':
+          $ref: '#/components/responses/PlatformError'
+    get:
+      tags: [skill-evaluations]
+      operationId: listSkillEvaluationRuns
+      summary: List skill evaluation runs visible to the administrator.
+      parameters:
+        - $ref: '#/components/parameters/TenantIdQuery'
+        - $ref: '#/components/parameters/LimitQuery'
+        - $ref: '#/components/parameters/CursorQuery'
+      responses:
+        '200':
+          description: Skill evaluation run list.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SkillEvaluationRunList'
+        '401':
+          $ref: '#/components/responses/PlatformError'
+        '403':
+          $ref: '#/components/responses/PlatformError'
+  /v1/skill-evaluations/runs/{run_id}:
+    get:
+      tags: [skill-evaluations]
+      operationId: getSkillEvaluationRun
+      summary: Read one skill evaluation report.
+      parameters:
+        - $ref: '#/components/parameters/SkillEvaluationRunId'
+        - $ref: '#/components/parameters/TenantIdQuery'
+      responses:
+        '200':
+          description: Skill evaluation run report.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SkillEvaluationRunReport'
+        '401':
+          $ref: '#/components/responses/PlatformError'
+        '403':
+          $ref: '#/components/responses/PlatformError'
+        '404':
           $ref: '#/components/responses/PlatformError'
   /v1/memory/search:
     post:
@@ -787,6 +898,12 @@ components:
       required: true
       schema:
         $ref: '#/components/schemas/ChannelConfigId'
+    SkillEvaluationRunId:
+      name: run_id
+      in: path
+      required: true
+      schema:
+        $ref: '#/components/schemas/SkillEvaluationRunId'
     TenantIdQuery:
       name: tenant_id
       in: query
@@ -863,6 +980,10 @@ components:
       type: string
       minLength: 1
       pattern: '^skill_[A-Za-z0-9_-]+$'
+    SkillEvaluationRunId:
+      type: string
+      minLength: 1
+      pattern: '^skill_eval_run_[A-Za-z0-9_-]+$'
     CapabilityId:
       type: string
       minLength: 1
@@ -1175,6 +1296,188 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/CapabilityDescriptor'
+        next_cursor:
+          type: string
+    SkillEvaluationConfig:
+      type: object
+      additionalProperties: false
+      required: [schema_version, tenant_id, suite_id, enabled, mode, corpus, resource_budget, updated_at_utc, monotonic_ms, trace_id]
+      properties:
+        schema_version:
+          type: string
+          const: nexus.skill_evaluation.p7.v1
+        tenant_id:
+          $ref: '#/components/schemas/TenantId'
+        suite_id:
+          type: string
+          pattern: '^skill_eval_suite_'
+        enabled:
+          type: boolean
+          default: false
+        mode:
+          type: string
+          enum: [manual]
+        corpus:
+          type: string
+          enum: [approved_rejected_disabled]
+        resource_budget:
+          type: object
+          additionalProperties: false
+          required: [evaluation_mode, max_cases]
+          properties:
+            evaluation_mode:
+              type: string
+              enum: [deterministic_regression]
+            max_cases:
+              type: integer
+              minimum: 1
+              maximum: 50
+        updated_at_utc:
+          $ref: '#/components/schemas/Timestamp'
+        monotonic_ms:
+          type: integer
+          minimum: 0
+        trace_id:
+          $ref: '#/components/schemas/TraceId'
+    SkillEvaluationConfigUpdateRequest:
+      type: object
+      additionalProperties: false
+      required: [tenant_id, trace_id]
+      properties:
+        tenant_id:
+          $ref: '#/components/schemas/TenantId'
+        enabled:
+          type: boolean
+        max_cases:
+          type: integer
+          minimum: 1
+          maximum: 50
+        trace_id:
+          $ref: '#/components/schemas/TraceId'
+    SkillEvaluationRunRequest:
+      type: object
+      additionalProperties: false
+      required: [tenant_id, trace_id]
+      properties:
+        tenant_id:
+          $ref: '#/components/schemas/TenantId'
+        trace_id:
+          $ref: '#/components/schemas/TraceId'
+    SkillEvaluationCaseResult:
+      type: object
+      additionalProperties: false
+      required: [case_id, candidate_id, candidate_kind, expected_outcome, actual_outcome, status, reason_codes]
+      properties:
+        case_id:
+          type: string
+          pattern: '^skill_eval_case_'
+        candidate_id:
+          type: string
+          minLength: 1
+        candidate_kind:
+          type: string
+          enum: [capability, plugin_inventory, blocked_fixture]
+        capability_type:
+          type: string
+          enum: [skill, planner_hint]
+        expected_outcome:
+          type: string
+          enum: [visible, blocked, skipped]
+        actual_outcome:
+          type: string
+          enum: [visible, blocked, skipped]
+        status:
+          type: string
+          enum: [passed, failed, skipped]
+        reason_codes:
+          type: array
+          items:
+            type: string
+            pattern: '^SKILL_EVAL'
+    SkillEvaluationRunReport:
+      type: object
+      additionalProperties: false
+      required: [schema_version, tenant_id, run_id, suite_id, status, totals, cases, resource_budget, started_at_utc, completed_at_utc, monotonic_ms, trace_id, reason_codes]
+      properties:
+        schema_version:
+          type: string
+          const: nexus.skill_evaluation.p7.v1
+        tenant_id:
+          $ref: '#/components/schemas/TenantId'
+        run_id:
+          $ref: '#/components/schemas/SkillEvaluationRunId'
+        suite_id:
+          type: string
+          pattern: '^skill_eval_suite_'
+        status:
+          type: string
+          enum: [passed, failed, skipped]
+        totals:
+          type: object
+          additionalProperties: false
+          required: [total_cases, passed_cases, failed_cases, skipped_cases, approved_cases, rejected_disabled_cases]
+          properties:
+            total_cases:
+              type: integer
+              minimum: 0
+            passed_cases:
+              type: integer
+              minimum: 0
+            failed_cases:
+              type: integer
+              minimum: 0
+            skipped_cases:
+              type: integer
+              minimum: 0
+            approved_cases:
+              type: integer
+              minimum: 0
+            rejected_disabled_cases:
+              type: integer
+              minimum: 0
+        cases:
+          type: array
+          maxItems: 50
+          items:
+            $ref: '#/components/schemas/SkillEvaluationCaseResult'
+        resource_budget:
+          type: object
+          additionalProperties: false
+          required: [evaluation_mode, max_cases, evaluated_cases]
+          properties:
+            evaluation_mode:
+              type: string
+              enum: [deterministic_regression]
+            max_cases:
+              type: integer
+              minimum: 1
+              maximum: 50
+            evaluated_cases:
+              type: integer
+              minimum: 0
+        started_at_utc:
+          $ref: '#/components/schemas/Timestamp'
+        completed_at_utc:
+          $ref: '#/components/schemas/Timestamp'
+        monotonic_ms:
+          type: integer
+          minimum: 0
+        trace_id:
+          $ref: '#/components/schemas/TraceId'
+        reason_codes:
+          type: array
+          items:
+            type: string
+            pattern: '^SKILL_EVALUATION_'
+    SkillEvaluationRunList:
+      type: object
+      additionalProperties: false
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/SkillEvaluationRunReport'
         next_cursor:
           type: string
     MemorySearchRequest:

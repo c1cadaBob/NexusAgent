@@ -22,6 +22,7 @@ PORT=8080 node product/api/server.mjs
 - Task, approval, memory, budget, skills, tenants, users, health, task events, and administrator plugin governance are available in the alpha UI.
 - P5-03 adds a Channels page for tenant-scoped channel configuration, status changes, and platform dry-run tests. The page shows `credential_status` only and never renders submitted credential references.
 - P7-02 adds Memory retention controls for tenant and platform administrators. The Memory page shows conservative policy rows, supports manual sweep, and can soft-delete searched records without rendering tombstone text.
+- P7-03 adds an Evaluations page for tenant and platform administrators. Skill evaluation is Default Off, uses manual runs against an Approved + Rejected deterministic corpus, and renders only config status, run metadata, totals, reason codes, trace IDs, and case summaries.
 - Refresh uses the visible Refresh button plus a 15 second polling interval. Streaming and enterprise sign-on remain follow-up work.
 - Plugin governance displays public platform metadata only: ID, display name, source kind, version, SHA-256, license, notice status, risk, allowlist status, and capability IDs.
 

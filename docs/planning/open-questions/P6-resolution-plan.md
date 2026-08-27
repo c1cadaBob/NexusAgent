@@ -36,6 +36,8 @@ P6-02 证据：`tests/security/p6-plugin-isolation.test.mjs` 验证平台中性 
 
 P6-03 证据：`tests/fault-injection/p6-plugin-provider-rollback.test.mjs` 已验证 `LocalPluginGovernance` 中 seeded plugin 可通过 approve/disable/reject 控制 tenant capability visibility；禁用或拒绝插件后能力不可见，重新批准后能力恢复。导入 metadata-only plugin 后即使 approve/disable/reject 也不会创建 tenant-visible capability，且 public projection 不含 raw credential、native URL/path/session/error、provider runtime、真实网络 URL 或本地路径。该证据补齐 P6 插件禁用和 plugin rollback 验收，但真实 sidecar/OS 隔离、插件升级兼容矩阵、生产回滚手册和许可证发布包仍留 P8。
 
+P7-03 证据：`platform/skill-evaluation/index.ts` 新增 Default Off deterministic skill evaluation runner，管理员启用后手动触发 Approved + Rejected corpus；approved capability 预期 visible，rejected/disabled candidate 预期 blocked，case mismatch 只写 failed report 和 Observability warning，不改变 plugin/channel/task/memory 状态。`tests/security/p7-skill-evaluation-leakage.test.mjs` 验证评测报告、SDK fixture、Console view-model 和 docs catalog 不回显 raw credential、native URL/path/session/error、provider runtime、source_ref 或原始 rejected payload。该证据不关闭真实 sidecar/OS 隔离、插件升级兼容矩阵、生产回滚手册或许可证发布包，仍留 P8。
+
 ## OQ-PRODUCT-001：P7 高级能力是否进入首版
 
 推荐处理：默认 P7 全部延后，不阻塞 MVP；只允许项目负责人明确指定的单项高级能力进入首版，并且必须具备独立开关、指标、回退路径和资源预算。高级能力不得重新引入 Hermes 原生执行或绕过平台 contracts。
@@ -55,3 +57,5 @@ P6-02 证据：安全攻击矩阵只补防腐层、防绕过、越权和恶意�
 P6-03/P6 gate 证据：`docs/planning/phase-gates/P6-gate-review.md` 明确 P6 MVP 门禁只依赖基础闭环、安全/防绕过、故障注入、轻量化降级路线和 provider/plugin rollback；P7 高级能力默认不进入 MVP。若项目负责人要求某项 P7 能力进入首版，必须另建任务并提供开关、指标、预算和回滚说明，不得改变 P6 已验证的平台 contracts 或内部 provider 边界。
 
 P7-02 证据：用户明确选择将主动遗忘与保留策略作为 P7 增量交付到 API+Console，但实现采用默认启用 conservative policy、manual sweep、soft delete、管理员权限和 metadata-only 结果，不引入后台 scheduler、真实外部网络或上游原生能力，也不改变 P6 已冻结的基础任务闭环。
+
+P7-03 证据：用户明确选择将技能自动评测作为 P7 增量交付到 API+Console，但实现采用 Default Off、管理员显式启用、manual run、Approved + Rejected deterministic corpus 和 metadata-only report；评测失败或 runner warning 只影响 evaluation report 与 Observability 记录，不自动运行任务链路、不调用真实模型、不引入真实业务成功率阈值，也不改变 P6 MVP 基础闭环。

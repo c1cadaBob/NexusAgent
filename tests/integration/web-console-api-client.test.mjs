@@ -166,3 +166,35 @@ test('tenant admin workflow manages memory retention while operator forced acces
     return true;
   });
 });
+
+test('tenant admin workflow manages skill evaluation while operator forced access fails closed', async () => {
+  const tenantAdmin = clientFor('tenant-admin').client;
+  const operator = clientFor('operator').client;
+
+  const config = await tenantAdmin.getSkillEvaluationConfig({ trace_id: 'trace_console_skill_eval01' });
+  assert.equal(config.schema_version, 'nexus.skill_evaluation.p7.v1');
+  assert.equal(config.enabled, false);
+
+  await assert.rejects(() => tenantAdmin.runSkillEvaluation({ trace_id: 'trace_console_skill_eval02' }), (error) => {
+    assert.equal(error instanceof PlatformApiError, true);
+    assert.equal(error.status, 403);
+    assert.equal(error.code, 'PLATFORM_FORBIDDEN');
+    return true;
+  });
+
+  const enabled = await tenantAdmin.updateSkillEvaluationConfig({ enabled: true, max_cases: 10, trace_id: 'trace_console_skill_eval03' });
+  assert.equal(enabled.enabled, true);
+  const run = await tenantAdmin.runSkillEvaluation({ trace_id: 'trace_console_skill_eval04' });
+  assert.equal(run.status, 'passed');
+  const runs = await tenantAdmin.listSkillEvaluationRuns();
+  assert.equal(runs.items.some((item) => item.run_id === run.run_id), true);
+  const read = await tenantAdmin.getSkillEvaluationRun(run.run_id);
+  assert.equal(read.run_id, run.run_id);
+
+  await assert.rejects(() => operator.getSkillEvaluationConfig({ trace_id: 'trace_console_skill_eval05' }), (error) => {
+    assert.equal(error instanceof PlatformApiError, true);
+    assert.equal(error.status, 403);
+    assert.equal(error.code, 'PLATFORM_FORBIDDEN');
+    return true;
+  });
+});

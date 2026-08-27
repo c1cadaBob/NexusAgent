@@ -12,6 +12,8 @@ import type {
   PlatformTask,
   PluginInventoryEntry,
   PrincipalProfile,
+  SkillEvaluationConfig,
+  SkillEvaluationRunReport,
   SkillRecord,
   TenantRecord,
   TenantUserRecord,
@@ -26,6 +28,7 @@ export const NAV_ITEMS = Object.freeze([
   { id: "tasks", label: "Tasks" },
   { id: "approvals", label: "Approvals" },
   { id: "skills", label: "Skills" },
+  { id: "evaluations", label: "Evaluations" },
   { id: "memory", label: "Memory" },
   { id: "budget", label: "Budget" },
   { id: "plugins", label: "Plugins" },
@@ -71,6 +74,9 @@ export interface ConsoleDataset {
   approvals: readonly ApprovalRecord[];
   skills: readonly SkillRecord[];
   capabilities: readonly CapabilityDescriptor[];
+  skillEvaluationConfig?: SkillEvaluationConfig;
+  skillEvaluationRuns?: readonly SkillEvaluationRunReport[];
+  selectedSkillEvaluationRun?: SkillEvaluationRunReport;
   memory: readonly MemoryRecord[];
   memoryRetentionPolicy?: MemoryRetentionPolicy;
   memoryRetentionSweep?: MemoryRetentionSweepResult;
@@ -100,11 +106,14 @@ export interface ConsoleDashboardModel {
     channel_configs: number;
     plugin_entries: number;
     memory_records: number;
+    skill_evaluation_runs: number;
   };
   agents: readonly AgentSummary[];
   channelRows: readonly Pick<ChannelConfigRecord, typeof CHANNEL_PUBLIC_COLUMNS[number]>[];
   pluginRows: readonly Pick<PluginInventoryEntry, typeof PLUGIN_PUBLIC_COLUMNS[number]>[];
   memoryRetentionRows: readonly Record<string, unknown>[];
+  skillEvaluationRows: readonly Record<string, unknown>[];
+  skillEvaluationCaseRows: readonly Record<string, unknown>[];
 }
 
 export function buildConsoleDashboardModel(profile: PrincipalProfile, data: ConsoleDataset): ConsoleDashboardModel {
@@ -123,11 +132,14 @@ export function buildConsoleDashboardModel(profile: PrincipalProfile, data: Cons
       channel_configs: data.channels.length,
       plugin_entries: data.plugins.length,
       memory_records: data.memory.length,
+      skill_evaluation_runs: data.skillEvaluationRuns?.length ?? 0,
     },
     agents: summarizeAgents(data.tasks),
     channelRows: data.channels.map(projectChannelRow),
     pluginRows: data.plugins.map(projectPluginRow),
     memoryRetentionRows: projectMemoryRetentionRows(data.memoryRetentionPolicy),
+    skillEvaluationRows: projectSkillEvaluationRows(data.skillEvaluationRuns ?? []),
+    skillEvaluationCaseRows: projectSkillEvaluationCaseRows(data.selectedSkillEvaluationRun),
   };
   assertConsolePublicValue(model);
   return model;
@@ -191,15 +203,17 @@ export function visibleNavigation(profile: PrincipalProfile): readonly typeof NA
   return NAV_ITEMS.filter((item) => {
     if (item.id === "plugins") return profile.canManagePlugins;
     if (item.id === "channels") return profile.canReadChannels;
+    if (item.id === "evaluations") return profile.canManageSkillEvaluation;
     return true;
   });
 }
 
-export function actionEnabled(profile: PrincipalProfile, action: "submit_task" | "write_memory" | "manage_plugins" | "manage_channels" | "manage_memory_retention"): boolean {
+export function actionEnabled(profile: PrincipalProfile, action: "submit_task" | "write_memory" | "manage_plugins" | "manage_channels" | "manage_memory_retention" | "manage_skill_evaluation"): boolean {
   if (action === "submit_task") return profile.canSubmitTask;
   if (action === "write_memory") return profile.canWriteMemory;
   if (action === "manage_channels") return profile.canManageChannels;
   if (action === "manage_memory_retention") return profile.canManageMemoryRetention;
+  if (action === "manage_skill_evaluation") return profile.canManageSkillEvaluation;
   return profile.canManagePlugins;
 }
 
@@ -216,6 +230,39 @@ export function projectMemoryRetentionRows(policy: MemoryRetentionPolicy | undef
     mode: policy.mode,
     updated_at_utc: policy.updated_at_utc,
     trace_id: policy.trace_id,
+  }));
+  assertConsolePublicValue(rows);
+  return rows;
+}
+
+export function projectSkillEvaluationRows(runs: readonly SkillEvaluationRunReport[]): readonly Record<string, unknown>[] {
+  const rows = runs.map((run) => ({
+    run_id: run.run_id,
+    tenant_id: run.tenant_id,
+    suite_id: run.suite_id,
+    status: run.status,
+    total_cases: run.totals.total_cases,
+    passed_cases: run.totals.passed_cases,
+    failed_cases: run.totals.failed_cases,
+    rejected_disabled_cases: run.totals.rejected_disabled_cases,
+    completed_at_utc: run.completed_at_utc,
+    trace_id: run.trace_id,
+  }));
+  assertConsolePublicValue(rows);
+  return rows;
+}
+
+export function projectSkillEvaluationCaseRows(run: SkillEvaluationRunReport | undefined): readonly Record<string, unknown>[] {
+  if (!run) return [];
+  const rows = run.cases.map((item) => ({
+    case_id: item.case_id,
+    candidate_id: item.candidate_id,
+    candidate_kind: item.candidate_kind,
+    capability_type: item.capability_type,
+    expected_outcome: item.expected_outcome,
+    actual_outcome: item.actual_outcome,
+    status: item.status,
+    reason_codes: [...item.reason_codes],
   }));
   assertConsolePublicValue(rows);
   return rows;

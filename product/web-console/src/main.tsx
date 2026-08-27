@@ -20,6 +20,8 @@ import {
   type PlatformTask,
   type PluginInventoryEntry,
   type PrincipalProfile,
+  type SkillEvaluationConfig,
+  type SkillEvaluationRunReport,
   type SkillRecord,
   type TenantRecord,
   type TenantUserRecord,
@@ -37,6 +39,7 @@ const initialDataset: ConsoleDataset = {
   approvals: [],
   skills: [],
   capabilities: [],
+  skillEvaluationRuns: [],
   memory: [],
   plugins: [],
 };
@@ -85,6 +88,8 @@ function App() {
       const taskEvents = task_id ? await client.listTaskEvents(task_id) : { items: [] as PlatformEvent[] };
       const channels = profile.canReadChannels ? await client.listChannels({ tenant_id: profile.tenant_id }) : { items: [] as ChannelConfigRecord[] };
       const plugins = profile.canManagePlugins ? await client.listPlugins() : { items: [] as PluginInventoryEntry[] };
+      const skillEvaluationConfig = profile.canManageSkillEvaluation ? await client.getSkillEvaluationConfig({ tenant_id: profile.tenant_id, trace_id: traceRef.current() }) : undefined;
+      const skillEvaluationRuns = profile.canManageSkillEvaluation ? await client.listSkillEvaluationRuns({ tenant_id: profile.tenant_id }) : { items: [] as SkillEvaluationRunReport[] };
       const memoryRetentionPolicy = profile.canManageMemoryRetention ? await client.getMemoryRetentionPolicy({ tenant_id: profile.tenant_id, trace_id: traceRef.current() }) : undefined;
 
       setData((previous) => ({
@@ -99,6 +104,9 @@ function App() {
         capabilities: capabilities.items,
         taskEvents: taskEvents.items,
         plugins: plugins.items,
+        skillEvaluationConfig,
+        skillEvaluationRuns: skillEvaluationRuns.items,
+        selectedSkillEvaluationRun: skillEvaluationRuns.items.at(-1),
         memoryRetentionPolicy,
       }));
       setSelectedTaskId(task_id);
@@ -211,6 +219,17 @@ function App() {
         )}
         {activeView === "approvals" && <Approvals approvals={data.approvals} onDecision={(approval_id, decision) => runAction(() => client.decideApproval(approval_id, { decision, reason: "Console decision", trace_id: traceRef.current() }), "Approval updated")} />}
         {activeView === "skills" && <Skills skills={data.skills} capabilities={data.capabilities} />}
+        {activeView === "evaluations" && profile.canManageSkillEvaluation && (
+          <Evaluations
+            profile={profile}
+            config={data.skillEvaluationConfig}
+            latestRun={data.selectedSkillEvaluationRun}
+            runs={dashboard.skillEvaluationRows}
+            cases={dashboard.skillEvaluationCaseRows}
+            onEnable={(enabled) => runAction(() => client.updateSkillEvaluationConfig({ enabled, trace_id: traceRef.current() }), "Skill evaluation config updated")}
+            onRun={() => runAction(() => client.runSkillEvaluation({ trace_id: traceRef.current() }), "Skill evaluation run complete")}
+          />
+        )}
         {activeView === "memory" && (
           <MemoryPanel
             profile={profile}
@@ -275,6 +294,7 @@ function Overview({ health, dashboard }: { health?: HealthStatus; dashboard: Ret
     <Metric label="Approved capabilities" value={dashboard.counters.approved_capabilities} />
     <Metric label="Channels" value={dashboard.counters.channel_configs} />
     <Metric label="Plugin entries" value={dashboard.counters.plugin_entries} />
+    <Metric label="Evaluation runs" value={dashboard.counters.skill_evaluation_runs} />
   </section>;
 }
 
@@ -364,6 +384,33 @@ function Approvals({ approvals, onDecision }: { approvals: readonly ApprovalReco
 
 function Skills({ skills, capabilities }: { skills: readonly SkillRecord[]; capabilities: readonly CapabilityDescriptor[] }) {
   return <section className="two-column"><Table title="Skills" rows={skills} columns={["skill_id", "tenant_id", "display_name", "status", "version", "capability_ids"]} /><Table title="Capabilities" rows={capabilities} columns={["capability_id", "capability_type", "display_name", "plugin_id", "status", "risk_level", "required_permissions"]} /></section>;
+}
+
+function Evaluations(props: { profile: PrincipalProfile; config?: SkillEvaluationConfig; latestRun?: SkillEvaluationRunReport; runs: readonly Record<string, unknown>[]; cases: readonly Record<string, unknown>[]; onEnable: (enabled: boolean) => void; onRun: () => void }) {
+  const canManage = actionEnabled(props.profile, "manage_skill_evaluation");
+  const configRows = props.config ? [{
+    tenant_id: props.config.tenant_id,
+    suite_id: props.config.suite_id,
+    enabled: props.config.enabled,
+    mode: props.config.mode,
+    corpus: props.config.corpus,
+    max_cases: props.config.resource_budget.max_cases,
+    updated_at_utc: props.config.updated_at_utc,
+    trace_id: props.config.trace_id,
+  }] : [];
+  const latestRows = props.latestRun ? [{
+    run_id: props.latestRun.run_id,
+    tenant_id: props.latestRun.tenant_id,
+    suite_id: props.latestRun.suite_id,
+    status: props.latestRun.status,
+    total_cases: props.latestRun.totals.total_cases,
+    passed_cases: props.latestRun.totals.passed_cases,
+    failed_cases: props.latestRun.totals.failed_cases,
+    rejected_disabled_cases: props.latestRun.totals.rejected_disabled_cases,
+    completed_at_utc: props.latestRun.completed_at_utc,
+    trace_id: props.latestRun.trace_id,
+  }] : [];
+  return <section className="stack"><Table title="Skill evaluation config" rows={configRows} columns={["tenant_id", "suite_id", "enabled", "mode", "corpus", "max_cases", "updated_at_utc", "trace_id"]} /><div className="button-row"><button type="button" disabled={!canManage || props.config?.enabled === true} onClick={() => props.onEnable(true)}>Enable evaluations</button><button type="button" disabled={!canManage || props.config?.enabled === false} onClick={() => props.onEnable(false)}>Disable evaluations</button><button type="button" disabled={!canManage || props.config?.enabled !== true} onClick={props.onRun}>Run evaluation</button></div><Table title="Skill evaluation runs" rows={props.runs} columns={["run_id", "tenant_id", "suite_id", "status", "total_cases", "passed_cases", "failed_cases", "rejected_disabled_cases", "completed_at_utc", "trace_id"]} />{props.latestRun ? <Table title="Latest skill evaluation" rows={latestRows} columns={["run_id", "tenant_id", "suite_id", "status", "total_cases", "passed_cases", "failed_cases", "rejected_disabled_cases", "completed_at_utc", "trace_id"]} /> : <EmptyState text="No skill evaluation run" />}<Table title="Skill evaluation cases" rows={props.cases} columns={["case_id", "candidate_id", "candidate_kind", "capability_type", "expected_outcome", "actual_outcome", "status", "reason_codes"]} /></section>;
 }
 
 function MemoryPanel(props: { profile: PrincipalProfile; records: readonly MemoryRecord[]; retentionRows: readonly Record<string, unknown>[]; retentionPolicy?: MemoryRetentionPolicy; retentionSweep?: MemoryRetentionSweepResult; memoryText: string; setMemoryText: (value: string) => void; memoryQuery: string; setMemoryQuery: (value: string) => void; onWrite: () => void; onSearch: () => void; onSweep: () => void; onDelete: (memory_id: string) => void }) {

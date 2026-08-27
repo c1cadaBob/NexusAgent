@@ -131,6 +131,33 @@ test('TypeScript SDK tenant admin manages memory retention without memory text e
   assertClean({ policy, updated, deleted, sweep });
 });
 
+test('TypeScript SDK tenant admin manages skill evaluation regression manually', async () => {
+  const { client } = clientFor('dev-tenant-admin-alpha');
+  const trace = createTraceFactory('trace_sdk_skill_eval_test');
+  const config = await client.getSkillEvaluationConfig({ tenant_id: 'tenant_alpha01', trace_id: trace() });
+  assert.equal(config.schema_version, 'nexus.skill_evaluation.p7.v1');
+  assert.equal(config.enabled, false);
+
+  await assert.rejects(() => client.runSkillEvaluation({ tenant_id: 'tenant_alpha01', trace_id: trace() }), (error) => {
+    assert.equal(error instanceof NexusAgentApiError, true);
+    assert.equal(error.status, 403);
+    assert.equal(error.code, 'PLATFORM_FORBIDDEN');
+    return true;
+  });
+
+  const enabled = await client.updateSkillEvaluationConfig({ tenant_id: 'tenant_alpha01', trace_id: trace(), enabled: true, max_cases: 10 });
+  assert.equal(enabled.enabled, true);
+  const run = await client.runSkillEvaluation({ tenant_id: 'tenant_alpha01', trace_id: trace() });
+  assert.equal(run.status, 'passed');
+  assert.equal(run.totals.approved_cases >= 1, true);
+  assert.equal(run.totals.rejected_disabled_cases >= 2, true);
+  const listed = await client.listSkillEvaluationRuns({ tenant_id: 'tenant_alpha01' });
+  assert.equal(listed.items.some((item) => item.run_id === run.run_id), true);
+  const read = await client.getSkillEvaluationRun(run.run_id, { tenant_id: 'tenant_alpha01' });
+  assert.equal(read.run_id, run.run_id);
+  assertClean({ config, enabled, run, listed, read });
+});
+
 test('TypeScript SDK platform admin manages plugin metadata admission', async () => {
   const { client } = clientFor('dev-platform-admin');
   const trace = createTraceFactory('trace_sdk_plugin_test');

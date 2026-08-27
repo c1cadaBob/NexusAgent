@@ -62,6 +62,14 @@ DSH 不作为稳定平台契约，只作为内部 executor provider。P2 必须�
 - R-010/R-012：`tests/smoke/P7.sh` 增加 P7-02 required files、审计无占位、retention schema/API/SDK/console markers、Date.now 禁用扫描和 targeted tests，降低审计与门禁遗漏风险。
 - 遗留风险：P7-02 不关闭 `OQ-MEMORY-002` 生产存储/检索选型、备份恢复、物理清除策略或 P8 发布治理；durable tombstone/purge 策略需在生产存储任务中复核。
 
+## P7-03 技能自动评测回归更新
+
+- R-003/R-007：P7-03 评测报告、API 响应、SDK fixtures、Console view-model 和 docs catalog 均为 metadata-only，`tests/security/p7-skill-evaluation-leakage.test.mjs` 验证 raw credential、native URL/path/session/error、provider runtime、source_ref、tombstone text 和原始 rejected payload 不进入公共面或内部观测记录。
+- R-006/R-009：技能自动评测采用 Default Off、管理员启用后 manual run、Approved + Rejected deterministic corpus，无后台 scheduler、无真实模型调用和无真实外部网络，控制 P7 高级能力对资源容量与 MVP 链路的影响。
+- R-010/R-012：`tests/smoke/P7.sh` 增加 P7-03 required files、审计无占位、schema/default-off/API/SDK/Console markers、Date.now 禁用扫描、public leakage scan 和 targeted evaluation/integration/security tests，降低阶段验收遗漏风险。
+- R-013/R-014：P7-03 将 approved capability visible 与 rejected/disabled candidate blocked 纳入 deterministic regression，case mismatch 只生成 failed report 和 Observability warning，不改变 plugin/channel/task/memory 状态或暴露 credential material。
+- 遗留风险：P7-03 不关闭 P7-04 Token 预算计费维度、P7-05 阶段门禁、真实业务评测平台、真实插件运行时、生产 sidecar/OS 隔离、插件升级兼容矩阵或 P8 发布治理。
+
 ## P6-01 内部业务闭环更新
 
 - R-003/R-007：P6-01 新增 deterministic in-process `tests/integration/p6-business-closed-loop.test.mjs`，断言 closed-loop Event Bus/audit timeline 不含 raw credential、native URL/path/session/error、provider runtime、真实网络 URL 或 `/opt/` 路径；公共 API、SDK、控制台和 OpenAPI 未在本任务变更。

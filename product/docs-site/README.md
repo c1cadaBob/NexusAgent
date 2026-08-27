@@ -21,6 +21,7 @@ corepack pnpm --dir product/docs-site run build
 - The SDK method catalog covers the TypeScript SDK delivered in `product/sdk/`.
 - Webhook delivery and streaming transports are documented as later work; P5 Alpha reads task events with `GET /v1/tasks/{task_id}/events`.
 - Tenant self-service third-party plugin installation is not supported in P5 Alpha.
+- P7-03 documents skill evaluation as a Default Off administrator workflow with manual runs, Approved + Rejected deterministic coverage, and metadata-only reports from the public `/v1/skill-evaluations/*` routes.
 
 ## Design direction
 

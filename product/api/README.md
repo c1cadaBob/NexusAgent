@@ -42,3 +42,13 @@ The channel test route performs a dry-run only. It validates platform policy and
 - `POST /v1/memory/{memory_id}/delete`
 
 Memory retention is tenant-admin managed in P7-02. The default conservative policy is enabled, soft-deletes expired `session` memory after seven days through manual sweep, retains longer-lived memory layers, and keeps `audit_snapshot` immutable. Responses return policy, count, and tombstone metadata only; memory text is not returned by delete or sweep results.
+
+## P7-03 skill evaluation routes
+
+- `GET /v1/skill-evaluations/config`
+- `PATCH /v1/skill-evaluations/config`
+- `POST /v1/skill-evaluations/runs`
+- `GET /v1/skill-evaluations/runs`
+- `GET /v1/skill-evaluations/runs/{run_id}`
+
+Skill evaluation is a Default Off P7 advanced capability. Tenant or platform administrators must explicitly enable the config before a manual run can execute. The deterministic regression corpus covers Approved + Rejected skill candidates and returns metadata-only run reports, case statuses, reason codes, trace IDs, UTC timestamps, and resource budget summaries. Operator/viewer or cross-tenant calls fail closed, and failed runs do not change task, channel, memory, or plugin state.

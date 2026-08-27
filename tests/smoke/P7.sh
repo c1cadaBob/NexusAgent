@@ -13,6 +13,7 @@ required_files=(
   platform/coordinator/plan-quality.ts
   platform/coordinator/index.ts
   platform/memory-gateway/index.ts
+  platform/skill-evaluation/index.ts
   platform/observability/index.ts
   product/api/index.ts
   product/sdk/src/index.ts
@@ -23,13 +24,17 @@ required_files=(
   docs/contracts/openapi.yaml
   tests/unit/plan-quality.test.mjs
   tests/unit/memory-retention.test.mjs
+  tests/evaluation/p7-skill-regression.test.mjs
   tests/integration/p7-plan-quality-observability.test.mjs
   tests/integration/p7-memory-retention-api.test.mjs
+  tests/integration/p7-skill-evaluation-api.test.mjs
   tests/security/p7-plan-quality-leakage.test.mjs
   tests/security/p7-memory-retention-leakage.test.mjs
+  tests/security/p7-skill-evaluation-leakage.test.mjs
   tests/smoke/P7.sh
   docs/planning/task-prompts/P7/P7-01.md
   docs/planning/task-prompts/P7/P7-02.md
+  docs/planning/task-prompts/P7/P7-03.md
   docs/planning/open-questions-register.md
   docs/planning/open-questions/P3-resolution-plan.md
   docs/planning/open-questions/P6-resolution-plan.md
@@ -43,7 +48,7 @@ for file in "${required_files[@]}"; do
   [[ -f "$file" ]] || fail "missing P7 required file: $file"
 done
 
-for task_id in P7-01 P7-02; do
+for task_id in P7-01 P7-02 P7-03; do
   audit_block="$(sed -n "/^# ${task_id} 修改记录包$/,/^## 完整提示词$/p" "docs/planning/task-prompts/P7/${task_id}.md")"
   [[ -n "$audit_block" ]] || fail "$task_id audit record package is missing"
   if printf '%s\n' "$audit_block" | rg -q '\.\.\.'; then
@@ -91,6 +96,17 @@ for marker in \
 done
 
 for marker in \
+  'nexus.skill_evaluation.p7.v1' \
+  'SKILL_EVALUATION_DEFAULT_ENABLED' \
+  'approved_rejected_disabled' \
+  'deterministic_regression' \
+  'LocalSkillEvaluation' \
+  'skill_evaluation.completed' \
+  'SKILL_EVALUATION_RUNNER_ERROR'; do
+  rg -q "$marker" platform/skill-evaluation/index.ts tests/evaluation/p7-skill-regression.test.mjs tests/security/p7-skill-evaluation-leakage.test.mjs || fail "P7 skill evaluation marker missing: $marker"
+done
+
+for marker in \
   '/v1/memory/retention' \
   '/v1/memory/retention/sweep' \
   '/v1/memory/{memory_id}/delete' \
@@ -99,6 +115,19 @@ for marker in \
   'sweepMemoryRetention' \
   'deleteMemory'; do
   rg -F -q "$marker" docs/contracts/openapi.yaml product/api/index.ts product/sdk/src/index.ts product/web-console/src/apiClient.ts product/web-console/src/main.tsx product/docs-site/src/catalog.ts tests/integration/p7-memory-retention-api.test.mjs || fail "P7 memory API SDK console marker missing: $marker"
+done
+
+for marker in \
+  '/v1/skill-evaluations/config' \
+  '/v1/skill-evaluations/runs' \
+  '/v1/skill-evaluations/runs/{run_id}' \
+  'getSkillEvaluationConfig' \
+  'updateSkillEvaluationConfig' \
+  'runSkillEvaluation' \
+  'listSkillEvaluationRuns' \
+  'getSkillEvaluationRun' \
+  'Evaluations'; do
+  rg -F -q "$marker" docs/contracts/openapi.yaml product/api/index.ts product/sdk/src/index.ts product/web-console/src/apiClient.ts product/web-console/src/main.tsx product/web-console/src/viewModel.ts product/docs-site/src/catalog.ts tests/integration/p7-skill-evaluation-api.test.mjs || fail "P7 skill evaluation API SDK console marker missing: $marker"
 done
 
 for marker in \
@@ -122,12 +151,15 @@ for marker in \
   'Token 预算计费维度' \
   'Conservative retention' \
   'Soft delete' \
-  'Manual sweep'; do
-  rg -q "$marker" docs/planning/task-prompts/P7/P7-01.md docs/planning/task-prompts/P7/P7-02.md docs/planning/open-questions-register.md docs/planning/open-questions/P3-resolution-plan.md docs/planning/open-questions/P6-resolution-plan.md docs/traceability/requirements-matrix.md docs/risks/risk-register.md docs/README.md tests/smoke/README.md product/api/README.md product/sdk/README.md product/web-console/README.md || fail "P7 documentation marker missing: $marker"
+  'Manual sweep' \
+  '技能自动评测' \
+  'Default Off' \
+  'Approved + Rejected'; do
+  rg -F -q "$marker" docs/planning/task-prompts/P7/P7-01.md docs/planning/task-prompts/P7/P7-02.md docs/planning/task-prompts/P7/P7-03.md docs/planning/open-questions-register.md docs/planning/open-questions/P3-resolution-plan.md docs/planning/open-questions/P6-resolution-plan.md docs/traceability/requirements-matrix.md docs/risks/risk-register.md docs/README.md tests/smoke/README.md product/api/README.md product/sdk/README.md product/web-console/README.md || fail "P7 documentation marker missing: $marker"
 done
 
-if rg -n 'Date\.now\(|datetime\.now\(' platform/coordinator/plan-quality.ts platform/coordinator/index.ts platform/memory-gateway/index.ts product/api/index.ts product/sdk/src/index.ts product/web-console/src product/docs-site/src tests/unit/plan-quality.test.mjs tests/unit/memory-retention.test.mjs tests/integration/p7-plan-quality-observability.test.mjs tests/integration/p7-memory-retention-api.test.mjs tests/security/p7-plan-quality-leakage.test.mjs tests/security/p7-memory-retention-leakage.test.mjs tests/smoke/P7.sh; then
-  fail 'wall-clock duration helper detected in P7 plan quality surface'
+if rg -n 'Date\.now\(|datetime\.now\(' platform/coordinator/plan-quality.ts platform/coordinator/index.ts platform/memory-gateway/index.ts platform/skill-evaluation/index.ts product/api/index.ts product/sdk/src/index.ts product/web-console/src product/docs-site/src tests/unit/plan-quality.test.mjs tests/unit/memory-retention.test.mjs tests/evaluation/p7-skill-regression.test.mjs tests/integration/p7-plan-quality-observability.test.mjs tests/integration/p7-memory-retention-api.test.mjs tests/integration/p7-skill-evaluation-api.test.mjs tests/security/p7-plan-quality-leakage.test.mjs tests/security/p7-memory-retention-leakage.test.mjs tests/security/p7-skill-evaluation-leakage.test.mjs tests/smoke/P7.sh; then
+  fail 'wall-clock duration helper detected in P7 optional capability surface'
 fi
 
 if rg -n 'nexus\.plan_quality|plan_quality|plan-quality' docs/contracts product/api product/sdk product/web-console product/docs-site product/channel-management; then
@@ -141,6 +173,9 @@ node --test \
   tests/unit/memory-retention.test.mjs \
   tests/integration/p7-memory-retention-api.test.mjs \
   tests/security/p7-memory-retention-leakage.test.mjs \
+  tests/evaluation/p7-skill-regression.test.mjs \
+  tests/integration/p7-skill-evaluation-api.test.mjs \
+  tests/security/p7-skill-evaluation-leakage.test.mjs \
   tests/integration/web-console-api-client.test.mjs \
   tests/security/web-console-leakage.test.mjs \
   tests/integration/sdk-typescript-client.test.mjs \
@@ -148,4 +183,4 @@ node --test \
   tests/contract/web-console-openapi-alignment.test.mjs \
   tests/contract/p5-sdk-openapi-contract.test.mjs
 
-echo 'PASS: P7-01 plan quality and P7-02 memory retention controls, API SDK console integration, leakage guard, docs, and smoke checks'
+echo 'PASS: P7-01 plan quality, P7-02 memory retention, and P7-03 skill evaluation regression controls, API SDK console integration, leakage guard, docs, and smoke checks'

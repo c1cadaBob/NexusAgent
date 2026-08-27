@@ -51,3 +51,7 @@ node product/sdk/examples/plugin-governance.mjs
 ## P7-02 Memory Retention
 
 The SDK includes tenant-admin memory retention helpers: `getMemoryRetentionPolicy`, `updateMemoryRetentionPolicy`, `sweepMemoryRetention`, and `deleteMemory`. These methods call platform `/v1/memory*` routes only. Delete and sweep responses return metadata such as policy ID, counts, status, and trace ID; memory text is not echoed.
+
+## P7-03 Skill Evaluation
+
+The SDK includes administrator skill evaluation helpers: `getSkillEvaluationConfig`, `updateSkillEvaluationConfig`, `runSkillEvaluation`, `listSkillEvaluationRuns`, and `getSkillEvaluationRun`. Skill evaluation is Default Off; admins enable it explicitly and trigger manual deterministic runs against the Approved + Rejected corpus. Reports expose only platform metadata, totals, case IDs, reason codes, trace IDs, UTC timestamps, and resource budget summaries. The SDK still calls only `/v1/*` platform routes and maps failures to `NexusAgentApiError` with platform error fields.

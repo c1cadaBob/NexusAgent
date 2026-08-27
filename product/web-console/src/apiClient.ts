@@ -15,6 +15,7 @@ export interface PrincipalProfile {
   canManageChannels: boolean;
   canWriteMemory: boolean;
   canManageMemoryRetention: boolean;
+  canManageSkillEvaluation: boolean;
 }
 
 export const DEV_PRINCIPALS: readonly PrincipalProfile[] = Object.freeze([
@@ -31,6 +32,7 @@ export const DEV_PRINCIPALS: readonly PrincipalProfile[] = Object.freeze([
     canManageChannels: true,
     canWriteMemory: true,
     canManageMemoryRetention: true,
+    canManageSkillEvaluation: true,
   },
   {
     key: "tenant-admin",
@@ -45,6 +47,7 @@ export const DEV_PRINCIPALS: readonly PrincipalProfile[] = Object.freeze([
     canManageChannels: true,
     canWriteMemory: true,
     canManageMemoryRetention: true,
+    canManageSkillEvaluation: true,
   },
   {
     key: "operator",
@@ -59,6 +62,7 @@ export const DEV_PRINCIPALS: readonly PrincipalProfile[] = Object.freeze([
     canManageChannels: false,
     canWriteMemory: true,
     canManageMemoryRetention: false,
+    canManageSkillEvaluation: false,
   },
   {
     key: "viewer",
@@ -73,6 +77,7 @@ export const DEV_PRINCIPALS: readonly PrincipalProfile[] = Object.freeze([
     canManageChannels: false,
     canWriteMemory: false,
     canManageMemoryRetention: false,
+    canManageSkillEvaluation: false,
   },
 ]);
 
@@ -85,6 +90,9 @@ export const PLATFORM_API_ROUTES = Object.freeze([
   "/v1/tasks/{task_id}/events",
   "/v1/skills",
   "/v1/capabilities",
+  "/v1/skill-evaluations/config",
+  "/v1/skill-evaluations/runs",
+  "/v1/skill-evaluations/runs/{run_id}",
   "/v1/memory/search",
   "/v1/memory",
   "/v1/memory/retention",
@@ -203,6 +211,60 @@ export interface SkillRecord {
   status: string;
   version: string;
   capability_ids?: readonly string[];
+}
+
+export interface SkillEvaluationConfig {
+  schema_version: "nexus.skill_evaluation.p7.v1";
+  tenant_id: string;
+  suite_id: string;
+  enabled: boolean;
+  mode: "manual";
+  corpus: "approved_rejected_disabled";
+  resource_budget: {
+    evaluation_mode: "deterministic_regression";
+    max_cases: number;
+  };
+  updated_at_utc: string;
+  monotonic_ms: number;
+  trace_id: string;
+}
+
+export interface SkillEvaluationCaseResult {
+  case_id: string;
+  candidate_id: string;
+  candidate_kind: "capability" | "plugin_inventory" | "blocked_fixture";
+  capability_type?: string;
+  expected_outcome: "visible" | "blocked" | "skipped";
+  actual_outcome: "visible" | "blocked" | "skipped";
+  status: "passed" | "failed" | "skipped";
+  reason_codes: readonly string[];
+}
+
+export interface SkillEvaluationRunReport {
+  schema_version: "nexus.skill_evaluation.p7.v1";
+  tenant_id: string;
+  run_id: string;
+  suite_id: string;
+  status: "passed" | "failed" | "skipped";
+  totals: {
+    total_cases: number;
+    passed_cases: number;
+    failed_cases: number;
+    skipped_cases: number;
+    approved_cases: number;
+    rejected_disabled_cases: number;
+  };
+  cases: readonly SkillEvaluationCaseResult[];
+  resource_budget: {
+    evaluation_mode: "deterministic_regression";
+    max_cases: number;
+    evaluated_cases: number;
+  };
+  started_at_utc: string;
+  completed_at_utc: string;
+  monotonic_ms: number;
+  trace_id: string;
+  reason_codes: readonly string[];
 }
 
 export interface MemoryRecord {
@@ -402,6 +464,30 @@ export class PlatformApiClient {
 
   listCapabilities(params: { tenant_id?: string; limit?: number; cursor?: string } = {}): Promise<PlatformList<CapabilityDescriptor>> {
     return this.#request<PlatformList<CapabilityDescriptor>>("GET", withQuery("/v1/capabilities", params));
+  }
+
+  getSkillEvaluationConfig(input: { tenant_id?: string; trace_id?: string } = {}): Promise<SkillEvaluationConfig> {
+    return this.#request<SkillEvaluationConfig>("GET", withQuery("/v1/skill-evaluations/config", { tenant_id: input.tenant_id ?? this.profile.tenant_id, trace_id: input.trace_id }));
+  }
+
+  updateSkillEvaluationConfig(input: { tenant_id?: string; trace_id: string; enabled?: boolean; max_cases?: number }): Promise<SkillEvaluationConfig> {
+    return this.#request<SkillEvaluationConfig>("PATCH", "/v1/skill-evaluations/config", {
+      body: { tenant_id: input.tenant_id ?? this.profile.tenant_id, ...input },
+    });
+  }
+
+  runSkillEvaluation(input: { tenant_id?: string; trace_id: string }): Promise<SkillEvaluationRunReport> {
+    return this.#request<SkillEvaluationRunReport>("POST", "/v1/skill-evaluations/runs", {
+      body: { tenant_id: input.tenant_id ?? this.profile.tenant_id, ...input },
+    });
+  }
+
+  listSkillEvaluationRuns(params: { tenant_id?: string; limit?: number; cursor?: string } = {}): Promise<PlatformList<SkillEvaluationRunReport>> {
+    return this.#request<PlatformList<SkillEvaluationRunReport>>("GET", withQuery("/v1/skill-evaluations/runs", { tenant_id: params.tenant_id ?? this.profile.tenant_id, limit: params.limit, cursor: params.cursor }));
+  }
+
+  getSkillEvaluationRun(run_id: string, params: { tenant_id?: string } = {}): Promise<SkillEvaluationRunReport> {
+    return this.#request<SkillEvaluationRunReport>("GET", withQuery(`/v1/skill-evaluations/runs/${encodeURIComponent(run_id)}`, { tenant_id: params.tenant_id ?? this.profile.tenant_id }));
   }
 
   searchMemory(input: { query: string; trace_id: string; tenant_id?: string; user_id?: string; agent_id?: string; conversation_id?: string; layer?: string }): Promise<PlatformList<MemoryRecord>> {

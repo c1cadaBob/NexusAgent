@@ -5,7 +5,7 @@ import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 
 import { DEV_PRINCIPALS } from '../../product/web-console/src/apiClient.ts';
-import { actionEnabled, assertConsolePublicValue, buildConsoleDashboardModel, projectChannelRow, projectMemoryRetentionRows, projectPluginRow, visibleNavigation } from '../../product/web-console/src/viewModel.ts';
+import { actionEnabled, assertConsolePublicValue, buildConsoleDashboardModel, projectChannelRow, projectMemoryRetentionRows, projectPluginRow, projectSkillEvaluationCaseRows, projectSkillEvaluationRows, visibleNavigation } from '../../product/web-console/src/viewModel.ts';
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const blocked = /Hermes|OpenClaw|DeepSeek|\bDSH\b|native_|raw_credential|credential_material|credential_ref|provider_(?:agent|task|cancel|binding)|source_ref|session_id|file_path|memory_path|tool_name|\/(?:opt|tmp|var|etc|home|usr)\//i;
@@ -77,14 +77,46 @@ test('web console permission view gates plugin governance and channel management
   assert.equal(actionEnabled(tenantAdmin, 'manage_channels'), true);
   assert.equal(actionEnabled(admin, 'manage_memory_retention'), true);
   assert.equal(actionEnabled(tenantAdmin, 'manage_memory_retention'), true);
+  assert.equal(actionEnabled(admin, 'manage_skill_evaluation'), true);
+  assert.equal(actionEnabled(tenantAdmin, 'manage_skill_evaluation'), true);
+  assert.equal(actionEnabled(operator, 'manage_skill_evaluation'), false);
+  assert.equal(actionEnabled(viewer, 'manage_skill_evaluation'), false);
   assert.equal(actionEnabled(operator, 'manage_memory_retention'), false);
   assert.equal(actionEnabled(viewer, 'manage_memory_retention'), false);
   assert.equal(actionEnabled(viewer, 'manage_channels'), false);
   assert.equal(actionEnabled(viewer, 'submit_task'), false);
   assert.equal(visibleNavigation(tenantAdmin).some((item) => item.id === 'plugins'), false);
   assert.equal(visibleNavigation(viewer).some((item) => item.id === 'plugins'), false);
+  assert.equal(visibleNavigation(tenantAdmin).some((item) => item.id === 'evaluations'), true);
+  assert.equal(visibleNavigation(operator).some((item) => item.id === 'evaluations'), false);
   assert.equal(visibleNavigation(viewer).some((item) => item.id === 'channels'), true);
   assert.equal(visibleNavigation(operator).some((item) => item.id === 'channels'), false);
+});
+
+test('web console view-model projects skill evaluation reports without raw fixture details', () => {
+  const report = {
+    schema_version: 'nexus.skill_evaluation.p7.v1',
+    tenant_id: 'tenant_alpha01',
+    run_id: 'skill_eval_run_alpha01_0001',
+    suite_id: 'skill_eval_suite_alpha01',
+    status: 'passed',
+    totals: { total_cases: 2, passed_cases: 2, failed_cases: 0, skipped_cases: 0, approved_cases: 1, rejected_disabled_cases: 1 },
+    cases: [
+      { case_id: 'skill_eval_case_0001', candidate_id: 'cap_planner_security_guidance', candidate_kind: 'capability', capability_type: 'skill', expected_outcome: 'visible', actual_outcome: 'visible', status: 'passed', reason_codes: ['SKILL_EVAL_APPROVED_VISIBLE'] },
+      { case_id: 'skill_eval_case_0002', candidate_id: 'plugin_rejected_skill_fixture', candidate_kind: 'blocked_fixture', capability_type: 'planner_hint', expected_outcome: 'blocked', actual_outcome: 'blocked', status: 'passed', reason_codes: ['SKILL_EVAL_REJECTED_DISABLED_BLOCKED'] },
+    ],
+    resource_budget: { evaluation_mode: 'deterministic_regression', max_cases: 25, evaluated_cases: 2 },
+    started_at_utc: '2026-08-27T00:00:00.000Z',
+    completed_at_utc: '2026-08-27T00:00:00.000Z',
+    monotonic_ms: 100,
+    trace_id: 'trace_console_skill_eval01',
+    reason_codes: ['SKILL_EVALUATION_PASSED'],
+  };
+  const rows = projectSkillEvaluationRows([report]);
+  const cases = projectSkillEvaluationCaseRows(report);
+  assert.equal(rows[0].run_id, 'skill_eval_run_alpha01_0001');
+  assert.equal(cases.length, 2);
+  assert.doesNotMatch(JSON.stringify({ rows, cases }), blocked);
 });
 
 test('web console view-model projects memory retention policy without tombstone text', () => {
@@ -134,9 +166,25 @@ test('web console dashboard model rejects non-platform markers', () => {
       monotonic_ms: 100,
       trace_id: 'trace_console_retention02',
     },
+    skillEvaluationRuns: [{
+      schema_version: 'nexus.skill_evaluation.p7.v1',
+      tenant_id: 'tenant_alpha01',
+      run_id: 'skill_eval_run_alpha01_0001',
+      suite_id: 'skill_eval_suite_alpha01',
+      status: 'passed',
+      totals: { total_cases: 1, passed_cases: 1, failed_cases: 0, skipped_cases: 0, approved_cases: 1, rejected_disabled_cases: 0 },
+      cases: [{ case_id: 'skill_eval_case_0001', candidate_id: 'cap_planner_security_guidance', candidate_kind: 'capability', capability_type: 'skill', expected_outcome: 'visible', actual_outcome: 'visible', status: 'passed', reason_codes: ['SKILL_EVAL_APPROVED_VISIBLE'] }],
+      resource_budget: { evaluation_mode: 'deterministic_regression', max_cases: 25, evaluated_cases: 1 },
+      started_at_utc: '2026-08-27T00:00:00.000Z',
+      completed_at_utc: '2026-08-27T00:00:00.000Z',
+      monotonic_ms: 100,
+      trace_id: 'trace_console_skill_eval02',
+      reason_codes: ['SKILL_EVALUATION_PASSED'],
+    }],
     plugins: [],
   });
   assert.equal(model.agents[0].agent_id, 'agent_alpha01');
   assert.equal(model.memoryRetentionRows.length, 1);
+  assert.equal(model.skillEvaluationRows.length, 1);
   assert.throws(() => assertConsolePublicValue({ source_ref: 'registry:blocked' }), /non-platform marker/);
 });
