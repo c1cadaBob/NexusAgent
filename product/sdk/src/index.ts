@@ -168,6 +168,29 @@ export interface MemoryRecord {
   score?: number;
 }
 
+export interface MemoryConflictRecord {
+  schema_version: "nexus.memory_conflict.p7.v1";
+  conflict_id: string;
+  tenant_id: string;
+  scope: {
+    tenant_id: string;
+    user_id?: string;
+    agent_id?: string;
+    conversation_id?: string;
+  };
+  layer: string;
+  expected_version: number;
+  current_version: number;
+  status: "open" | "resolved" | "ignored";
+  reason_codes: readonly string[];
+  created_at_utc: string;
+  updated_at_utc: string;
+  monotonic_ms: number;
+  trace_id: string;
+  decided_by_user_id?: string;
+  decided_at_utc?: string;
+}
+
 export interface MemoryRetentionRule {
   layer: string;
   enabled: boolean;
@@ -224,14 +247,69 @@ export interface MemoryRetentionSweepResult {
   trace_id: string;
 }
 
-export interface BudgetCheckResult {
+export interface TokenBudgetLimits {
+  tenant_units: number;
+  user_units: number;
+  agent_units: number;
+  task_units: number;
+  max_units_per_attempt: number;
+}
+
+export interface TokenBudgetPolicy {
+  schema_version: "nexus.token_budget.p7.v1";
   tenant_id: string;
+  policy_id: string;
+  enabled: boolean;
+  dimension_mode: "all_configured";
+  enforcement_scope: "task_adapter_api";
+  limits: TokenBudgetLimits;
+  resource_budget: {
+    accounting_mode: "deterministic_estimate";
+    dimensions: readonly ("tenant" | "user" | "agent" | "task")[];
+  };
+  updated_at_utc: string;
+  monotonic_ms: number;
   trace_id: string;
-  status: "approved" | "denied";
+}
+
+export interface TokenBudgetDimensionStatus {
+  dimension: "tenant" | "user" | "agent" | "task";
+  key: string;
+  limit_units: number;
+  consumed_units: number;
+  remaining_units: number;
+  status: "approved" | "degraded";
+}
+
+export interface BudgetCheckResult {
+  schema_version: "nexus.token_budget.p7.v1";
+  tenant_id: string;
+  user_id?: string;
+  agent_id?: string;
+  task_id?: string;
+  attempt_id?: string;
+  execution_id?: string;
+  conversation_id?: string;
+  trace_id: string;
+  policy_id: string;
+  decision_id: string;
+  status: "approved" | "degraded" | "denied";
+  code?: string;
+  reasons?: readonly string[];
   requested_units: number;
   remaining_units: number;
-  code?: string;
-  reasons: readonly string[];
+  max_units_per_attempt: number;
+  dimensions: readonly TokenBudgetDimensionStatus[];
+  reason_codes: readonly string[];
+  checked_at_utc: string;
+  monotonic_ms: number;
+}
+
+export interface TokenBudgetLedgerEntry extends Omit<BudgetCheckResult, "decision_id" | "status" | "checked_at_utc"> {
+  ledger_id: string;
+  status: "checked" | "reserved" | "denied";
+  consumed_units: number;
+  recorded_at_utc: string;
 }
 
 export interface ChannelConnectionTestResult {
@@ -322,7 +400,7 @@ export class NexusAgentClient {
     return this.#request<PlatformList<PlatformTask>>("GET", withQuery("/v1/tasks", params));
   }
 
-  submitTask(input: { tenant_id: string; user_id: string; agent_id: string; conversation_id: string; input: string; trace_id: string }): Promise<PlatformTask> {
+  submitTask(input: { tenant_id: string; user_id: string; agent_id: string; conversation_id: string; input: string; trace_id: string; budget_units?: number }): Promise<PlatformTask> {
     return this.#request<PlatformTask>("POST", "/v1/tasks", { body: input });
   }
 
@@ -374,8 +452,20 @@ export class NexusAgentClient {
     return this.#request<PlatformList<MemoryRecord>>("POST", "/v1/memory/search", { body: input });
   }
 
-  writeMemory(input: { tenant_id: string; layer: string; text: string; trace_id: string; user_id?: string; agent_id?: string; conversation_id?: string }): Promise<MemoryRecord> {
+  writeMemory(input: { tenant_id: string; layer: string; text: string; trace_id: string; user_id?: string; agent_id?: string; conversation_id?: string; expected_version?: number }): Promise<MemoryRecord> {
     return this.#request<MemoryRecord>("POST", "/v1/memory", { body: input });
+  }
+
+  listMemoryConflicts(params: { tenant_id: string; status?: "open" | "resolved" | "ignored"; trace_id?: string; limit?: number; cursor?: string }): Promise<PlatformList<MemoryConflictRecord>> {
+    return this.#request<PlatformList<MemoryConflictRecord>>("GET", withQuery("/v1/memory/conflicts", params));
+  }
+
+  getMemoryConflict(conflict_id: string, params: { tenant_id: string }): Promise<MemoryConflictRecord> {
+    return this.#request<MemoryConflictRecord>("GET", withQuery(`/v1/memory/conflicts/${encodeURIComponent(conflict_id)}`, params));
+  }
+
+  decideMemoryConflict(conflict_id: string, input: { tenant_id: string; decision: "resolve" | "ignore"; reason: string; trace_id: string }): Promise<MemoryConflictRecord> {
+    return this.#request<MemoryConflictRecord>("POST", `/v1/memory/conflicts/${encodeURIComponent(conflict_id)}/decision`, { body: input });
   }
 
   getMemoryRetentionPolicy(params: { tenant_id: string; trace_id?: string }): Promise<MemoryRetentionPolicy> {
@@ -414,7 +504,19 @@ export class NexusAgentClient {
     return this.#request<ApprovalRecord>("POST", `/v1/approvals/${encodeURIComponent(approval_id)}/decision`, { body: input });
   }
 
-  checkBudget(input: { tenant_id: string; requested_units: number; remaining_units: number; trace_id: string; max_units_per_attempt?: number }): Promise<BudgetCheckResult> {
+  getBudgetPolicy(params: { tenant_id: string; trace_id?: string }): Promise<TokenBudgetPolicy> {
+    return this.#request<TokenBudgetPolicy>("GET", withQuery("/v1/budget/policy", params));
+  }
+
+  updateBudgetPolicy(input: { tenant_id: string; trace_id: string; enabled?: boolean; limits?: Partial<TokenBudgetLimits> }): Promise<TokenBudgetPolicy> {
+    return this.#request<TokenBudgetPolicy>("PATCH", "/v1/budget/policy", { body: input });
+  }
+
+  listBudgetLedger(params: { tenant_id: string; user_id?: string; agent_id?: string; task_id?: string; trace_id?: string; limit?: number; cursor?: string }): Promise<PlatformList<TokenBudgetLedgerEntry>> {
+    return this.#request<PlatformList<TokenBudgetLedgerEntry>>("GET", withQuery("/v1/budget/ledger", params));
+  }
+
+  checkBudget(input: { tenant_id: string; requested_units?: number; remaining_units?: number; max_units_per_attempt?: number; input?: string; user_id?: string; agent_id?: string; task_id?: string; attempt_id?: string; execution_id?: string; conversation_id?: string; trace_id: string; consume?: boolean }): Promise<BudgetCheckResult> {
     return this.#request<BudgetCheckResult>("POST", "/v1/budget/check", { body: input });
   }
 

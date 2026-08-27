@@ -29,6 +29,14 @@ import {
   type PlanQualityInput,
   type PlanQualityObservability,
 } from "./plan-quality.ts";
+import {
+  estimateTokenBudgetUnits,
+  TOKEN_BUDGET_DEFAULT_ENABLED,
+  type LocalTokenBudget,
+  type TokenBudgetContext,
+  type TokenBudgetDecision,
+  type TokenBudgetError,
+} from "./token-budget.ts";
 
 export {
   evaluateExecutionPlanQuality,
@@ -47,6 +55,28 @@ export {
   type PlanQualitySignal,
   type PlanQualitySignalStatus,
 } from "./plan-quality.ts";
+
+export {
+  defaultTokenBudgetPolicy,
+  estimateTokenBudgetUnits,
+  LocalTokenBudget,
+  TOKEN_BUDGET_DEFAULT_ENABLED,
+  TOKEN_BUDGET_DIMENSION_MODE,
+  TOKEN_BUDGET_ENFORCEMENT_SCOPE,
+  TOKEN_BUDGET_SCHEMA_VERSION,
+  TokenBudgetError,
+  type TokenBudgetContext,
+  type TokenBudgetDecision,
+  type TokenBudgetDecisionStatus,
+  type TokenBudgetDimension,
+  type TokenBudgetDimensionStatus,
+  type TokenBudgetLedgerEntry,
+  type TokenBudgetLedgerStatus,
+  type TokenBudgetLimits,
+  type TokenBudgetPolicy,
+  type TokenBudgetPolicyUpdateInput,
+  type TokenBudgetReasonCode,
+} from "./token-budget.ts";
 
 export type AdapterKind = "channel" | "planner" | "executor" | "memory" | "artifact" | "credential";
 
@@ -146,6 +176,7 @@ export interface CoordinatorAdapterPort {
 export interface SubmitTaskOptions {
   principal: PolicyPrincipal;
   budget?: BudgetCheck;
+  token_budget_units?: number;
   approval?: ApprovalCheck;
 }
 
@@ -170,6 +201,7 @@ export interface DispatchOptions {
   principal: PolicyPrincipal;
   payload: Record<string, unknown>;
   budget?: BudgetCheck;
+  token_budget_units?: number;
   approval?: ApprovalCheck;
 }
 
@@ -183,6 +215,12 @@ export interface CoordinatorOptions {
   clock?: PlatformClock;
   eventBus?: EventBus;
   planQuality?: PlanQualityCoordinatorOptions;
+  tokenBudget?: TokenBudgetCoordinatorOptions;
+}
+
+export interface TokenBudgetCoordinatorOptions {
+  enabled?: boolean;
+  service?: LocalTokenBudget;
 }
 
 interface CoordinatorPlanQualityConfig {
@@ -190,6 +228,11 @@ interface CoordinatorPlanQualityConfig {
   observability?: PlanQualityObservability;
   evaluator: (input: PlanQualityInput) => PlanQualityEvaluation;
   resource_budget?: PlanQualityCoordinatorOptions["resource_budget"];
+}
+
+interface CoordinatorTokenBudgetConfig {
+  enabled: boolean;
+  service?: LocalTokenBudget;
 }
 
 export class CoordinatorError extends Error {
@@ -222,14 +265,19 @@ export class Coordinator {
   readonly eventBus?: EventBus;
   readonly #adapters = new Map<string, CoordinatorAdapterPort>();
   readonly #snapshots = new Map<string, TaskSnapshot>();
+  readonly #taskIdentities = new Map<string, { user_id: string; agent_id: string }>();
   readonly #commandIdempotency = new Map<string, { fingerprint: string; result: SubmitTaskCommandResult }>();
   readonly #planQuality: CoordinatorPlanQualityConfig;
+  readonly #tokenBudget: CoordinatorTokenBudgetConfig;
   readonly #events: Record<string, unknown>[] = [];
   #eventSequence = 0;
 
   constructor(policyGateOrOptions: PolicyGate | CoordinatorOptions = new PolicyGate()) {
     this.#planQuality = normalizePlanQualityOptions(
       policyGateOrOptions instanceof PolicyGate ? undefined : policyGateOrOptions.planQuality,
+    );
+    this.#tokenBudget = normalizeTokenBudgetOptions(
+      policyGateOrOptions instanceof PolicyGate ? undefined : policyGateOrOptions.tokenBudget,
     );
     if (policyGateOrOptions instanceof PolicyGate) {
       this.policyGate = policyGateOrOptions;
@@ -253,6 +301,8 @@ export class Coordinator {
   submitTask(request: CoordinatorTaskRequest, options: SubmitTaskOptions): SubmitTaskResult {
     this.#assertTaskRequest(request);
     const reading = this.#clockReading(request.created_at_utc, request.monotonic_ms);
+    const tokenBudgetContext = this.#taskTokenBudgetContext(request, options.token_budget_units);
+    const tokenBudgetDecision = this.#checkTokenBudget(tokenBudgetContext, false);
 
     const decision = this.policyGate.evaluate({
       action: "task.submit",
@@ -265,7 +315,7 @@ export class Coordinator {
       monotonic_ms: reading.monotonic_ms,
       requested_at_utc: reading.utc_timestamp,
       principal: options.principal,
-      budget: options.budget,
+      budget: tokenBudgetDecision ? policyBudgetFromTokenDecision(tokenBudgetDecision) : options.budget,
       approval: options.approval,
     });
     if (!decision.allow) {
@@ -289,7 +339,9 @@ export class Coordinator {
     });
 
     this.#snapshots.set(request.task_id, next);
+    this.#taskIdentities.set(request.task_id, { user_id: request.user_id, agent_id: request.agent_id });
     this.#recordEvent(event as PlatformEventEnvelope);
+    if (decision.allow && tokenBudgetContext) this.#reserveTokenBudget(tokenBudgetContext);
     return {
       accepted: decision.allow,
       decision,
@@ -363,6 +415,8 @@ export class Coordinator {
       typeof options.payload.requested_at_utc === "string" ? options.payload.requested_at_utc : undefined,
       (snapshot.monotonic_ms ?? 0) + 1,
     );
+    const tokenBudgetContext = this.#adapterTokenBudgetContext(snapshot, adapter.kind, options.payload, options.token_budget_units);
+    const tokenBudgetDecision = this.#checkTokenBudget(tokenBudgetContext, false);
 
     const decision = this.policyGate.evaluate({
       action: "adapter.invoke",
@@ -375,7 +429,7 @@ export class Coordinator {
       monotonic_ms: reading.monotonic_ms,
       requested_at_utc: reading.utc_timestamp,
       principal: options.principal,
-      budget: options.budget,
+      budget: tokenBudgetDecision ? policyBudgetFromTokenDecision(tokenBudgetDecision) : options.budget,
       approval: options.approval,
       route: {
         adapter_kind: adapter.kind,
@@ -385,6 +439,14 @@ export class Coordinator {
 
     if (!decision.allow) {
       this.#recordEvent(this.#policyDeniedEvent(decision, "adapter-dispatch", reading));
+      if (tokenBudgetDecision?.status === "degraded") {
+        throw new CoordinatorError("PLATFORM_RATE_LIMITED", "Token budget is exhausted for adapter dispatch", {
+          decision_id: tokenBudgetDecision.decision_id,
+          reason_codes: tokenBudgetDecision.reason_codes,
+          requested_units: tokenBudgetDecision.requested_units,
+          remaining_units: tokenBudgetDecision.remaining_units,
+        });
+      }
     }
 
     this.policyGate.assertAllowedDecision(decision, {
@@ -393,6 +455,7 @@ export class Coordinator {
       execution_id: snapshot.execution_id ?? "",
       trace_id: snapshot.trace_id,
     });
+    if (tokenBudgetContext) this.#reserveTokenBudget(tokenBudgetContext);
 
     this.#recordEvent(this.#adapterLifecycleEvent(adapter.kind, "started", snapshot, reading));
 
@@ -720,6 +783,62 @@ export class Coordinator {
     }
   }
 
+  #taskTokenBudgetContext(request: CoordinatorTaskRequest, requestedUnits: number | undefined): TokenBudgetContext | undefined {
+    if (!this.#tokenBudget.enabled || !this.#tokenBudget.service) return undefined;
+    return {
+      tenant_id: request.tenant_id,
+      user_id: request.user_id,
+      agent_id: request.agent_id,
+      task_id: request.task_id,
+      attempt_id: request.attempt_id,
+      execution_id: request.execution_id,
+      conversation_id: request.conversation_id,
+      trace_id: request.trace_id,
+      requested_units: requestedUnits ?? estimateTokenBudgetUnits(request.input.text),
+      reason_code: "task_submit",
+    };
+  }
+
+  #adapterTokenBudgetContext(snapshot: TaskSnapshot, adapterKind: AdapterKind, payload: Record<string, unknown>, requestedUnits: number | undefined): TokenBudgetContext | undefined {
+    if (!this.#tokenBudget.enabled || !this.#tokenBudget.service || !["planner", "executor"].includes(adapterKind)) return undefined;
+    const identity = this.#taskIdentities.get(snapshot.task_id);
+    return {
+      tenant_id: snapshot.tenant_id,
+      user_id: identity?.user_id,
+      agent_id: identity?.agent_id,
+      task_id: snapshot.task_id,
+      attempt_id: snapshot.attempt_id,
+      execution_id: snapshot.execution_id,
+      conversation_id: snapshot.conversation_id,
+      trace_id: snapshot.trace_id,
+      requested_units: requestedUnits ?? estimateTokenBudgetUnits(stableStringify(payload)),
+      reason_code: adapterKind === "planner" ? "planner_dispatch" : "executor_dispatch",
+    };
+  }
+
+  #checkTokenBudget(context: TokenBudgetContext | undefined, consume: boolean): TokenBudgetDecision | undefined {
+    if (!context || !this.#tokenBudget.service) return undefined;
+    try {
+      return this.#tokenBudget.service.check(context, { consume });
+    } catch (error) {
+      const candidate = error as TokenBudgetError;
+      if (candidate?.code) {
+        throw new CoordinatorError(candidate.code, error instanceof Error ? error.message : "Token budget check failed", candidate.details ?? {});
+      }
+      throw error;
+    }
+  }
+
+  #reserveTokenBudget(context: TokenBudgetContext): void {
+    const decision = this.#checkTokenBudget(context, true);
+    if (decision?.status === "degraded") {
+      throw new CoordinatorError("PLATFORM_RATE_LIMITED", "Token budget is exhausted", {
+        decision_id: decision.decision_id,
+        reason_codes: decision.reason_codes,
+      });
+    }
+  }
+
   #taskCommandAuditEvent(
     request: CoordinatorTaskCommandRequest,
     snapshot: TaskSnapshot,
@@ -871,6 +990,21 @@ function normalizePlanQualityOptions(options: PlanQualityCoordinatorOptions | un
     observability: options?.observability,
     evaluator: options?.evaluator ?? evaluateExecutionPlanQuality,
     resource_budget: options?.resource_budget,
+  };
+}
+
+function normalizeTokenBudgetOptions(options: TokenBudgetCoordinatorOptions | undefined): CoordinatorTokenBudgetConfig {
+  return {
+    enabled: options?.enabled ?? TOKEN_BUDGET_DEFAULT_ENABLED,
+    service: options?.service,
+  };
+}
+
+function policyBudgetFromTokenDecision(decision: TokenBudgetDecision): BudgetCheck {
+  return {
+    requested_units: decision.requested_units,
+    remaining_units: decision.remaining_units,
+    max_units_per_attempt: decision.max_units_per_attempt,
   };
 }
 

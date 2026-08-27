@@ -13,6 +13,7 @@ import {
   type ChannelName,
   type HealthStatus,
   type MemoryDeleteResult,
+  type MemoryConflictRecord,
   type MemoryRecord,
   type MemoryRetentionPolicy,
   type MemoryRetentionSweepResult,
@@ -25,6 +26,8 @@ import {
   type SkillRecord,
   type TenantRecord,
   type TenantUserRecord,
+  type TokenBudgetLedgerEntry,
+  type TokenBudgetPolicy,
 } from "./apiClient";
 import { actionEnabled, buildConsoleDashboardModel, visibleNavigation, type ConsoleDataset } from "./viewModel";
 import type { ConsoleViewId } from "./viewModel";
@@ -41,6 +44,8 @@ const initialDataset: ConsoleDataset = {
   capabilities: [],
   skillEvaluationRuns: [],
   memory: [],
+  memoryConflicts: [],
+  budgetLedger: [],
   plugins: [],
 };
 
@@ -60,7 +65,12 @@ function App() {
   const [memoryText, setMemoryText] = useState("Platform console memory note");
   const [memoryQuery, setMemoryQuery] = useState("platform console");
   const [budgetUnits, setBudgetUnits] = useState("10");
-  const [remainingUnits, setRemainingUnits] = useState("25");
+  const [taskBudgetUnits, setTaskBudgetUnits] = useState("");
+  const [tenantBudgetLimit, setTenantBudgetLimit] = useState("100000");
+  const [userBudgetLimit, setUserBudgetLimit] = useState("50000");
+  const [agentBudgetLimit, setAgentBudgetLimit] = useState("50000");
+  const [taskBudgetLimit, setTaskBudgetLimit] = useState("10000");
+  const [attemptBudgetLimit, setAttemptBudgetLimit] = useState("5000");
   const [channelName, setChannelName] = useState<ChannelName>("dingtalk");
   const [channelDisplayName, setChannelDisplayName] = useState("");
   const [channelAccountRef, setChannelAccountRef] = useState("");
@@ -91,6 +101,9 @@ function App() {
       const skillEvaluationConfig = profile.canManageSkillEvaluation ? await client.getSkillEvaluationConfig({ tenant_id: profile.tenant_id, trace_id: traceRef.current() }) : undefined;
       const skillEvaluationRuns = profile.canManageSkillEvaluation ? await client.listSkillEvaluationRuns({ tenant_id: profile.tenant_id }) : { items: [] as SkillEvaluationRunReport[] };
       const memoryRetentionPolicy = profile.canManageMemoryRetention ? await client.getMemoryRetentionPolicy({ tenant_id: profile.tenant_id, trace_id: traceRef.current() }) : undefined;
+      const memoryConflicts = profile.canManageMemoryConflicts ? await client.listMemoryConflicts({ tenant_id: profile.tenant_id }) : { items: [] as MemoryConflictRecord[] };
+      const budgetPolicy = profile.canManageTokenBudget ? await client.getBudgetPolicy({ tenant_id: profile.tenant_id, trace_id: traceRef.current() }) : undefined;
+      const budgetLedger = profile.canManageTokenBudget ? await client.listBudgetLedger({ tenant_id: profile.tenant_id }) : { items: [] as TokenBudgetLedgerEntry[] };
 
       setData((previous) => ({
         ...previous,
@@ -108,6 +121,9 @@ function App() {
         skillEvaluationRuns: skillEvaluationRuns.items,
         selectedSkillEvaluationRun: skillEvaluationRuns.items.at(-1),
         memoryRetentionPolicy,
+        memoryConflicts: memoryConflicts.items,
+        budgetPolicy,
+        budgetLedger: budgetLedger.items,
       }));
       setSelectedTaskId(task_id);
       setMessage("Refresh complete");
@@ -212,7 +228,9 @@ function App() {
             setConversationId={setConversationId}
             agentId={agentId}
             setAgentId={setAgentId}
-            onSubmit={() => runAction(() => client.submitTask({ input: taskInput, conversation_id: conversationId, agent_id: agentId, trace_id: traceRef.current() }), "Task submitted")}
+            budgetUnits={taskBudgetUnits}
+            setBudgetUnits={setTaskBudgetUnits}
+            onSubmit={() => runAction(() => client.submitTask({ input: taskInput, conversation_id: conversationId, agent_id: agentId, trace_id: traceRef.current(), ...(taskBudgetUnits ? { budget_units: Number(taskBudgetUnits) } : {}) }), "Task submitted")}
             onCancel={(task_id) => runAction(() => client.cancelTask(task_id, { reason: "Cancelled from console", trace_id: traceRef.current() }), "Cancel accepted")}
             onRetry={(task_id) => runAction(() => client.retryTask(task_id, { reason: "Retry from console", trace_id: traceRef.current() }), "Retry accepted")}
           />
@@ -235,6 +253,8 @@ function App() {
             profile={profile}
             records={data.memory}
             retentionRows={dashboard.memoryRetentionRows}
+            conflictRows={dashboard.memoryConflictRows}
+            conflicts={data.memoryConflicts ?? []}
             retentionPolicy={data.memoryRetentionPolicy}
             retentionSweep={data.memoryRetentionSweep}
             memoryText={memoryText}
@@ -254,19 +274,41 @@ function App() {
               const result = await client.deleteMemory(memory_id, { reason: "Console memory retention delete", trace_id: traceRef.current() });
               setData((previous) => ({ ...previous, memoryRetentionSweep: resultToSweep(result) }));
             }, "Memory deleted")}
+            onConflictDecision={(conflict_id, decision) => runAction(() => client.decideMemoryConflict(conflict_id, { decision, reason: "Console memory conflict decision", trace_id: traceRef.current() }), "Memory conflict updated")}
           />
         )}
         {activeView === "budget" && (
           <BudgetPanel
             budget={data.budget}
+            policyRows={dashboard.budgetPolicyRows}
+            ledgerRows={dashboard.budgetLedgerRows}
             budgetUnits={budgetUnits}
             setBudgetUnits={setBudgetUnits}
-            remainingUnits={remainingUnits}
-            setRemainingUnits={setRemainingUnits}
+            tenantLimit={tenantBudgetLimit}
+            setTenantLimit={setTenantBudgetLimit}
+            userLimit={userBudgetLimit}
+            setUserLimit={setUserBudgetLimit}
+            agentLimit={agentBudgetLimit}
+            setAgentLimit={setAgentBudgetLimit}
+            taskLimit={taskBudgetLimit}
+            setTaskLimit={setTaskBudgetLimit}
+            attemptLimit={attemptBudgetLimit}
+            setAttemptLimit={setAttemptBudgetLimit}
+            canManage={profile.canManageTokenBudget}
             onCheck={() => runAction(async () => {
-              const result = await client.checkBudget({ requested_units: Number(budgetUnits), remaining_units: Number(remainingUnits), max_units_per_attempt: Number(remainingUnits), trace_id: traceRef.current() });
+              const result = await client.checkBudget({ requested_units: Number(budgetUnits), user_id: profile.user_id, trace_id: traceRef.current() });
               setData((previous) => ({ ...previous, budget: result }));
             }, "Budget checked")}
+            onPolicyUpdate={() => runAction(() => client.updateBudgetPolicy({
+              trace_id: traceRef.current(),
+              limits: {
+                tenant_units: Number(tenantBudgetLimit),
+                user_units: Number(userBudgetLimit),
+                agent_units: Number(agentBudgetLimit),
+                task_units: Number(taskBudgetLimit),
+                max_units_per_attempt: Number(attemptBudgetLimit),
+              },
+            }), "Budget policy updated")}
           />
         )}
         {activeView === "plugins" && profile.canManagePlugins && (
@@ -295,6 +337,8 @@ function Overview({ health, dashboard }: { health?: HealthStatus; dashboard: Ret
     <Metric label="Channels" value={dashboard.counters.channel_configs} />
     <Metric label="Plugin entries" value={dashboard.counters.plugin_entries} />
     <Metric label="Evaluation runs" value={dashboard.counters.skill_evaluation_runs} />
+    <Metric label="Memory conflicts" value={dashboard.counters.memory_conflicts} />
+    <Metric label="Budget ledger" value={dashboard.counters.budget_ledger_entries} />
   </section>;
 }
 
@@ -358,6 +402,8 @@ function Tasks(props: {
   setConversationId: (value: string) => void;
   agentId: string;
   setAgentId: (value: string) => void;
+  budgetUnits: string;
+  setBudgetUnits: (value: string) => void;
   onSubmit: () => void;
   onCancel: (task_id: string) => void;
   onRetry: (task_id: string) => void;
@@ -367,6 +413,7 @@ function Tasks(props: {
       <label>Task input<input value={props.taskInput} onChange={(event) => props.setTaskInput(event.target.value)} disabled={!actionEnabled(props.profile, "submit_task")} /></label>
       <label>Conversation ID<input value={props.conversationId} onChange={(event) => props.setConversationId(event.target.value)} disabled={!actionEnabled(props.profile, "submit_task")} /></label>
       <label>Agent ID<input value={props.agentId} onChange={(event) => props.setAgentId(event.target.value)} disabled={!actionEnabled(props.profile, "submit_task")} /></label>
+      <label>Budget units<input type="number" min="1" value={props.budgetUnits} onChange={(event) => props.setBudgetUnits(event.target.value)} disabled={!actionEnabled(props.profile, "submit_task")} /></label>
       <button type="submit" disabled={!actionEnabled(props.profile, "submit_task")}>Submit task</button>
     </form>
     <Table title="Tasks" rows={props.tasks} columns={["task_id", "state", "agent_id", "attempt_id", "execution_id", "conversation_id", "trace_id"]} onRowClick={(row) => props.setSelectedTaskId(String(row.task_id ?? ""))} selectedId={props.selectedTaskId} idKey="task_id" />
@@ -413,9 +460,10 @@ function Evaluations(props: { profile: PrincipalProfile; config?: SkillEvaluatio
   return <section className="stack"><Table title="Skill evaluation config" rows={configRows} columns={["tenant_id", "suite_id", "enabled", "mode", "corpus", "max_cases", "updated_at_utc", "trace_id"]} /><div className="button-row"><button type="button" disabled={!canManage || props.config?.enabled === true} onClick={() => props.onEnable(true)}>Enable evaluations</button><button type="button" disabled={!canManage || props.config?.enabled === false} onClick={() => props.onEnable(false)}>Disable evaluations</button><button type="button" disabled={!canManage || props.config?.enabled !== true} onClick={props.onRun}>Run evaluation</button></div><Table title="Skill evaluation runs" rows={props.runs} columns={["run_id", "tenant_id", "suite_id", "status", "total_cases", "passed_cases", "failed_cases", "rejected_disabled_cases", "completed_at_utc", "trace_id"]} />{props.latestRun ? <Table title="Latest skill evaluation" rows={latestRows} columns={["run_id", "tenant_id", "suite_id", "status", "total_cases", "passed_cases", "failed_cases", "rejected_disabled_cases", "completed_at_utc", "trace_id"]} /> : <EmptyState text="No skill evaluation run" />}<Table title="Skill evaluation cases" rows={props.cases} columns={["case_id", "candidate_id", "candidate_kind", "capability_type", "expected_outcome", "actual_outcome", "status", "reason_codes"]} /></section>;
 }
 
-function MemoryPanel(props: { profile: PrincipalProfile; records: readonly MemoryRecord[]; retentionRows: readonly Record<string, unknown>[]; retentionPolicy?: MemoryRetentionPolicy; retentionSweep?: MemoryRetentionSweepResult; memoryText: string; setMemoryText: (value: string) => void; memoryQuery: string; setMemoryQuery: (value: string) => void; onWrite: () => void; onSearch: () => void; onSweep: () => void; onDelete: (memory_id: string) => void }) {
+function MemoryPanel(props: { profile: PrincipalProfile; records: readonly MemoryRecord[]; retentionRows: readonly Record<string, unknown>[]; conflictRows: readonly Record<string, unknown>[]; conflicts: readonly MemoryConflictRecord[]; retentionPolicy?: MemoryRetentionPolicy; retentionSweep?: MemoryRetentionSweepResult; memoryText: string; setMemoryText: (value: string) => void; memoryQuery: string; setMemoryQuery: (value: string) => void; onWrite: () => void; onSearch: () => void; onSweep: () => void; onDelete: (memory_id: string) => void; onConflictDecision: (conflict_id: string, decision: "resolve" | "ignore") => void }) {
   const canManageRetention = actionEnabled(props.profile, "manage_memory_retention");
-  return <section className="stack"><form className="form-grid" onSubmit={(event) => { event.preventDefault(); props.onWrite(); }}><label>Memory text<input value={props.memoryText} onChange={(event) => props.setMemoryText(event.target.value)} disabled={!actionEnabled(props.profile, "write_memory")} /></label><button type="submit" disabled={!actionEnabled(props.profile, "write_memory")}>Write memory</button></form><form className="form-grid" onSubmit={(event) => { event.preventDefault(); props.onSearch(); }}><label>Memory query<input value={props.memoryQuery} onChange={(event) => props.setMemoryQuery(event.target.value)} /></label><button type="submit">Search memory</button></form><Table title="Memory results" rows={props.records} columns={["memory_id", "tenant_id", "layer", "text", "score", "trace_id"]} />{canManageRetention && <><Table title="Memory retention policy" rows={props.retentionRows} columns={["policy_id", "tenant_id", "layer", "enabled", "ttl_days", "action", "immutable", "mode", "updated_at_utc", "trace_id"]} /><div className="button-row"><button type="button" onClick={props.onSweep}>Run retention sweep</button>{props.records.map((record) => <button type="button" key={record.memory_id} onClick={() => props.onDelete(record.memory_id)}>Delete {record.memory_id}</button>)}</div>{props.retentionSweep ? <Table title="Memory retention sweep" rows={[props.retentionSweep]} columns={["tenant_id", "policy_id", "scanned_count", "deleted_count", "skipped_count", "swept_at_utc", "trace_id"]} /> : <EmptyState text="No retention sweep result" />}</>}</section>;
+  const canManageConflicts = actionEnabled(props.profile, "manage_memory_conflicts");
+  return <section className="stack"><form className="form-grid" onSubmit={(event) => { event.preventDefault(); props.onWrite(); }}><label>Memory text<input value={props.memoryText} onChange={(event) => props.setMemoryText(event.target.value)} disabled={!actionEnabled(props.profile, "write_memory")} /></label><button type="submit" disabled={!actionEnabled(props.profile, "write_memory")}>Write memory</button></form><form className="form-grid" onSubmit={(event) => { event.preventDefault(); props.onSearch(); }}><label>Memory query<input value={props.memoryQuery} onChange={(event) => props.setMemoryQuery(event.target.value)} /></label><button type="submit">Search memory</button></form><Table title="Memory results" rows={props.records} columns={["memory_id", "tenant_id", "layer", "text", "version", "score", "trace_id"]} />{canManageRetention && <><Table title="Memory retention policy" rows={props.retentionRows} columns={["policy_id", "tenant_id", "layer", "enabled", "ttl_days", "action", "immutable", "mode", "updated_at_utc", "trace_id"]} /><div className="button-row"><button type="button" onClick={props.onSweep}>Run retention sweep</button>{props.records.map((record) => <button type="button" key={record.memory_id} onClick={() => props.onDelete(record.memory_id)}>Delete {record.memory_id}</button>)}</div>{props.retentionSweep ? <Table title="Memory retention sweep" rows={[props.retentionSweep]} columns={["tenant_id", "policy_id", "scanned_count", "deleted_count", "skipped_count", "swept_at_utc", "trace_id"]} /> : <EmptyState text="No retention sweep result" />}</>}{canManageConflicts && <><Table title="Memory conflicts" rows={props.conflictRows} columns={["conflict_id", "tenant_id", "layer", "status", "expected_version", "current_version", "reason_codes", "scope_user_id", "scope_agent_id", "scope_conversation_id", "updated_at_utc", "trace_id"]} /><div className="button-row">{props.conflicts.filter((conflict) => conflict.status === "open").map((conflict) => <React.Fragment key={conflict.conflict_id}><button type="button" onClick={() => props.onConflictDecision(conflict.conflict_id, "resolve")}>Resolve {conflict.conflict_id}</button><button type="button" onClick={() => props.onConflictDecision(conflict.conflict_id, "ignore")}>Ignore {conflict.conflict_id}</button></React.Fragment>)}</div></>}</section>;
 }
 
 function resultToSweep(result: MemoryDeleteResult): MemoryRetentionSweepResult {
@@ -434,8 +482,8 @@ function resultToSweep(result: MemoryDeleteResult): MemoryRetentionSweepResult {
   };
 }
 
-function BudgetPanel(props: { budget?: BudgetCheckResult; budgetUnits: string; setBudgetUnits: (value: string) => void; remainingUnits: string; setRemainingUnits: (value: string) => void; onCheck: () => void }) {
-  return <section className="stack"><form className="form-grid" onSubmit={(event) => { event.preventDefault(); props.onCheck(); }}><label>Requested units<input type="number" min="1" value={props.budgetUnits} onChange={(event) => props.setBudgetUnits(event.target.value)} /></label><label>Remaining units<input type="number" min="0" value={props.remainingUnits} onChange={(event) => props.setRemainingUnits(event.target.value)} /></label><button type="submit">Check budget</button></form>{props.budget ? <Table title="Budget decision" rows={[props.budget]} columns={["tenant_id", "status", "requested_units", "remaining_units", "code", "reasons", "trace_id"]} /> : <EmptyState text="No budget decision yet" />}</section>;
+function BudgetPanel(props: { budget?: BudgetCheckResult; policyRows: readonly Record<string, unknown>[]; ledgerRows: readonly Record<string, unknown>[]; budgetUnits: string; setBudgetUnits: (value: string) => void; tenantLimit: string; setTenantLimit: (value: string) => void; userLimit: string; setUserLimit: (value: string) => void; agentLimit: string; setAgentLimit: (value: string) => void; taskLimit: string; setTaskLimit: (value: string) => void; attemptLimit: string; setAttemptLimit: (value: string) => void; canManage: boolean; onCheck: () => void; onPolicyUpdate: () => void }) {
+  return <section className="stack"><form className="form-grid" onSubmit={(event) => { event.preventDefault(); props.onCheck(); }}><label>Requested units<input type="number" min="1" value={props.budgetUnits} onChange={(event) => props.setBudgetUnits(event.target.value)} /></label><button type="submit">Check budget</button></form>{props.budget ? <Table title="Budget decision" rows={[props.budget]} columns={["policy_id", "tenant_id", "user_id", "status", "requested_units", "remaining_units", "max_units_per_attempt", "reason_codes", "trace_id"]} /> : <EmptyState text="No budget decision yet" />}<Table title="Budget policy" rows={props.policyRows} columns={["policy_id", "tenant_id", "enabled", "dimension_mode", "enforcement_scope", "tenant_units", "user_units", "agent_units", "task_units", "max_units_per_attempt", "updated_at_utc", "trace_id"]} />{props.canManage && <form className="form-grid" onSubmit={(event) => { event.preventDefault(); props.onPolicyUpdate(); }}><label>Tenant units<input type="number" min="1" value={props.tenantLimit} onChange={(event) => props.setTenantLimit(event.target.value)} /></label><label>User units<input type="number" min="1" value={props.userLimit} onChange={(event) => props.setUserLimit(event.target.value)} /></label><label>Agent units<input type="number" min="1" value={props.agentLimit} onChange={(event) => props.setAgentLimit(event.target.value)} /></label><label>Task units<input type="number" min="1" value={props.taskLimit} onChange={(event) => props.setTaskLimit(event.target.value)} /></label><label>Attempt units<input type="number" min="1" value={props.attemptLimit} onChange={(event) => props.setAttemptLimit(event.target.value)} /></label><button type="submit">Update policy</button></form>}<Table title="Budget ledger" rows={props.ledgerRows} columns={["ledger_id", "policy_id", "tenant_id", "user_id", "agent_id", "task_id", "status", "requested_units", "consumed_units", "remaining_units", "reason_codes", "recorded_at_utc", "trace_id"]} /></section>;
 }
 
 function Plugins(props: { plugins: readonly Record<string, unknown>[]; pluginName: string; setPluginName: (value: string) => void; pluginHash: string; setPluginHash: (value: string) => void; onImport: () => void; onAdmission: (plugin_id: string, decision: "approve" | "disable" | "reject") => void }) {

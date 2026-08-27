@@ -7,6 +7,7 @@ import type {
   HealthStatus,
   MemoryRetentionPolicy,
   MemoryRetentionSweepResult,
+  MemoryConflictRecord,
   MemoryRecord,
   PlatformEvent,
   PlatformTask,
@@ -17,6 +18,8 @@ import type {
   SkillRecord,
   TenantRecord,
   TenantUserRecord,
+  TokenBudgetLedgerEntry,
+  TokenBudgetPolicy,
 } from "./apiClient";
 
 export const WEB_CONSOLE_VIEW_MODEL_VERSION = "nexus.web_console.view_model.p5.v1";
@@ -80,7 +83,10 @@ export interface ConsoleDataset {
   memory: readonly MemoryRecord[];
   memoryRetentionPolicy?: MemoryRetentionPolicy;
   memoryRetentionSweep?: MemoryRetentionSweepResult;
+  memoryConflicts?: readonly MemoryConflictRecord[];
   budget?: BudgetCheckResult;
+  budgetPolicy?: TokenBudgetPolicy;
+  budgetLedger?: readonly TokenBudgetLedgerEntry[];
   plugins: readonly PluginInventoryEntry[];
 }
 
@@ -107,11 +113,16 @@ export interface ConsoleDashboardModel {
     plugin_entries: number;
     memory_records: number;
     skill_evaluation_runs: number;
+    memory_conflicts: number;
+    budget_ledger_entries: number;
   };
   agents: readonly AgentSummary[];
   channelRows: readonly Pick<ChannelConfigRecord, typeof CHANNEL_PUBLIC_COLUMNS[number]>[];
   pluginRows: readonly Pick<PluginInventoryEntry, typeof PLUGIN_PUBLIC_COLUMNS[number]>[];
   memoryRetentionRows: readonly Record<string, unknown>[];
+  memoryConflictRows: readonly Record<string, unknown>[];
+  budgetPolicyRows: readonly Record<string, unknown>[];
+  budgetLedgerRows: readonly Record<string, unknown>[];
   skillEvaluationRows: readonly Record<string, unknown>[];
   skillEvaluationCaseRows: readonly Record<string, unknown>[];
 }
@@ -133,11 +144,16 @@ export function buildConsoleDashboardModel(profile: PrincipalProfile, data: Cons
       plugin_entries: data.plugins.length,
       memory_records: data.memory.length,
       skill_evaluation_runs: data.skillEvaluationRuns?.length ?? 0,
+      memory_conflicts: data.memoryConflicts?.length ?? 0,
+      budget_ledger_entries: data.budgetLedger?.length ?? 0,
     },
     agents: summarizeAgents(data.tasks),
     channelRows: data.channels.map(projectChannelRow),
     pluginRows: data.plugins.map(projectPluginRow),
     memoryRetentionRows: projectMemoryRetentionRows(data.memoryRetentionPolicy),
+    memoryConflictRows: projectMemoryConflictRows(data.memoryConflicts ?? []),
+    budgetPolicyRows: projectBudgetPolicyRows(data.budgetPolicy),
+    budgetLedgerRows: projectBudgetLedgerRows(data.budgetLedger ?? []),
     skillEvaluationRows: projectSkillEvaluationRows(data.skillEvaluationRuns ?? []),
     skillEvaluationCaseRows: projectSkillEvaluationCaseRows(data.selectedSkillEvaluationRun),
   };
@@ -204,16 +220,19 @@ export function visibleNavigation(profile: PrincipalProfile): readonly typeof NA
     if (item.id === "plugins") return profile.canManagePlugins;
     if (item.id === "channels") return profile.canReadChannels;
     if (item.id === "evaluations") return profile.canManageSkillEvaluation;
+    if (item.id === "budget") return profile.canSubmitTask || profile.canManageTokenBudget;
     return true;
   });
 }
 
-export function actionEnabled(profile: PrincipalProfile, action: "submit_task" | "write_memory" | "manage_plugins" | "manage_channels" | "manage_memory_retention" | "manage_skill_evaluation"): boolean {
+export function actionEnabled(profile: PrincipalProfile, action: "submit_task" | "write_memory" | "manage_plugins" | "manage_channels" | "manage_memory_retention" | "manage_memory_conflicts" | "manage_skill_evaluation" | "manage_token_budget"): boolean {
   if (action === "submit_task") return profile.canSubmitTask;
   if (action === "write_memory") return profile.canWriteMemory;
   if (action === "manage_channels") return profile.canManageChannels;
   if (action === "manage_memory_retention") return profile.canManageMemoryRetention;
+  if (action === "manage_memory_conflicts") return profile.canManageMemoryConflicts;
   if (action === "manage_skill_evaluation") return profile.canManageSkillEvaluation;
+  if (action === "manage_token_budget") return profile.canManageTokenBudget;
   return profile.canManagePlugins;
 }
 
@@ -230,6 +249,65 @@ export function projectMemoryRetentionRows(policy: MemoryRetentionPolicy | undef
     mode: policy.mode,
     updated_at_utc: policy.updated_at_utc,
     trace_id: policy.trace_id,
+  }));
+  assertConsolePublicValue(rows);
+  return rows;
+}
+
+export function projectMemoryConflictRows(conflicts: readonly MemoryConflictRecord[]): readonly Record<string, unknown>[] {
+  const rows = conflicts.map((conflict) => ({
+    conflict_id: conflict.conflict_id,
+    tenant_id: conflict.tenant_id,
+    layer: conflict.layer,
+    status: conflict.status,
+    expected_version: conflict.expected_version,
+    current_version: conflict.current_version,
+    reason_codes: [...conflict.reason_codes],
+    scope_user_id: conflict.scope.user_id,
+    scope_agent_id: conflict.scope.agent_id,
+    scope_conversation_id: conflict.scope.conversation_id,
+    updated_at_utc: conflict.updated_at_utc,
+    trace_id: conflict.trace_id,
+  }));
+  assertConsolePublicValue(rows);
+  return rows;
+}
+
+export function projectBudgetPolicyRows(policy: TokenBudgetPolicy | undefined): readonly Record<string, unknown>[] {
+  if (!policy) return [];
+  const rows = [{
+    policy_id: policy.policy_id,
+    tenant_id: policy.tenant_id,
+    enabled: policy.enabled,
+    dimension_mode: policy.dimension_mode,
+    enforcement_scope: policy.enforcement_scope,
+    tenant_units: policy.limits.tenant_units,
+    user_units: policy.limits.user_units,
+    agent_units: policy.limits.agent_units,
+    task_units: policy.limits.task_units,
+    max_units_per_attempt: policy.limits.max_units_per_attempt,
+    updated_at_utc: policy.updated_at_utc,
+    trace_id: policy.trace_id,
+  }];
+  assertConsolePublicValue(rows);
+  return rows;
+}
+
+export function projectBudgetLedgerRows(entries: readonly TokenBudgetLedgerEntry[]): readonly Record<string, unknown>[] {
+  const rows = entries.map((entry) => ({
+    ledger_id: entry.ledger_id,
+    policy_id: entry.policy_id,
+    tenant_id: entry.tenant_id,
+    user_id: entry.user_id,
+    agent_id: entry.agent_id,
+    task_id: entry.task_id,
+    status: entry.status,
+    requested_units: entry.requested_units,
+    consumed_units: entry.consumed_units,
+    remaining_units: entry.remaining_units,
+    reason_codes: [...entry.reason_codes],
+    recorded_at_utc: entry.recorded_at_utc,
+    trace_id: entry.trace_id,
   }));
   assertConsolePublicValue(rows);
   return rows;
@@ -281,6 +359,8 @@ export function assertConsolePublicValue(value: unknown): void {
     "credential" + "_ref",
     "provider" + "_(?:agent|task|cancel|binding)",
     "source" + "_ref",
+    "memory" + "_rejected_text",
+    "stale" + "_payload",
     "session" + "_id",
     "file" + "_path",
     "memory" + "_path",

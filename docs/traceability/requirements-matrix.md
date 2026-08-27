@@ -62,3 +62,11 @@
 - REQ-007/REQ-014：P7-03 新增 Default Off `nexus.skill_evaluation.p7.v1` 技能自动评测回归能力，并按用户指定通过 REST/OpenAPI/TypeScript SDK/Web Console Evaluations 页面暴露管理员手动启用与 run 操作；关闭或失败不影响 P6 MVP 基础任务链路。
 - REQ-015/REQ-016/REQ-017：P7-03 已补任务修改记录包、evaluation/integration/security targeted tests 和 P7 smoke；`tests/smoke/P7.sh` 检查 P7-03 required files、schema/default-off/API/SDK/Console markers、Date.now 禁用扫描和公共面泄漏防护。
 - REQ-020：P7-03 Approved + Rejected deterministic corpus 将 approved skill/capability 可见性与 rejected/disabled 候选 blocked 状态纳入回归评测，case mismatch 只产生 failed report 与 Observability warning，不改变 plugin/channel/task/memory 状态；真实业务评测平台、Token 预算计费维度和 P8 插件升级/发布治理仍按后续任务承接。
+
+## P7-04 追踪补充
+
+- REQ-002/REQ-013：P7-04 新增默认启用的 `nexus.token_budget.p7.v1` Token 预算 ledger，按 All configured 同时记录 tenant/user/agent/task 维度，并在 Task+adapter+API enforcement 点统一降级；超预算时发布 `budget.degraded` 和 `policy.denied` 证据，不调用 planner/executor adapter。
+- REQ-007/REQ-014：P7-04 将 budget policy、budget ledger、extended budget check 和 memory conflict queue 暴露到 REST/OpenAPI/TypeScript SDK/Web Console，tenant/platform admin 管理，operator 仅保留自身 budget check，viewer 与跨租户管理 fail closed。
+- REQ-008/REQ-017：P7-04 新增默认启用的 `nexus.memory_conflict.p7.v1` Admin resolve queue，`expected_version` mismatch 继续 fail closed 并创建 metadata-only conflict record；本任务修改记录包和 P7 smoke 均纳入审计无占位检查。
+- R-003/R-005/R-006/R-007：P7-04 targeted tests 覆盖 deterministic token estimator、default alpha limits、ledger projection、Coordinator enforcement、memory conflict resolve/ignore、API/SDK/Console alignment 和 leakage guard；响应、事件、logs、metrics、SDK/Console/docs 不含 raw credential、native URL/path/session/error、provider runtime、memory rejected text、stale payload 或本地路径。
+- OQ-BUDGET-001/OQ-MEMORY-001/OQ-PRODUCT-001：P7-04 将 Token 预算计费维度 alpha 结论关闭为 All configured，并补 Admin resolve queue 证据；生产 billing、真实 tokenizer/model accounting、durable storage/search、真实业务评测平台和 P8 发布治理继续后续复核。

@@ -4,7 +4,7 @@
 >
 > 维护规则：本文件是【待确认问题】的状态索引，不替代架构、契约、风险、决策或任务文档。技术细节、推荐处理方式、默认解决方案、三大平台影响分析和关闭证据统一写入 `docs/planning/open-questions/` 对应确认文件；本台账只记录问题、状态、影响、责任工作流、最晚确认阶段、确认结论和解决说明文档位置。
 >
-> 最后更新UTC：2026-08-26。
+> 最后更新UTC：2026-08-27。
 
 ## 1. 状态枚举
 
@@ -31,13 +31,13 @@
 
 | 指标 | 数量 | 说明 |
 |---|---:|---|
-| 待确认问题总数 | 23 | 来自当前 `OQ-*` 台账 |
+| 待确认问题总数 | 24 | 来自当前 `OQ-*` 台账 |
 | 打开 | 0 | 暂无仅登记但未生成推荐处理方式的问题 |
-| 自动确认 | 19 | 已结合三大平台在确认文件中生成默认解决方案，但尚未关闭 |
+| 自动确认 | 20 | 已结合三大平台在确认文件中生成默认解决方案，但尚未关闭 |
 | 人工确认 | 0 | 暂无人工覆盖默认解决方案的问题；该状态可省略 |
 | 已关闭 | 4 | P0 门禁已关闭上游快照排除规则、资源容量、日历冻结窗口和首批渠道默认范围 |
 
-当前 19 个问题仍为“自动确认”：即已结合 OpenClaw、Hermes、DSH 在 `docs/planning/open-questions/` 生成推荐处理方式，推荐处理方式即默认解决方案，但确认结论和关闭任务/commit 尚未补齐。P0 门禁已关闭 4 个最晚确认阶段属于 P0 的问题。
+当前 20 个问题仍为“自动确认”：即已结合 OpenClaw、Hermes、DSH 在 `docs/planning/open-questions/` 生成推荐处理方式，推荐处理方式即默认解决方案，但确认结论和关闭任务/commit 尚未补齐。P0 门禁已关闭 4 个最晚确认阶段属于 P0 的问题。
 
 ## 4. 人工确认（可省略）的问题
 
@@ -110,9 +110,15 @@
 | OQ-API-002 | 自动确认 | API/产品 | 生产鉴权方案、分页游标格式、审批动作全集、错误码最终枚举和事件出口是什么。 | P5 前。 | API/SDK/安全/产品。 | `docs/planning/open-questions/P5-resolution-plan.md`。 |
 | OQ-INFRA-006 | 自动确认 | 基础设施 | 长任务编排是否引入 Temporal/Cadence 或继续自研状态机。 | P6 前。 | 平台内核/SRE/架构。 | `docs/planning/open-questions/P6-resolution-plan.md`。 |
 
+### 5.5 P7 前自动确认
+
+| 问题ID | 状态 | 分类 | 问题描述 | 最晚确认阶段 | 负责人/工作流 | 解决说明文档 |
+| --- | --- | --- | --- | --- | --- | --- |
+| OQ-BUDGET-001 | 自动确认 | 资源预算 | Token 预算按租户、用户、Agent 还是任务计费。 | P7-04 前。 | 平台/产品/评测。 | `docs/planning/open-questions/P7-resolution-plan.md`。 |
+
 ## 6. 完整问题台账
 
-> 本节保留完整审计字段。当前 19 条记录仍处于 `自动确认` 状态，4 条 P0 到期记录已补齐确认结论、解决说明文档和关闭任务/commit 占位。
+> 本节保留完整审计字段。当前 20 条记录仍处于 `自动确认` 状态，4 条 P0 到期记录已补齐确认结论、解决说明文档和关闭任务/commit 占位。
 
 | 问题ID | 状态 | 分类 | 来源文档 | 问题描述 | 影响 | 负责人/工作流 | 最晚确认阶段 | 确认结论 | 解决说明文档 | 关联需求/风险 | 关闭任务/commit | 最后更新UTC |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -133,18 +139,19 @@
 | OQ-INFRA-004 | 自动确认 | 基础设施 | `docs/architecture/service-blueprint.md`、`docs/planning/development-schedule.md`。 | Credential Center 生产密钥后端是什么。 | 影响凭据轮换、动态租约、审计、最小权限和明文泄漏测试。 | 安全/SRE/平台内核。 | P1 结束前，P8 发布前复核。 | 待补齐 | `docs/planning/open-questions/P1-resolution-plan.md`、`docs/planning/open-questions/P8-resolution-plan.md`。 | REQ-013/R-014。 | 待补齐 | 2026-08-23。 |
 | OQ-INFRA-005 | 自动确认 | 基础设施 | `docs/architecture/service-blueprint.md`、`docs/planning/development-schedule.md`。 | Observability 生产后端和告警标准是什么。 | 影响 trace 存储、日志保留、指标命名、告警接入和控制台监控页。 | SRE/平台内核/安全。 | P1 结束前，P8 发布前复核。 | 待补齐 | `docs/planning/open-questions/P1-resolution-plan.md`、`docs/planning/open-questions/P8-resolution-plan.md`。 | REQ-013/R-008。 | 待补齐 | 2026-08-23。 |
 | OQ-INFRA-006 | 自动确认 | 基础设施 | `docs/architecture/service-blueprint.md`。 | 长任务编排是否引入 Temporal/Cadence 或继续自研状态机。 | 影响恢复、人工信号、重试、补偿事务和部署复杂度。 | 平台内核/SRE/架构。 | P6 前。 | P6-01 接受默认 TaskState/Coordinator 路线：基础业务闭环已用 deterministic in-process E2E 证明同一 Coordinator、Policy-Gate、Event Bus、Memory Gateway、Artifact Store 和内部 adapters 可串联；P6-02 安全矩阵继续验证跳过审批/预算、伪造 Policy-Gate/trusted header、disabled/unknown provider 和直接 adapter invoke 均由 Coordinator/Policy-Gate fail closed 并保留 denied evidence；P6-03 fault injection matrix 证明 Hermes disabled 时 seeded platform plan lightweight route 可完成基础任务，DSH canary throw/timeout/resource exhaustion/破坏性返回、duplicate events dead-letter、memory conflict、provider rollback 和 Docker Compose dev lifecycle drill 均由平台状态机与恢复策略承接。 | `docs/planning/open-questions/P6-resolution-plan.md`。 | REQ-011/R-008/REQ-010。 | P6-01/P6-02/P6-03 补闭环、安全矩阵、故障恢复和降级路线证据；Temporal/Cadence、生产 durable workflow 和发布运维手册仍待 P8。 | 2026-08-26。 |
-| OQ-MEMORY-001 | 自动确认 | Memory Gateway | `docs/planning/integrated-platform-plan.md`、`docs/architecture/service-blueprint.md`、`docs/decisions/P0-hermes-planner-only.md`。 | Hermes Memory Gateway 的五层记忆具体层级、保留期和冲突策略是什么。 | 影响 P3 planner context、并发写入、快照、冲突解决和审计。 | 平台内核/Hermes/产品。 | P3 前。 | P3-02/P3-04 已补三层 planner snapshot、expected_version 冲突和防直读证据；P7-02 补默认启用 conservative retention、session 7 天 manual sweep soft delete、长期层默认保留、audit_snapshot immutable、metadata-only delete/sweep audit 和不可跨租户误删证据。 | `docs/planning/open-questions/P3-resolution-plan.md`、`docs/planning/task-prompts/P7/P7-02.md`。 | REQ-008/R-005。 | P7-02 补保留期/soft delete/过期审计证据；生产存储、检索、备份和物理清除策略仍由 `OQ-MEMORY-002` 与 P8 继续复核。 | 2026-08-26。 |
+| OQ-MEMORY-001 | 自动确认 | Memory Gateway | `docs/planning/integrated-platform-plan.md`、`docs/architecture/service-blueprint.md`、`docs/decisions/P0-hermes-planner-only.md`。 | Hermes Memory Gateway 的五层记忆具体层级、保留期和冲突策略是什么。 | 影响 P3 planner context、并发写入、快照、冲突解决和审计。 | 平台内核/Hermes/产品。 | P3 前。 | P3-02/P3-04 已补三层 planner snapshot、expected_version 冲突和防直读证据；P7-02 补默认启用 conservative retention、session 7 天 manual sweep soft delete、长期层默认保留、audit_snapshot immutable、metadata-only delete/sweep audit 和不可跨租户误删证据；P7-04 补默认启用 `nexus.memory_conflict.p7.v1` conflict detection、Admin resolve queue 和 metadata-only conflict decision 证据。 | `docs/planning/open-questions/P3-resolution-plan.md`、`docs/planning/task-prompts/P7/P7-02.md`、`docs/planning/task-prompts/P7/P7-04.md`。 | REQ-008/R-005。 | P7-02 补保留期/soft delete/过期审计证据；P7-04 补 expected_version mismatch 的管理员冲突队列证据；生产存储、检索、备份和物理清除策略仍由 `OQ-MEMORY-002` 与 P8 继续复核。 | 2026-08-27。 |
 | OQ-MEMORY-002 | 自动确认 | Memory Gateway | `docs/architecture/service-blueprint.md`、`docs/risks/risk-register.md`。 | Memory Gateway 生产检索和存储选型是什么。 | 影响检索延迟、一致性、租户隔离、备份和运维复杂度。 | 平台内核/SRE/Hermes。 | P3 前，P8 发布前复核。 | 待补齐 | `docs/planning/open-questions/P3-resolution-plan.md`、`docs/planning/open-questions/P8-resolution-plan.md`。 | REQ-008/REQ-013/R-005/R-008。 | 待补齐 | 2026-08-23。 |
 | OQ-DSH-001 | 自动确认 | DSH 执行器 | `docs/architecture/dsh-versioning-and-replacement.md`、`docs/risks/risk-register.md`。 | DSH 预览版是否固定为当前 `0.1.1-rc.2` provider，后续如何并存、禁用和回滚。 | 影响 P2 provider registry、兼容 fixture、升级门禁和生产默认 executor 切换。 | 上游改造/执行器/SRE。 | P2 前。 | P2-01/P2-04 已固定当前默认 provider 并验证 provider registry、禁用、失败 canary 和 rollback；P6-03 补 DSH canary throw、timeout、resource exhaustion、破坏性返回清洗和 `rollbackDefault()` 恢复证据。 | `docs/planning/open-questions/P2-resolution-plan.md`、`docs/planning/open-questions/P6-resolution-plan.md`。 | REQ-018/R-001/R-016。 | P2/P6 最小 provider 并存、禁用和回滚证据已补；生产默认 executor 切换、升级矩阵和发布手册仍待 P8。 | 2026-08-26。 |
 | OQ-DSH-002 | 自动确认 | DSH 执行器 | `docs/decisions/P0-dsh-executor-only.md`、`docs/risks/risk-register.md`。 | DSH 正式沙箱后端、文件/网络策略、取消语义和 artifact 归档策略是什么。 | 影响 executor-only 改造、安全测试、产物入库、取消/超时和故障注入。 | 上游改造/安全/SRE。 | P2 前。 | P2-03/P2-04 已补 resource budget、sandbox/network deny-by-default、artifact metadata-only 和静态端口隔离；P6-03 补 timeout、预算耗尽、artifact/event 清洗和 Docker Compose dev lifecycle drill 证据。 | `docs/planning/open-questions/P2-resolution-plan.md`、`docs/planning/open-questions/P6-resolution-plan.md`。 | REQ-009/REQ-018/R-001/R-004。 | P2/P6 最小故障与 artifact 归档证据已补；正式 sandbox 后端、OS 级隔离和生产取消语义仍待 P8。 | 2026-08-26。 |
 | OQ-DEPLOY-001 | 自动确认 | 部署交付 | `docs/planning/integrated-platform-plan.md`、`docs/planning/development-schedule.md`。 | 生产部署目标是单机 Docker Compose、Kubernetes，还是两者同时作为正式交付物。 | 影响 P8 编排、CI/CD、运维手册、备份恢复和发布门禁。 | SRE/架构/产品。 | P8 前，建议 P1 结束前定方向。 | 待补齐 | `docs/planning/open-questions/P1-resolution-plan.md`、`docs/planning/open-questions/P8-resolution-plan.md`。 | REQ-005/REQ-014/R-008。 | 待补齐 | 2026-08-23。 |
-| OQ-PRODUCT-001 | 自动确认 | 产品范围 | `docs/planning/development-schedule.md`、`docs/planning/integrated-platform-plan.md`。 | P7 高级能力是否进入首版。 | 影响 W15-W18 是否需要额外冻结窗口、资源预算和 MVP 范围。 | 产品/架构/评测。 | P6 开始前。 | P6-01 接受默认裁剪：P7 高级能力不进入 MVP 基础闭环，当前只验证渠道入站、任务、memory/planning、execution/artifact、outbound send intent 和 audit timeline；P6-02 只补安全攻击矩阵和恶意插件隔离，不新增 streaming、自动评测、高级记忆策略、真实业务评测集或用户可见产品能力；P6-03/P6 gate 明确 MVP 门禁只依赖基础闭环、安全/防绕过、故障注入、轻量化降级路线和 provider/plugin 回滚，P7 高级能力默认不进入 MVP。P7-01 作为可裁剪高级能力落地：计划质量信号默认关闭、仅内部 Observability 暴露、只评估 ExecutionPlan，关闭或评估异常不影响基础任务链路。P7-02 由用户明确指定以 API+Console 形式进入 P7 增量，但采用 manual sweep、soft delete、conservative policy 和管理员权限，不改变 P6 MVP 基础链路。P7-03 由用户明确指定以 API+Console 形式进入 P7 增量，但采用 Default Off、管理员启用后手动触发、Approved + Rejected deterministic corpus 和 failed report 隔离，不新增后台 scheduler、真实模型调用或真实业务评测阈值。 | `docs/planning/open-questions/P6-resolution-plan.md`、`docs/planning/phase-gates/P6-gate-review.md`、`docs/planning/task-prompts/P7/P7-02.md`、`docs/planning/task-prompts/P7/P7-03.md`。 | REQ-014/R-009。 | P6-01/P6-02/P6-03 补基础闭环、防绕过、故障注入和默认延期证据；P7-01 补默认关闭的元认知/计划质量信号证据；P7-02 补主动遗忘/保留策略证据；P7-03 补技能自动评测证据；P7-04/P7-05、真实业务评测集和 Token 预算计费维度仍需各自任务与开关。 | 2026-08-27。 |
+| OQ-PRODUCT-001 | 自动确认 | 产品范围 | `docs/planning/development-schedule.md`、`docs/planning/integrated-platform-plan.md`。 | P7 高级能力是否进入首版。 | 影响 W15-W18 是否需要额外冻结窗口、资源预算和 MVP 范围。 | 产品/架构/评测。 | P6 开始前。 | P6-01 接受默认裁剪：P7 高级能力不进入 MVP 基础闭环，当前只验证渠道入站、任务、memory/planning、execution/artifact、outbound send intent 和 audit timeline；P6-02 只补安全攻击矩阵和恶意插件隔离，不新增 streaming、自动评测、高级记忆策略、真实业务评测集或用户可见产品能力；P6-03/P6 gate 明确 MVP 门禁只依赖基础闭环、安全/防绕过、故障注入、轻量化降级路线和 provider/plugin 回滚，P7 高级能力默认不进入 MVP。P7-01 作为可裁剪高级能力落地：计划质量信号默认关闭、仅内部 Observability 暴露、只评估 ExecutionPlan，关闭或评估异常不影响基础任务链路。P7-02 由用户明确指定以 API+Console 形式进入 P7 增量，但采用 manual sweep、soft delete、conservative policy 和管理员权限，不改变 P6 MVP 基础链路。P7-03 由用户明确指定以 API+Console 形式进入 P7 增量，但采用 Default Off、管理员启用后手动触发、Approved + Rejected deterministic corpus 和 failed report 隔离，不新增后台 scheduler、真实模型调用或真实业务评测阈值。P7-04 由用户明确指定以 API+SDK+Console 形式进入 P7 增量，但采用 Default On conservative alpha limits、All configured 预算维度、Task+adapter+API enforcement 和 Admin resolve queue，超预算/冲突只走平台降级或管理员队列，不改变 P6 MVP 基础链路。 | `docs/planning/open-questions/P6-resolution-plan.md`、`docs/planning/open-questions/P7-resolution-plan.md`、`docs/planning/phase-gates/P6-gate-review.md`、`docs/planning/task-prompts/P7/P7-02.md`、`docs/planning/task-prompts/P7/P7-03.md`、`docs/planning/task-prompts/P7/P7-04.md`。 | REQ-014/R-009。 | P6-01/P6-02/P6-03 补基础闭环、防绕过、故障注入和默认延期证据；P7-01 补默认关闭的元认知/计划质量信号证据；P7-02 补主动遗忘/保留策略证据；P7-03 补技能自动评测证据；P7-04 补 Token 预算与记忆冲突检测证据；P7-05、真实业务评测集和 P8 发布治理仍需各自任务与开关。 | 2026-08-27。 |
+| OQ-BUDGET-001 | 自动确认 | 资源预算 | `docs/planning/integrated-platform-plan.md`、`docs/planning/development-schedule.md`、`docs/planning/task-prompts/P7/P7-04.md`。 | Token 预算按租户、用户、Agent 还是任务计费。 | 影响 P7 预算 ledger 维度、Coordinator 降级点、公共 API/SDK/Console 管理面和 P8 billing backend。 | 平台/产品/评测。 | P7-04 前。 | P7-04 alpha 接受默认 All configured：预算 ledger 同时记录 tenant/user/agent/task 四个维度，attempt/execution 仅作为 trace context；`TOKEN_BUDGET_DEFAULT_ENABLED=true`，enforcement scope 为 Task+adapter+API，默认限额为 tenant 100000、user 50000、agent 50000、task 10000、max units per attempt 5000。真实 tokenizer/model accounting、durable billing backend、生产 quota 和账单归属仍留 P8。 | `docs/planning/open-questions/P7-resolution-plan.md`、`docs/planning/task-prompts/P7/P7-04.md`。 | REQ-002/REQ-007/R-006/R-009。 | P7-04 本次提交补 alpha 计费维度默认结论和门禁证据；生产 billing、真实 tokenizer/model accounting 与配额后端仍待 P8。 | 2026-08-27。 |
 
 ## 7. 当前关闭摘要
 
 | 状态 | 数量 | 说明 |
 |---|---:|---|
 | 打开 | 0 | 暂无 |
-| 自动确认 | 19 | 已生成默认解决方案，尚未关闭 |
+| 自动确认 | 20 | 已生成默认解决方案，尚未关闭 |
 | 人工确认 | 0 | 暂无；可省略 |
 | 已关闭 | 4 | P0 门禁已关闭 4 个到期问题 |

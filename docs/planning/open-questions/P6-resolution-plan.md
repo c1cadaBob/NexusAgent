@@ -59,3 +59,5 @@ P6-03/P6 gate 证据：`docs/planning/phase-gates/P6-gate-review.md` 明确 P6 M
 P7-02 证据：用户明确选择将主动遗忘与保留策略作为 P7 增量交付到 API+Console，但实现采用默认启用 conservative policy、manual sweep、soft delete、管理员权限和 metadata-only 结果，不引入后台 scheduler、真实外部网络或上游原生能力，也不改变 P6 已冻结的基础任务闭环。
 
 P7-03 证据：用户明确选择将技能自动评测作为 P7 增量交付到 API+Console，但实现采用 Default Off、管理员显式启用、manual run、Approved + Rejected deterministic corpus 和 metadata-only report；评测失败或 runner warning 只影响 evaluation report 与 Observability 记录，不自动运行任务链路、不调用真实模型、不引入真实业务成功率阈值，也不改变 P6 MVP 基础闭环。
+
+P7-04 证据：用户明确选择将 Token 预算与记忆冲突检测作为 P7 增量交付到 API+SDK+Console。实现采用 Default On、All configured 预算维度、Task+adapter+API enforcement 和 Admin resolve queue；超预算时 Coordinator 进入 blocked/degraded 或 adapter dispatch 前 fail closed，memory expected_version mismatch 只创建 metadata-only conflict record，不调用真实模型、不接外部网络、不改变 P6 MVP 基础闭环。

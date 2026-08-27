@@ -26,11 +26,12 @@
 - [P4 待确认问题处理计划](P4-resolution-plan.md)：OpenClaw 上游来源、渠道插件和 gateway-only 生产落地。
 - [P5 待确认问题处理计划](P5-resolution-plan.md)：API 契约细节、插件治理、许可证/NOTICE。
 - [P6 待确认问题处理计划](P6-resolution-plan.md)：长任务编排、P7 高级能力是否进入首版、安全闭环。
+- [P7 待确认问题处理计划](P7-resolution-plan.md)：Token 预算计费维度和记忆冲突管理员队列。
 - [P8 待确认问题处理计划](P8-resolution-plan.md)：生产复核、部署交付、备份恢复、兼容矩阵和最终关闭证据。
 
 ## 覆盖范围
 
-本目录覆盖当前台账中的 23 个问题：
+本目录覆盖当前台账中的 24 个问题：
 
 - `OQ-UPSTREAM-001`、`OQ-UPSTREAM-002`、`OQ-UPSTREAM-003`、`OQ-UPSTREAM-004`
 - `OQ-SCHEDULE-001`、`OQ-SCHEDULE-002`
@@ -41,3 +42,4 @@
 - `OQ-MEMORY-001`、`OQ-MEMORY-002`
 - `OQ-DSH-001`、`OQ-DSH-002`
 - `OQ-DEPLOY-001`、`OQ-PRODUCT-001`
+- `OQ-BUDGET-001`

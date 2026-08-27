@@ -44,6 +44,8 @@ P3-04 已按“平台管理员白名单批准、租户不可自助安装”的�
 
 P7-02 证据：P7-02 补齐主动遗忘与保留策略的 P7 增量证据：默认启用 conservative `nexus.memory_retention.p7.v1`，`session` 层 7 天后可通过 manual sweep soft delete，`user`、`agent_skill`、`organization` 默认保留，`audit_snapshot` immutable；delete/sweep 只返回 policy/count/tombstone metadata，Event Bus/Observability 不记录 memory text，tenant admin 仅能管理本租户，platform admin 可跨租户，operator/viewer fail closed。生产存储/检索和物理清除策略继续由 OQ-MEMORY-002/P8 复核。
 
+P7-04 证据：P7-04 补齐记忆冲突处理的 P7 增量证据：默认启用 `nexus.memory_conflict.p7.v1`，`expected_version` mismatch 继续 fail closed 并写入 Admin resolve queue；conflict record 只包含 scope、layer、expected/current version、status、reason_codes、trace 和 UTC/monotonic metadata，不保存或返回 memory rejected text、stale payload、raw credential、native URL/path/session/error 或 provider runtime。生产存储、检索、备份和物理清除策略继续由 OQ-MEMORY-002/P8 复核。
+
 ## OQ-MEMORY-002：Memory Gateway 存储和检索选型
 
 推荐处理：P3 默认 PostgreSQL + pgvector，P8 复核是否切 Qdrant 或企业向量检索标准。PostgreSQL + pgvector 便于 P3 同时处理结构化 metadata、租户隔离、事务、备份和最小向量检索。

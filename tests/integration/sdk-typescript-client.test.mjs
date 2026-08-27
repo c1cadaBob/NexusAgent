@@ -87,7 +87,23 @@ test('TypeScript SDK operator workflow covers tasks events memory approvals and 
 
   const budget = await client.checkBudget({ tenant_id: 'tenant_alpha01', requested_units: 10, remaining_units: 25, max_units_per_attempt: 25, trace_id: trace() });
   assert.equal(budget.status, 'approved');
+  assert.equal(budget.schema_version, 'nexus.token_budget.p7.v1');
   assertClean({ task, listed, read, cancelled, retried, events, memory, search, approvals, approval, budget });
+});
+
+test('TypeScript SDK tenant admin manages token budget policy and ledger', async () => {
+  const { client } = clientFor('dev-tenant-admin-alpha');
+  const trace = createTraceFactory('trace_sdk_budget_test');
+  const policy = await client.getBudgetPolicy({ tenant_id: 'tenant_alpha01', trace_id: trace() });
+  assert.equal(policy.schema_version, 'nexus.token_budget.p7.v1');
+  assert.equal(policy.dimension_mode, 'all_configured');
+  const updated = await client.updateBudgetPolicy({ tenant_id: 'tenant_alpha01', trace_id: trace(), limits: { task_units: 25, max_units_per_attempt: 20 } });
+  assert.equal(updated.limits.task_units, 25);
+  const check = await client.checkBudget({ tenant_id: 'tenant_alpha01', user_id: 'user_tenant_admin', agent_id: 'agent_alpha01', task_id: 'task_sdk_budget01', requested_units: 5, trace_id: trace(), consume: true });
+  assert.equal(check.status, 'approved');
+  const ledger = await client.listBudgetLedger({ tenant_id: 'tenant_alpha01' });
+  assert.equal(ledger.items.some((entry) => entry.status === 'reserved' && entry.consumed_units === 5), true);
+  assertClean({ policy, updated, check, ledger });
 });
 
 test('TypeScript SDK tenant admin manages channels without credential echo', async () => {
@@ -128,7 +144,19 @@ test('TypeScript SDK tenant admin manages memory retention without memory text e
   assert.equal(Object.hasOwn(deleted, 'text'), false);
   const sweep = await client.sweepMemoryRetention({ tenant_id: 'tenant_alpha01', trace_id: trace() });
   assert.equal(sweep.schema_version, 'nexus.memory_retention.p7.v1');
-  assertClean({ policy, updated, deleted, sweep });
+  await assert.rejects(() => client.writeMemory({ tenant_id: 'tenant_alpha01', user_id: 'user_alpha01', layer: 'user', text: 'SDK conflict stale memory', trace_id: trace(), expected_version: 0 }), (error) => {
+    assert.equal(error instanceof NexusAgentApiError, true);
+    assert.equal(error.status, 409);
+    assert.equal(error.code, 'PLATFORM_CONFLICT');
+    return true;
+  });
+  const conflicts = await client.listMemoryConflicts({ tenant_id: 'tenant_alpha01' });
+  assert.equal(conflicts.items.length, 1);
+  const conflict = await client.getMemoryConflict(conflicts.items[0].conflict_id, { tenant_id: 'tenant_alpha01' });
+  assert.equal(conflict.status, 'open');
+  const resolved = await client.decideMemoryConflict(conflict.conflict_id, { tenant_id: 'tenant_alpha01', decision: 'ignore', reason: 'SDK reviewed conflict metadata', trace_id: trace() });
+  assert.equal(resolved.status, 'ignored');
+  assertClean({ policy, updated, deleted, sweep, conflicts, conflict, resolved });
 });
 
 test('TypeScript SDK tenant admin manages skill evaluation regression manually', async () => {

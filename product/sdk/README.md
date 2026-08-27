@@ -55,3 +55,9 @@ The SDK includes tenant-admin memory retention helpers: `getMemoryRetentionPolic
 ## P7-03 Skill Evaluation
 
 The SDK includes administrator skill evaluation helpers: `getSkillEvaluationConfig`, `updateSkillEvaluationConfig`, `runSkillEvaluation`, `listSkillEvaluationRuns`, and `getSkillEvaluationRun`. Skill evaluation is Default Off; admins enable it explicitly and trigger manual deterministic runs against the Approved + Rejected corpus. Reports expose only platform metadata, totals, case IDs, reason codes, trace IDs, UTC timestamps, and resource budget summaries. The SDK still calls only `/v1/*` platform routes and maps failures to `NexusAgentApiError` with platform error fields.
+
+## P7-04 Token Budget And Memory Conflicts
+
+The SDK includes token budget helpers: `getBudgetPolicy`, `updateBudgetPolicy`, `listBudgetLedger`, and the extended `checkBudget`. P7-04 budget accounting is Default On and All configured across tenant, user, agent, and task dimensions; task submit can pass optional `budget_units`, otherwise the platform estimates units deterministically.
+
+The SDK also includes memory conflict helpers: `listMemoryConflicts`, `getMemoryConflict`, and `decideMemoryConflict`. `writeMemory` supports `expected_version`; mismatches create metadata-only Admin resolve queue records. SDK types and examples expose only platform fields and do not include memory rejected text, stale payload, secret material, internal implementation markers, or local filesystem references.

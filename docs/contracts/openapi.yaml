@@ -476,6 +476,83 @@ paths:
           $ref: '#/components/responses/PlatformError'
         '403':
           $ref: '#/components/responses/PlatformError'
+  /v1/memory/conflicts:
+    get:
+      tags: [memory]
+      operationId: listMemoryConflicts
+      summary: List metadata-only memory conflicts awaiting administrator review.
+      parameters:
+        - $ref: '#/components/parameters/TenantIdQuery'
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [open, resolved, ignored]
+        - $ref: '#/components/parameters/LimitQuery'
+        - $ref: '#/components/parameters/CursorQuery'
+      responses:
+        '200':
+          description: Memory conflict list.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MemoryConflictList'
+        '401':
+          $ref: '#/components/responses/PlatformError'
+        '403':
+          $ref: '#/components/responses/PlatformError'
+  /v1/memory/conflicts/{conflict_id}:
+    get:
+      tags: [memory]
+      operationId: getMemoryConflict
+      summary: Read one metadata-only memory conflict.
+      parameters:
+        - $ref: '#/components/parameters/MemoryConflictId'
+        - $ref: '#/components/parameters/TenantIdQuery'
+      responses:
+        '200':
+          description: Memory conflict.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MemoryConflict'
+        '401':
+          $ref: '#/components/responses/PlatformError'
+        '403':
+          $ref: '#/components/responses/PlatformError'
+        '404':
+          $ref: '#/components/responses/PlatformError'
+  /v1/memory/conflicts/{conflict_id}/decision:
+    post:
+      tags: [memory]
+      operationId: decideMemoryConflict
+      summary: Resolve or ignore a metadata-only memory conflict.
+      parameters:
+        - $ref: '#/components/parameters/MemoryConflictId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MemoryConflictDecisionRequest'
+      responses:
+        '200':
+          description: Updated memory conflict.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MemoryConflict'
+        '400':
+          $ref: '#/components/responses/PlatformError'
+        '401':
+          $ref: '#/components/responses/PlatformError'
+        '403':
+          $ref: '#/components/responses/PlatformError'
+        '404':
+          $ref: '#/components/responses/PlatformError'
+        '409':
+          $ref: '#/components/responses/PlatformError'
   /v1/memory/{memory_id}/delete:
     post:
       tags: [memory]
@@ -645,6 +722,67 @@ paths:
         '403':
           $ref: '#/components/responses/PlatformError'
         '429':
+          $ref: '#/components/responses/PlatformError'
+  /v1/budget/policy:
+    get:
+      tags: [budget]
+      operationId: getBudgetPolicy
+      summary: Read tenant token budget policy.
+      parameters:
+        - $ref: '#/components/parameters/TenantIdQuery'
+      responses:
+        '200':
+          description: Token budget policy.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenBudgetPolicy'
+        '401':
+          $ref: '#/components/responses/PlatformError'
+        '403':
+          $ref: '#/components/responses/PlatformError'
+    patch:
+      tags: [budget]
+      operationId: updateBudgetPolicy
+      summary: Update tenant token budget policy limits.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TokenBudgetPolicyUpdateRequest'
+      responses:
+        '200':
+          description: Updated token budget policy.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenBudgetPolicy'
+        '400':
+          $ref: '#/components/responses/PlatformError'
+        '401':
+          $ref: '#/components/responses/PlatformError'
+        '403':
+          $ref: '#/components/responses/PlatformError'
+  /v1/budget/ledger:
+    get:
+      tags: [budget]
+      operationId: listBudgetLedger
+      summary: List tenant token budget ledger entries.
+      parameters:
+        - $ref: '#/components/parameters/TenantIdQuery'
+        - $ref: '#/components/parameters/LimitQuery'
+        - $ref: '#/components/parameters/CursorQuery'
+      responses:
+        '200':
+          description: Token budget ledger list.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenBudgetLedgerList'
+        '401':
+          $ref: '#/components/responses/PlatformError'
+        '403':
           $ref: '#/components/responses/PlatformError'
   /v1/channels:
     get:
@@ -904,6 +1042,12 @@ components:
       required: true
       schema:
         $ref: '#/components/schemas/SkillEvaluationRunId'
+    MemoryConflictId:
+      name: conflict_id
+      in: path
+      required: true
+      schema:
+        $ref: '#/components/schemas/MemoryConflictId'
     TenantIdQuery:
       name: tenant_id
       in: query
@@ -984,6 +1128,10 @@ components:
       type: string
       minLength: 1
       pattern: '^skill_eval_run_[A-Za-z0-9_-]+$'
+    MemoryConflictId:
+      type: string
+      minLength: 1
+      pattern: '^conflict_[A-Za-z0-9_-]+$'
     CapabilityId:
       type: string
       minLength: 1
@@ -1068,6 +1216,10 @@ components:
             $ref: '#/components/schemas/ArtifactId'
         budget:
           $ref: '#/components/schemas/TaskBudget'
+        budget_units:
+          type: integer
+          minimum: 1
+          description: Optional P7-04 deterministic token budget units; omitted requests use platform estimation.
         metadata:
           type: object
           additionalProperties:
@@ -1557,6 +1709,10 @@ components:
           type: string
           minLength: 1
           maxLength: 64000
+        expected_version:
+          type: integer
+          minimum: 0
+          description: Optional tenant memory version guard; mismatch creates a metadata-only admin conflict.
         trace_id:
           $ref: '#/components/schemas/TraceId'
     MemoryRecord:
@@ -1767,6 +1923,88 @@ components:
           minimum: 0
         trace_id:
           $ref: '#/components/schemas/TraceId'
+    MemoryConflict:
+      type: object
+      additionalProperties: false
+      description: Metadata-only P7-04 memory conflict projection; memory text and stale payloads are never returned.
+      required: [schema_version, conflict_id, tenant_id, scope, layer, expected_version, current_version, status, reason_codes, created_at_utc, updated_at_utc, monotonic_ms, trace_id]
+      properties:
+        schema_version:
+          type: string
+          enum: [nexus.memory_conflict.p7.v1]
+        conflict_id:
+          $ref: '#/components/schemas/MemoryConflictId'
+        tenant_id:
+          $ref: '#/components/schemas/TenantId'
+        scope:
+          type: object
+          additionalProperties: false
+          required: [tenant_id]
+          properties:
+            tenant_id:
+              $ref: '#/components/schemas/TenantId'
+            user_id:
+              $ref: '#/components/schemas/UserId'
+            agent_id:
+              $ref: '#/components/schemas/AgentId'
+            conversation_id:
+              $ref: '#/components/schemas/ConversationId'
+        layer:
+          $ref: '#/components/schemas/MemoryLayer'
+        expected_version:
+          type: integer
+          minimum: 0
+        current_version:
+          type: integer
+          minimum: 0
+        status:
+          type: string
+          enum: [open, resolved, ignored]
+        reason_codes:
+          type: array
+          items:
+            type: string
+            enum: [MEMORY_EXPECTED_VERSION_CONFLICT, MEMORY_CONFLICT_RESOLVED, MEMORY_CONFLICT_IGNORED]
+        created_at_utc:
+          $ref: '#/components/schemas/Timestamp'
+        updated_at_utc:
+          $ref: '#/components/schemas/Timestamp'
+        monotonic_ms:
+          type: integer
+          minimum: 0
+        trace_id:
+          $ref: '#/components/schemas/TraceId'
+        decided_by_user_id:
+          $ref: '#/components/schemas/UserId'
+        decided_at_utc:
+          $ref: '#/components/schemas/Timestamp'
+    MemoryConflictList:
+      type: object
+      additionalProperties: false
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/MemoryConflict'
+        next_cursor:
+          type: string
+    MemoryConflictDecisionRequest:
+      type: object
+      additionalProperties: false
+      required: [tenant_id, decision, reason, trace_id]
+      properties:
+        tenant_id:
+          $ref: '#/components/schemas/TenantId'
+        decision:
+          type: string
+          enum: [resolve, ignore]
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 1000
+        trace_id:
+          $ref: '#/components/schemas/TraceId'
     Tenant:
       type: object
       additionalProperties: false
@@ -1878,13 +2116,185 @@ components:
           maxLength: 1000
         trace_id:
           $ref: '#/components/schemas/TraceId'
-    BudgetCheckRequest:
+    TokenBudgetLimits:
       type: object
       additionalProperties: false
-      required: [tenant_id, requested_units, remaining_units, trace_id]
+      required: [tenant_units, user_units, agent_units, task_units, max_units_per_attempt]
+      properties:
+        tenant_units:
+          type: integer
+          minimum: 1
+        user_units:
+          type: integer
+          minimum: 1
+        agent_units:
+          type: integer
+          minimum: 1
+        task_units:
+          type: integer
+          minimum: 1
+        max_units_per_attempt:
+          type: integer
+          minimum: 1
+    TokenBudgetPolicy:
+      type: object
+      additionalProperties: false
+      required: [schema_version, tenant_id, policy_id, enabled, dimension_mode, enforcement_scope, limits, resource_budget, updated_at_utc, monotonic_ms, trace_id]
+      properties:
+        schema_version:
+          type: string
+          enum: [nexus.token_budget.p7.v1]
+        tenant_id:
+          $ref: '#/components/schemas/TenantId'
+        policy_id:
+          type: string
+          pattern: '^budget_policy_'
+        enabled:
+          type: boolean
+          default: true
+        dimension_mode:
+          type: string
+          enum: [all_configured]
+        enforcement_scope:
+          type: string
+          enum: [task_adapter_api]
+        limits:
+          $ref: '#/components/schemas/TokenBudgetLimits'
+        resource_budget:
+          type: object
+          additionalProperties: false
+          required: [accounting_mode, dimensions]
+          properties:
+            accounting_mode:
+              type: string
+              enum: [deterministic_estimate]
+            dimensions:
+              type: array
+              items:
+                type: string
+                enum: [tenant, user, agent, task]
+        updated_at_utc:
+          $ref: '#/components/schemas/Timestamp'
+        monotonic_ms:
+          type: integer
+          minimum: 0
+        trace_id:
+          $ref: '#/components/schemas/TraceId'
+    TokenBudgetPolicyUpdateRequest:
+      type: object
+      additionalProperties: false
+      required: [tenant_id, trace_id]
       properties:
         tenant_id:
           $ref: '#/components/schemas/TenantId'
+        enabled:
+          type: boolean
+        limits:
+          $ref: '#/components/schemas/TokenBudgetLimits'
+        trace_id:
+          $ref: '#/components/schemas/TraceId'
+    TokenBudgetDimensionStatus:
+      type: object
+      additionalProperties: false
+      required: [dimension, key, limit_units, consumed_units, remaining_units, status]
+      properties:
+        dimension:
+          type: string
+          enum: [tenant, user, agent, task]
+        key:
+          type: string
+          minLength: 1
+        limit_units:
+          type: integer
+          minimum: 1
+        consumed_units:
+          type: integer
+          minimum: 0
+        remaining_units:
+          type: integer
+          minimum: 0
+        status:
+          type: string
+          enum: [approved, degraded]
+    BudgetCheckRequest:
+      type: object
+      additionalProperties: false
+      required: [tenant_id, trace_id]
+      properties:
+        tenant_id:
+          $ref: '#/components/schemas/TenantId'
+        user_id:
+          $ref: '#/components/schemas/UserId'
+        agent_id:
+          $ref: '#/components/schemas/AgentId'
+        task_id:
+          $ref: '#/components/schemas/TaskId'
+        attempt_id:
+          $ref: '#/components/schemas/AttemptId'
+        execution_id:
+          $ref: '#/components/schemas/ExecutionId'
+        conversation_id:
+          $ref: '#/components/schemas/ConversationId'
+        requested_units:
+          type: integer
+          minimum: 1
+        input:
+          type: string
+          minLength: 1
+          description: Optional text used for deterministic budget estimation when requested_units is omitted.
+        consume:
+          type: boolean
+          default: false
+        remaining_units:
+          type: integer
+          minimum: 0
+          deprecated: true
+        max_units_per_attempt:
+          type: integer
+          minimum: 1
+          deprecated: true
+        trace_id:
+          $ref: '#/components/schemas/TraceId'
+    BudgetCheckResult:
+      type: object
+      additionalProperties: false
+      required: [schema_version, tenant_id, trace_id, policy_id, decision_id, status, requested_units, remaining_units, max_units_per_attempt, dimensions, reason_codes, checked_at_utc, monotonic_ms]
+      properties:
+        schema_version:
+          type: string
+          enum: [nexus.token_budget.p7.v1]
+        tenant_id:
+          $ref: '#/components/schemas/TenantId'
+        user_id:
+          $ref: '#/components/schemas/UserId'
+        agent_id:
+          $ref: '#/components/schemas/AgentId'
+        task_id:
+          $ref: '#/components/schemas/TaskId'
+        attempt_id:
+          $ref: '#/components/schemas/AttemptId'
+        execution_id:
+          $ref: '#/components/schemas/ExecutionId'
+        conversation_id:
+          $ref: '#/components/schemas/ConversationId'
+        trace_id:
+          $ref: '#/components/schemas/TraceId'
+        policy_id:
+          type: string
+          pattern: '^budget_policy_'
+        decision_id:
+          type: string
+          pattern: '^decision_'
+        status:
+          type: string
+          enum: [approved, degraded, denied]
+        code:
+          type: string
+          enum: [PLATFORM_RATE_LIMITED, PLATFORM_POLICY_DENIED]
+        reasons:
+          type: array
+          items:
+            type: string
         requested_units:
           type: integer
           minimum: 1
@@ -1894,30 +2304,49 @@ components:
         max_units_per_attempt:
           type: integer
           minimum: 1
-        trace_id:
-          $ref: '#/components/schemas/TraceId'
-    BudgetCheckResult:
-      type: object
-      additionalProperties: false
-      required: [tenant_id, trace_id, status, requested_units, remaining_units, reasons]
-      properties:
-        tenant_id:
-          $ref: '#/components/schemas/TenantId'
-        trace_id:
-          $ref: '#/components/schemas/TraceId'
-        status:
-          type: string
-          enum: [approved, denied]
-        requested_units:
-          type: integer
-        remaining_units:
-          type: integer
-        code:
-          $ref: '#/components/schemas/PlatformErrorCode'
-        reasons:
+        dimensions:
+          type: array
+          items:
+            $ref: '#/components/schemas/TokenBudgetDimensionStatus'
+        reason_codes:
           type: array
           items:
             type: string
+            enum: [TOKEN_BUDGET_APPROVED, TOKEN_BUDGET_DISABLED, TOKEN_BUDGET_EXCEEDED, TOKEN_BUDGET_MAX_ATTEMPT_EXCEEDED]
+        checked_at_utc:
+          $ref: '#/components/schemas/Timestamp'
+        monotonic_ms:
+          type: integer
+          minimum: 0
+    TokenBudgetLedgerEntry:
+      allOf:
+        - $ref: '#/components/schemas/BudgetCheckResult'
+        - type: object
+          additionalProperties: false
+          required: [ledger_id, status, consumed_units, recorded_at_utc]
+          properties:
+            ledger_id:
+              type: string
+              pattern: '^ledger_'
+            status:
+              type: string
+              enum: [checked, reserved, denied]
+            consumed_units:
+              type: integer
+              minimum: 0
+            recorded_at_utc:
+              $ref: '#/components/schemas/Timestamp'
+    TokenBudgetLedgerList:
+      type: object
+      additionalProperties: false
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/TokenBudgetLedgerEntry'
+        next_cursor:
+          type: string
     ChannelConnectionTestResult:
       type: object
       additionalProperties: false

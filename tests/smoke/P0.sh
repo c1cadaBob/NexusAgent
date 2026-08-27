@@ -247,7 +247,7 @@ for p0_09_marker in \
   '推荐处理方式统一保存到 `docs/planning/open-questions/`' \
   '集中台账不包含候选推荐方案' \
   '阶段历史问题回扫' \
-  '当前 19 个问题仍为 `自动确认`'; do
+  '当前 20 个问题仍为 `自动确认`'; do
   rg -q "$p0_09_marker" "$p0_09_prompt" || fail "P0-09 current workflow marker missing: $p0_09_marker"
 done
 if rg -q '方案 A|方案 B|方案 C|每个问题提供至少 3|从表格改为|卡片形式' "$p0_09_prompt"; then
@@ -326,10 +326,11 @@ for open_question_marker in \
   '5.2 P3 前自动确认' \
   '5.3 P4 前自动确认' \
   '5.4 P5/P6 前自动确认' \
+  '5.5 P7 前自动确认' \
   '6. 完整问题台账' \
   '7. 当前关闭摘要' \
   '本台账不展示候选方案' \
-  '当前 19 个问题仍为“自动确认”' \
+  '当前 20 个问题仍为“自动确认”' \
   'P0 门禁已关闭 4 个最晚确认阶段属于 P0 的问题' \
   'OQ-UPSTREAM-001' \
   'OQ-SCHEDULE-001' \
@@ -339,18 +340,19 @@ for open_question_marker in \
   'OQ-CHANNEL-001' \
   'OQ-MEMORY-001' \
   'OQ-PLUGIN-001' \
-  'OQ-LEGAL-001'; do
+  'OQ-LEGAL-001' \
+  'OQ-BUDGET-001'; do
   rg -q "$open_question_marker" docs/planning/open-questions-register.md || fail "open questions register marker missing: $open_question_marker"
 done
 rg -F -q '| 问题ID | 状态 | 分类 | 问题描述 | 最晚确认阶段 | 负责人/工作流 | 解决说明文档 |' docs/planning/open-questions-register.md || fail 'open questions register missing summary table header'
 rg -F -q '| 问题ID | 状态 | 分类 | 来源文档 | 问题描述 | 影响 | 负责人/工作流 | 最晚确认阶段 | 确认结论 | 解决说明文档 | 关联需求/风险 | 关闭任务/commit | 最后更新UTC |' docs/planning/open-questions-register.md || fail 'open questions register missing full table header'
-rg -F -q '| 自动确认 | 19 | 已结合三大平台在确认文件中生成默认解决方案，但尚未关闭 |' docs/planning/open-questions-register.md || fail 'open questions register must show 19 auto-confirmed items'
+rg -F -q '| 自动确认 | 20 | 已结合三大平台在确认文件中生成默认解决方案，但尚未关闭 |' docs/planning/open-questions-register.md || fail 'open questions register must show 20 auto-confirmed items'
 rg -F -q '| 已关闭 | 4 | P0 门禁已关闭上游快照排除规则、资源容量、日历冻结窗口和首批渠道默认范围 |' docs/planning/open-questions-register.md || fail 'open questions register must show four closed P0 gate items'
 for closed_oq in OQ-UPSTREAM-004 OQ-SCHEDULE-001 OQ-SCHEDULE-002 OQ-CHANNEL-001; do
   rg -F -q "| ${closed_oq} | 已关闭 |" docs/planning/open-questions-register.md || fail "P0 gate OQ must be closed in register: ${closed_oq}"
   rg -q "${closed_oq}" docs/planning/phase-gates/P0-gate-review.md || fail "P0 gate report missing closed OQ: ${closed_oq}"
 done
-for still_auto_oq in OQ-UPSTREAM-001 OQ-UPSTREAM-002 OQ-UPSTREAM-003 OQ-INFRA-001 OQ-API-001 OQ-DSH-001 OQ-MEMORY-001 OQ-PLUGIN-001 OQ-LEGAL-001 OQ-PRODUCT-001; do
+for still_auto_oq in OQ-UPSTREAM-001 OQ-UPSTREAM-002 OQ-UPSTREAM-003 OQ-INFRA-001 OQ-API-001 OQ-DSH-001 OQ-MEMORY-001 OQ-PLUGIN-001 OQ-LEGAL-001 OQ-PRODUCT-001 OQ-BUDGET-001; do
   rg -F -q "| ${still_auto_oq} | 自动确认 |" docs/planning/open-questions-register.md || fail "non-P0 OQ must remain auto-confirmed: ${still_auto_oq}"
 done
 for p0_gate_marker in \
@@ -360,7 +362,7 @@ for p0_gate_marker in \
   '仍为自动确认的问题' \
   '历史问题回扫' \
   '当前阶段及之前阶段不存在 `打开` 问题' \
-  '19 个问题仍为 `自动确认`' \
+  '20 个问题仍为 `自动确认`' \
   '568014bebb2ae256b1d86a9618adde1abd6c24d1'; do
   rg -q "$p0_gate_marker" docs/planning/phase-gates/P0-gate-review.md || fail "P0 gate report marker missing: $p0_gate_marker"
 done

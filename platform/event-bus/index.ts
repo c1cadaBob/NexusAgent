@@ -20,6 +20,9 @@ export type PlatformEventType =
   | "sandbox.denied"
   | "artifact.created"
   | "credential.lease_issued"
+  | "budget.degraded"
+  | "memory.conflict_detected"
+  | "memory.conflict_decided"
   | "audit.recorded";
 
 export interface PlatformEventEnvelope {

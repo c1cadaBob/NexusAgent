@@ -52,3 +52,15 @@ Memory retention is tenant-admin managed in P7-02. The default conservative poli
 - `GET /v1/skill-evaluations/runs/{run_id}`
 
 Skill evaluation is a Default Off P7 advanced capability. Tenant or platform administrators must explicitly enable the config before a manual run can execute. The deterministic regression corpus covers Approved + Rejected skill candidates and returns metadata-only run reports, case statuses, reason codes, trace IDs, UTC timestamps, and resource budget summaries. Operator/viewer or cross-tenant calls fail closed, and failed runs do not change task, channel, memory, or plugin state.
+
+## P7-04 token budget and memory conflict routes
+
+- `GET /v1/budget/policy`
+- `PATCH /v1/budget/policy`
+- `GET /v1/budget/ledger`
+- `POST /v1/budget/check`
+- `GET /v1/memory/conflicts`
+- `GET /v1/memory/conflicts/{conflict_id}`
+- `POST /v1/memory/conflicts/{conflict_id}/decision`
+
+Token budget is Default On in P7-04 with All configured tenant, user, agent, and task ledger dimensions. Task submit, planner/executor adapter dispatch, and API budget checks share the same deterministic accounting path; exceeded budget returns platform errors or blocked/degraded task state without calling the adapter. Memory conflict detection is also Default On and uses an Admin resolve queue. `expected_version` mismatches create metadata-only conflict records and never return memory rejected text, stale payload, credential material, native fields, provider runtime, or local paths.

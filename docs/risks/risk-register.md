@@ -70,6 +70,14 @@ DSH 不作为稳定平台契约，只作为内部 executor provider。P2 必须�
 - R-013/R-014：P7-03 将 approved capability visible 与 rejected/disabled candidate blocked 纳入 deterministic regression，case mismatch 只生成 failed report 和 Observability warning，不改变 plugin/channel/task/memory 状态或暴露 credential material。
 - 遗留风险：P7-03 不关闭 P7-04 Token 预算计费维度、P7-05 阶段门禁、真实业务评测平台、真实插件运行时、生产 sidecar/OS 隔离、插件升级兼容矩阵或 P8 发布治理。
 
+## P7-04 Token 预算与记忆冲突检测更新
+
+- R-005：P7-04 新增默认启用的 `nexus.memory_conflict.p7.v1` Admin resolve queue，`expected_version` mismatch 只保存 scope、layer、expected/current version、status、reason_codes、trace 和 UTC/monotonic metadata，不保存 memory rejected text 或 stale payload。
+- R-006/R-009：Token 预算采用 Default On、All configured 维度和 conservative alpha limits；tenant/user/agent/task ledger 能在 Task+adapter+API enforcement 点降级，真实 tokenizer、生产 billing backend 和长期容量告警仍留 P8。
+- R-003/R-007/R-014：`tests/security/p7-token-budget-memory-conflict-leakage.test.mjs` 验证 budget/conflict API、SDK/Console view-model、events/logs 不回显 raw credential、credential material、native URL/path/session/error、provider runtime、本地路径、memory rejected text 或 stale payload。
+- R-010/R-012：`tests/smoke/P7.sh` 增加 P7-04 required files、审计无占位、token budget markers、memory conflict markers、API/SDK/Console markers、Date.now 禁用扫描、public leakage scan 和 targeted tests。
+- 遗留风险：P7-04 不关闭 P7-05 阶段门禁、durable billing、真实模型 token 计量、生产 quota backend、durable Memory Gateway 存储/检索、真实业务评测平台或 P8 发布治理。
+
 ## P6-01 内部业务闭环更新
 
 - R-003/R-007：P6-01 新增 deterministic in-process `tests/integration/p6-business-closed-loop.test.mjs`，断言 closed-loop Event Bus/audit timeline 不含 raw credential、native URL/path/session/error、provider runtime、真实网络 URL 或 `/opt/` 路径；公共 API、SDK、控制台和 OpenAPI 未在本任务变更。
@@ -217,11 +225,11 @@ DSH 不作为稳定平台契约，只作为内部 executor provider。P2 必须�
 - R-012：P0-11 新增实时规划提示词执行规则，要求任务开始前先填写“修改前分析”，如存在未处理待确认问题必须先处理再进入实现；修改过程中持续补充“修改过程记录”，验证完成后补齐“修改后验证与总结”。
 - R-012：每个阶段结束前必须回扫当前阶段及其之前阶段的 `OQ-*`、任务修改记录包、风险登记册、需求追踪矩阵和专业文档；若仍有未处理或未同步问题，必须先修复或创建后续实时规划提示词，不能直接进入下一阶段。
 - R-010/R-011：P0-10 已将 `scripts/planning/generate-task-prompts.py` 升级为安全生成器，默认 `--check` 不覆盖人工优化文档，显式 `--write` 只创建缺失文档，`--write --overwrite` 才覆盖已有文档；P0 smoke 已运行生成器检查并阻止脚本缓存目录进入工作树。
-- R-012：P0-11 已把 P0-01 至 P0-08 的历史待确认问题回写为 `OQ-*`、状态和确认文件引用；P0 门禁关闭 4 个到期问题后，仍有 19 个问题未关闭，后续阶段门禁必须继续补齐确认结论和关闭任务/commit。
+- R-012：P0-11 已把 P0-01 至 P0-08 的历史待确认问题回写为 `OQ-*`、状态和确认文件引用；P0 门禁关闭 4 个到期问题后，P7-04 新增 `OQ-BUDGET-001`，当前仍有 20 个问题未关闭，后续阶段门禁必须继续补齐确认结论和关闭任务/commit。
 
 ## P0 阶段门禁收口更新
 
 - R-009：P0 门禁关闭 `OQ-SCHEDULE-001` 和 `OQ-SCHEDULE-002`，默认容量模型与日历冻结缓冲已成为后续排期基线；实际资源变化继续触发重排。
 - R-013/R-014：P0 门禁关闭 `OQ-CHANNEL-001`，默认首批渠道为钉钉、飞书、Telegram；新增企业微信、Slack 等渠道必须进入 P4/P5 范围变更，并补渠道插件、凭据和防绕过测试。
 - R-015：P0 门禁关闭 `OQ-UPSTREAM-004`，确认 vendor 快照长期排除构建产物、缓存、日志和依赖目录；后续上游升级仍需记录版本、hash、许可证/NOTICE 和回滚方式。
-- 保留【待确认问题】：当前 19 个问题仍为 `自动确认`，表示已结合三大平台生成默认解决方案，但仍未关闭；后续必须按最晚确认阶段补齐确认结论和关闭任务/commit。
+- 保留【待确认问题】：当前 20 个问题仍为 `自动确认`，表示已结合三大平台生成默认解决方案，但仍未关闭；后续必须按最晚确认阶段补齐确认结论和关闭任务/commit。

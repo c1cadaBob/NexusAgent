@@ -22,6 +22,7 @@ corepack pnpm --dir product/docs-site run build
 - Webhook delivery and streaming transports are documented as later work; P5 Alpha reads task events with `GET /v1/tasks/{task_id}/events`.
 - Tenant self-service third-party plugin installation is not supported in P5 Alpha.
 - P7-03 documents skill evaluation as a Default Off administrator workflow with manual runs, Approved + Rejected deterministic coverage, and metadata-only reports from the public `/v1/skill-evaluations/*` routes.
+- P7-04 documents Default On token budget controls with All configured tenant/user/agent/task dimensions, budget ledger APIs, and memory conflict Admin resolve queue routes. Conflict and budget examples are metadata-only and do not include memory rejected text, stale payload, secret material, internal implementation markers, or local filesystem references.
 
 ## Design direction
 

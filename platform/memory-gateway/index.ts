@@ -10,6 +10,9 @@ export const MEMORY_SNAPSHOT_SCHEMA_VERSION = "nexus.memory_snapshot.p3.v1";
 export const MEMORY_RETENTION_SCHEMA_VERSION = "nexus.memory_retention.p7.v1";
 export const MEMORY_RETENTION_DEFAULT_ENABLED = true;
 export const MEMORY_RETENTION_POLICY_MODE = "conservative";
+export const MEMORY_CONFLICT_SCHEMA_VERSION = "nexus.memory_conflict.p7.v1";
+export const MEMORY_CONFLICT_DEFAULT_ENABLED = true;
+export const MEMORY_CONFLICT_RESOLUTION_MODE = "admin_resolve_queue";
 
 export type MemoryLifecycleStatus = "active" | "deleted" | "expired";
 export type MemoryRetentionAction = "retain" | "soft_delete";
@@ -121,6 +124,37 @@ export interface MemoryRetentionSweepResult {
   trace_id: string;
 }
 
+export type MemoryConflictStatus = "open" | "resolved" | "ignored";
+export type MemoryConflictDecision = "resolve" | "ignore";
+export type MemoryConflictReasonCode = "MEMORY_EXPECTED_VERSION_CONFLICT" | "MEMORY_CONFLICT_RESOLVED" | "MEMORY_CONFLICT_IGNORED";
+
+export interface MemoryConflictRecord {
+  schema_version: typeof MEMORY_CONFLICT_SCHEMA_VERSION;
+  conflict_id: string;
+  tenant_id: string;
+  scope: MemoryScope;
+  layer: MemoryLayer;
+  expected_version: number;
+  current_version: number;
+  status: MemoryConflictStatus;
+  reason_codes: readonly MemoryConflictReasonCode[];
+  created_at_utc: string;
+  updated_at_utc: string;
+  monotonic_ms: number;
+  trace_id: string;
+  decided_by_user_id?: string;
+  decided_at_utc?: string;
+}
+
+export interface MemoryConflictDecisionInput {
+  tenant_id: string;
+  conflict_id: string;
+  decision: MemoryConflictDecision;
+  reason: string;
+  trace_id: string;
+  decided_by_user_id?: string;
+}
+
 export interface MemoryRetentionObservability {
   incrementMetric(input: {
     tenant_id: string;
@@ -223,6 +257,7 @@ export class LocalMemoryGateway {
   readonly #eventBus?: EventBus;
   readonly #observability?: MemoryRetentionObservability;
   readonly #records = new Map<string, MemoryRecord>();
+  readonly #conflicts = new Map<string, MemoryConflictRecord>();
   readonly #tenantVersions = new Map<string, number>();
   readonly #retentionPolicies = new Map<string, MemoryRetentionPolicy>();
   #sequence = 0;
@@ -249,6 +284,7 @@ export class LocalMemoryGateway {
       assertNonNegativeInteger(input.expected_version, "expected_version");
       const currentVersion = this.currentVersion(input.scope.tenant_id);
       if (input.expected_version !== currentVersion) {
+        this.#createConflict(input, currentVersion);
         throw new MemoryGatewayError("PLATFORM_CONFLICT", "Memory expected_version does not match current tenant version", {
           expected_version: input.expected_version,
           current_version: currentVersion,
@@ -299,6 +335,63 @@ export class LocalMemoryGateway {
   currentVersion(tenant_id: string): number {
     assertPlatformId("tenant_id", tenant_id);
     return this.#tenantVersions.get(tenant_id) ?? 0;
+  }
+
+  listConflicts(tenant_id: string, trace_id: string, status?: MemoryConflictStatus): readonly MemoryConflictRecord[] {
+    assertPlatformId("tenant_id", tenant_id);
+    assertPlatformId("trace_id", trace_id);
+    if (status !== undefined && !["open", "resolved", "ignored"].includes(status)) {
+      throw new MemoryGatewayError("PLATFORM_INVALID_REQUEST", "Unsupported memory conflict status", { status });
+    }
+    return [...this.#conflicts.values()]
+      .filter((conflict) => conflict.tenant_id === tenant_id)
+      .filter((conflict) => status === undefined || conflict.status === status)
+      .sort((left, right) => left.monotonic_ms - right.monotonic_ms)
+      .map(cloneConflict);
+  }
+
+  getConflict(tenant_id: string, conflict_id: string): MemoryConflictRecord {
+    assertPlatformId("tenant_id", tenant_id);
+    const conflict = this.#conflicts.get(requireConflictId(conflict_id));
+    if (!conflict) throw new MemoryGatewayError("PLATFORM_NOT_FOUND", "Memory conflict not found", { conflict_id });
+    if (conflict.tenant_id !== tenant_id) throw new MemoryGatewayError("PLATFORM_FORBIDDEN", "Memory conflict tenant mismatch", { conflict_id });
+    return cloneConflict(conflict);
+  }
+
+  decideConflict(input: MemoryConflictDecisionInput): MemoryConflictRecord {
+    assertPlatformId("tenant_id", input.tenant_id);
+    assertPlatformId("trace_id", input.trace_id);
+    if (input.decided_by_user_id !== undefined) assertPlatformId("user_id", input.decided_by_user_id);
+    requireConflictId(input.conflict_id);
+    if (!["resolve", "ignore"].includes(input.decision)) {
+      throw new MemoryGatewayError("PLATFORM_INVALID_REQUEST", "Unsupported memory conflict decision", { decision: input.decision });
+    }
+    if (!input.reason.trim()) throw new MemoryGatewayError("PLATFORM_INVALID_REQUEST", "Memory conflict decision reason is required");
+    assertNoNativeMemoryPayload(input);
+    const current = this.#conflicts.get(input.conflict_id);
+    if (!current) throw new MemoryGatewayError("PLATFORM_NOT_FOUND", "Memory conflict not found", { conflict_id: input.conflict_id });
+    if (current.tenant_id !== input.tenant_id) throw new MemoryGatewayError("PLATFORM_FORBIDDEN", "Memory conflict tenant mismatch", { conflict_id: input.conflict_id });
+    if (current.status !== "open") throw new MemoryGatewayError("PLATFORM_CONFLICT", "Memory conflict is already decided", { conflict_id: input.conflict_id, status: current.status });
+    const reading = this.#clock.now();
+    const status: MemoryConflictStatus = input.decision === "resolve" ? "resolved" : "ignored";
+    const decided: MemoryConflictRecord = {
+      ...current,
+      status,
+      reason_codes: [status === "resolved" ? "MEMORY_CONFLICT_RESOLVED" : "MEMORY_CONFLICT_IGNORED"],
+      updated_at_utc: reading.utc_timestamp,
+      monotonic_ms: reading.monotonic_ms,
+      trace_id: input.trace_id,
+      decided_by_user_id: input.decided_by_user_id,
+      decided_at_utc: reading.utc_timestamp,
+    };
+    this.#conflicts.set(input.conflict_id, cloneConflict(decided));
+    this.#publishConflictEvent(decided, "memory.conflict_decided");
+    this.#recordRetentionObservability("memory_conflict.decided", input.tenant_id, input.trace_id, reading, {
+      conflict_id: decided.conflict_id,
+      status: decided.status,
+      reason_codes: decided.reason_codes,
+    });
+    return cloneConflict(decided);
   }
 
   getRetentionPolicy(tenant_id: string, trace_id: string): MemoryRetentionPolicy {
@@ -508,6 +601,46 @@ export class LocalMemoryGateway {
     return `memory_${tenantId.replace(/^tenant_/, "")}_${String(this.#sequence).padStart(4, "0")}`;
   }
 
+  #nextConflictId(tenantId: string): string {
+    this.#sequence += 1;
+    return `conflict_${tenantId.replace(/^tenant_/, "memory_")}_${String(this.#sequence).padStart(4, "0")}`;
+  }
+
+  #createConflict(input: WriteMemoryInput, currentVersion: number): MemoryConflictRecord | undefined {
+    if (!MEMORY_CONFLICT_DEFAULT_ENABLED || input.expected_version === undefined) return undefined;
+    const reading = this.#clock.now();
+    const conflict: MemoryConflictRecord = {
+      schema_version: MEMORY_CONFLICT_SCHEMA_VERSION,
+      conflict_id: this.#nextConflictId(input.scope.tenant_id),
+      tenant_id: input.scope.tenant_id,
+      scope: cloneScope(input.scope),
+      layer: input.layer,
+      expected_version: input.expected_version,
+      current_version: currentVersion,
+      status: "open",
+      reason_codes: ["MEMORY_EXPECTED_VERSION_CONFLICT"],
+      created_at_utc: reading.utc_timestamp,
+      updated_at_utc: reading.utc_timestamp,
+      monotonic_ms: reading.monotonic_ms,
+      trace_id: input.trace_id,
+    };
+    this.#conflicts.set(conflict.conflict_id, cloneConflict(conflict));
+    this.#publishConflictEvent(conflict, "memory.conflict_detected");
+    this.#recordRetentionMetric("memory_conflict.open_count", {
+      tenant_id: conflict.tenant_id,
+      trace_id: conflict.trace_id,
+      monotonic_ms: conflict.monotonic_ms,
+    }, 1);
+    this.#recordRetentionObservability("memory_conflict.detected", conflict.tenant_id, conflict.trace_id, reading, {
+      conflict_id: conflict.conflict_id,
+      layer: conflict.layer,
+      expected_version: conflict.expected_version,
+      current_version: conflict.current_version,
+      reason_codes: conflict.reason_codes,
+    });
+    return cloneConflict(conflict);
+  }
+
   #publishMemoryEvent(record: MemoryRecord): void {
     this.#eventBus?.publish({
       schema_version: "nexus.event_envelope.v1",
@@ -552,6 +685,32 @@ export class LocalMemoryGateway {
         status: result.status,
         reason_code: result.reason_code,
         version: result.version,
+      },
+    } satisfies PlatformEventEnvelope);
+  }
+
+  #publishConflictEvent(conflict: MemoryConflictRecord, eventType: "memory.conflict_detected" | "memory.conflict_decided"): void {
+    this.#eventBus?.publish({
+      schema_version: "nexus.event_envelope.v1",
+      event_id: `event_${conflict.conflict_id.replace(/^conflict_/, "memory_conflict_")}_${conflict.status}`,
+      event_type: eventType,
+      tenant_id: conflict.tenant_id,
+      user_id: conflict.scope.user_id ?? conflict.decided_by_user_id,
+      agent_id: conflict.scope.agent_id,
+      conversation_id: conflict.scope.conversation_id,
+      trace_id: conflict.trace_id,
+      occurred_at_utc: conflict.updated_at_utc,
+      monotonic_ms: conflict.monotonic_ms,
+      producer: { service: "memory-gateway", component: "memory-conflict" },
+      subject: { kind: "audit", id: conflict.conflict_id },
+      payload: {
+        schema_version: conflict.schema_version,
+        conflict_id: conflict.conflict_id,
+        layer: conflict.layer,
+        status: conflict.status,
+        expected_version: conflict.expected_version,
+        current_version: conflict.current_version,
+        reason_codes: conflict.reason_codes,
       },
     } satisfies PlatformEventEnvelope);
   }
@@ -613,6 +772,13 @@ function assertPositiveInteger(value: unknown, field: string): number {
 function requireMemoryId(value: unknown): string {
   if (typeof value !== "string" || !/^memory_[A-Za-z0-9][A-Za-z0-9_-]{2,127}$/.test(value)) {
     throw new MemoryGatewayError("PLATFORM_INVALID_REQUEST", "Invalid memory_id", { field: "memory_id" });
+  }
+  return value;
+}
+
+function requireConflictId(value: unknown): string {
+  if (typeof value !== "string" || !/^conflict_[A-Za-z0-9][A-Za-z0-9_-]{2,127}$/.test(value)) {
+    throw new MemoryGatewayError("PLATFORM_INVALID_REQUEST", "Invalid conflict_id", { field: "conflict_id" });
   }
   return value;
 }
@@ -722,6 +888,10 @@ function cloneSweepResult(result: MemoryRetentionSweepResult): MemoryRetentionSw
   return JSON.parse(JSON.stringify(result)) as MemoryRetentionSweepResult;
 }
 
+function cloneConflict(conflict: MemoryConflictRecord): MemoryConflictRecord {
+  return JSON.parse(JSON.stringify(conflict)) as MemoryConflictRecord;
+}
+
 function validatePlannerLayers(value: readonly PlannerMemoryLayer[] | undefined): readonly PlannerMemoryLayer[] {
   const layers = value ?? PLANNER_MEMORY_LAYERS;
   if (!Array.isArray(layers) || layers.length === 0) {
@@ -780,7 +950,7 @@ function sanitizeWriteOperation(operation: Record<string, unknown>): Record<stri
 
 function assertNoNativeMemoryPayload(value: unknown): void {
   const text = JSON.stringify(value ?? {});
-  if (/(?:"(?:path|file_path|native_path|native_session_id|native_error|url|provider_runtime|raw_credential|credential_material)"\s*:|https?:\/\/|\/(?:opt|tmp|var|etc|home|usr)\/|raw_credential|credential_material|native_(?:url|path|session|error)|provider_runtime)/i.test(text)) {
+  if (/(?:"(?:path|file_path|native_path|native_session_id|native_error|url|provider_runtime|provider_binding|raw_credential|credential_material|memory_rejected_text|stale_payload)"\s*:|https?:\/\/|\/(?:opt|tmp|var|etc|home|usr)\/|raw_credential|credential_material|memory_rejected_text|stale_payload|native_(?:url|path|session|error)|provider_(?:runtime|binding))/i.test(text)) {
     throw new MemoryGatewayError("PLATFORM_INVALID_REQUEST", "Planner memory proxy payload contains non-platform fields");
   }
 }

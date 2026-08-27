@@ -2,7 +2,14 @@ import http from "node:http";
 import { LocalAuditLog } from "../../platform/audit/index.ts";
 import { LocalChannelManagement } from "../../platform/channel-management/index.ts";
 import { ManualClock, SystemClock, type PlatformClock } from "../../platform/clock/index.ts";
-import { Coordinator, CoordinatorError, type CoordinatorTaskCommandRequest } from "../../platform/coordinator/index.ts";
+import {
+  Coordinator,
+  CoordinatorError,
+  estimateTokenBudgetUnits,
+  LocalTokenBudget,
+  type CoordinatorTaskCommandRequest,
+  type TokenBudgetLimits,
+} from "../../platform/coordinator/index.ts";
 import { LocalCredentialCenter } from "../../platform/credentials/index.ts";
 import { InMemoryEventBus } from "../../platform/event-bus/index.ts";
 import { LocalMemoryGateway, MemoryGatewayError, type MemoryLayer } from "../../platform/memory-gateway/index.ts";
@@ -102,6 +109,7 @@ export class PlatformApiApp {
   readonly credentials: LocalCredentialCenter;
   readonly audit: LocalAuditLog;
   readonly observability: LocalObservability;
+  readonly tokenBudget: LocalTokenBudget;
   readonly pluginGovernance = new LocalPluginGovernance({ tenant_id: "tenant_alpha01", trace_id: "trace_plugin01" });
   readonly channelManagement: LocalChannelManagement;
   readonly skillEvaluation: LocalSkillEvaluation;
@@ -114,8 +122,14 @@ export class PlatformApiApp {
 
   constructor(options: PlatformApiOptions = {}) {
     this.clock = options.clock ?? new SystemClock();
-    this.coordinator = new Coordinator({ policyGate: this.policyGate, eventBus: this.eventBus, clock: this.clock });
     this.observability = new LocalObservability({ clock: this.clock, service: "nexusagent-platform-api", version: "p5-local" });
+    this.tokenBudget = new LocalTokenBudget({ clock: this.clock, eventBus: this.eventBus, observability: this.observability });
+    this.coordinator = new Coordinator({
+      policyGate: this.policyGate,
+      eventBus: this.eventBus,
+      clock: this.clock,
+      tokenBudget: { enabled: true, service: this.tokenBudget },
+    });
     this.memory = new LocalMemoryGateway({ clock: this.clock, eventBus: this.eventBus, observability: this.observability });
     this.credentials = new LocalCredentialCenter({ clock: this.clock, eventBus: this.eventBus });
     this.audit = new LocalAuditLog({ clock: this.clock, eventBus: this.eventBus });
@@ -166,6 +180,9 @@ export class PlatformApiApp {
       if (method === "GET" && parsed.pathname === "/v1/memory/retention") return ok(this.#getMemoryRetention(parsed.query, principal));
       if (method === "PATCH" && parsed.pathname === "/v1/memory/retention") return ok(this.#updateMemoryRetention(asObject(body), principal));
       if (method === "POST" && parsed.pathname === "/v1/memory/retention/sweep") return ok(this.#sweepMemoryRetention(asObject(body), principal));
+      if (method === "GET" && parsed.pathname === "/v1/memory/conflicts") return ok(paginate(this.#listMemoryConflicts(parsed.query, principal), parsed.query));
+      if (method === "GET" && /^\/v1\/memory\/conflicts\/[^/]+$/.test(parsed.pathname)) return ok(this.#getMemoryConflict(pathPart(parsed.pathname, 4), parsed.query, principal));
+      if (method === "POST" && /^\/v1\/memory\/conflicts\/[^/]+\/decision$/.test(parsed.pathname)) return ok(this.#decideMemoryConflict(pathPart(parsed.pathname, 4), asObject(body), principal));
       if (method === "POST" && /^\/v1\/memory\/[^/]+\/delete$/.test(parsed.pathname)) return ok(this.#deleteMemory(pathPart(parsed.pathname, 3), asObject(body), principal));
 
       if (method === "GET" && parsed.pathname === "/v1/tenants") return ok(paginate(this.#listTenants(principal), parsed.query));
@@ -175,6 +192,9 @@ export class PlatformApiApp {
       if (method === "GET" && parsed.pathname === "/v1/approvals") return ok(paginate(this.#listApprovals(parsed.query, principal), parsed.query));
       if (method === "POST" && /^\/v1\/approvals\/[^/]+\/decision$/.test(parsed.pathname)) return ok(this.#decideApproval(pathPart(parsed.pathname, 3), asObject(body), principal));
 
+      if (method === "GET" && parsed.pathname === "/v1/budget/policy") return ok(this.#getBudgetPolicy(parsed.query, principal));
+      if (method === "PATCH" && parsed.pathname === "/v1/budget/policy") return ok(this.#updateBudgetPolicy(asObject(body), principal));
+      if (method === "GET" && parsed.pathname === "/v1/budget/ledger") return ok(paginate(this.#listBudgetLedger(parsed.query, principal), parsed.query));
       if (method === "POST" && parsed.pathname === "/v1/budget/check") return ok(this.#checkBudget(asObject(body), principal));
 
       if (method === "GET" && parsed.pathname === "/v1/channels") return ok(paginate(this.#listChannels(parsed.query, principal), parsed.query));
@@ -221,6 +241,7 @@ export class PlatformApiApp {
       throw new PlatformApiError("PLATFORM_FORBIDDEN", "Principal cannot submit for another user");
     }
     const input = requiredText(body.input, "input");
+    const token_budget_units = body.budget_units === undefined ? undefined : positiveInteger(body.budget_units, "budget_units");
     const reading = this.clock.now();
     const task_id = this.#nextId("task", trace_id);
     const attempt_id = this.#nextId("attempt", trace_id);
@@ -239,7 +260,7 @@ export class PlatformApiApp {
       source: { kind: "api" },
       created_at_utc: reading.utc_timestamp,
       monotonic_ms: reading.monotonic_ms,
-    }, { principal });
+    }, { principal, token_budget_units });
     const task: StoredTask = {
       tenant_id,
       user_id,
@@ -430,6 +451,7 @@ export class PlatformApiApp {
       text: requiredText(body.text, "text"),
       source: "platform-api",
       trace_id,
+      ...(body.expected_version === undefined ? {} : { expected_version: nonNegativeInteger(body.expected_version, "expected_version") }),
     });
     return {
       memory_id: record.memory_id,
@@ -471,6 +493,36 @@ export class PlatformApiApp {
       trace_id: requiredId("trace_id", body.trace_id),
       requested_by_user_id: principal.user_id,
       ...(body.max_records === undefined ? {} : { max_records: positiveInteger(body.max_records, "max_records") }),
+    }) as unknown as JsonObject;
+  }
+
+  #listMemoryConflicts(query: URLSearchParams, principal: Principal): readonly JsonObject[] {
+    const tenant_id = query.get("tenant_id") ?? principal.tenant_id;
+    this.#assertTenant(principal, tenant_id);
+    this.#require(principal, "tenant:manage");
+    const trace_id = query.get("trace_id") ?? "trace_memory_conflict01";
+    const status = query.get("status") ?? undefined;
+    return this.memory.listConflicts(tenant_id, requiredId("trace_id", trace_id), optionalMemoryConflictStatus(status)) as unknown as JsonObject[];
+  }
+
+  #getMemoryConflict(conflict_id: string, query: URLSearchParams, principal: Principal): JsonObject {
+    const tenant_id = query.get("tenant_id") ?? principal.tenant_id;
+    this.#assertTenant(principal, tenant_id);
+    this.#require(principal, "tenant:manage");
+    return this.memory.getConflict(tenant_id, requiredConflictId(conflict_id)) as unknown as JsonObject;
+  }
+
+  #decideMemoryConflict(conflict_id: string, body: JsonObject, principal: Principal): JsonObject {
+    const tenant_id = requiredId("tenant_id", body.tenant_id);
+    this.#assertTenant(principal, tenant_id);
+    this.#require(principal, "tenant:manage");
+    return this.memory.decideConflict({
+      tenant_id,
+      conflict_id: requiredConflictId(conflict_id),
+      decision: requiredMemoryConflictDecision(body.decision),
+      reason: requiredText(body.reason, "reason"),
+      trace_id: requiredId("trace_id", body.trace_id),
+      decided_by_user_id: principal.user_id,
     }) as unknown as JsonObject;
   }
 
@@ -537,33 +589,103 @@ export class PlatformApiApp {
     return projectApproval(approval);
   }
 
+  #getBudgetPolicy(query: URLSearchParams, principal: Principal): JsonObject {
+    const tenant_id = query.get("tenant_id") ?? principal.tenant_id;
+    this.#assertTenant(principal, tenant_id);
+    this.#require(principal, "tenant:manage");
+    const trace_id = query.get("trace_id") ?? "trace_budget_policy01";
+    return this.tokenBudget.getPolicy(tenant_id, requiredId("trace_id", trace_id)) as unknown as JsonObject;
+  }
+
+  #updateBudgetPolicy(body: JsonObject, principal: Principal): JsonObject {
+    const tenant_id = requiredId("tenant_id", body.tenant_id);
+    this.#assertTenant(principal, tenant_id);
+    this.#require(principal, "tenant:manage");
+    return this.tokenBudget.updatePolicy({
+      tenant_id,
+      trace_id: requiredId("trace_id", body.trace_id),
+      ...(body.enabled === undefined ? {} : { enabled: requiredBoolean(body.enabled, "enabled") }),
+      ...(body.limits === undefined ? {} : { limits: budgetLimitsPatch(asObject(body.limits)) }),
+    }) as unknown as JsonObject;
+  }
+
+  #listBudgetLedger(query: URLSearchParams, principal: Principal): readonly JsonObject[] {
+    const tenant_id = query.get("tenant_id") ?? principal.tenant_id;
+    this.#assertTenant(principal, tenant_id);
+    this.#require(principal, "tenant:manage");
+    return this.tokenBudget.listLedger(tenant_id, {
+      user_id: optionalId("user_id", query.get("user_id") ?? undefined),
+      agent_id: optionalId("agent_id", query.get("agent_id") ?? undefined),
+      task_id: optionalId("task_id", query.get("task_id") ?? undefined),
+      trace_id: optionalId("trace_id", query.get("trace_id") ?? undefined),
+    }) as unknown as JsonObject[];
+  }
+
   #checkBudget(body: JsonObject, principal: Principal): JsonObject {
     const tenant_id = requiredId("tenant_id", body.tenant_id);
     this.#assertTenant(principal, tenant_id);
+    this.#require(principal, "task:submit");
     const trace_id = requiredId("trace_id", body.trace_id);
-    const requested_units = positiveInteger(body.requested_units, "requested_units");
-    const remaining_units = nonNegativeInteger(body.remaining_units, "remaining_units");
-    const max_units_per_attempt = body.max_units_per_attempt === undefined ? undefined : positiveInteger(body.max_units_per_attempt, "max_units_per_attempt");
-    const reading = this.clock.now();
-    const decision = this.policyGate.evaluate({
-      action: "task.submit",
+    const user_id = optionalId("user_id", body.user_id) ?? principal.user_id;
+    if (user_id !== principal.user_id && !isTenantAdmin(principal) && !isPlatformAdmin(principal)) {
+      throw new PlatformApiError("PLATFORM_FORBIDDEN", "Principal cannot check budget for another user", { user_id });
+    }
+    const requested_units = body.requested_units === undefined
+      ? estimateTokenBudgetUnits(requiredText(body.input, "input"))
+      : positiveInteger(body.requested_units, "requested_units");
+    if (body.remaining_units !== undefined || body.max_units_per_attempt !== undefined) {
+      const legacyRemainingUnits = nonNegativeInteger(body.remaining_units ?? requested_units, "remaining_units");
+      const legacyMaxUnitsPerAttempt = body.max_units_per_attempt === undefined ? undefined : nonNegativeInteger(body.max_units_per_attempt, "max_units_per_attempt");
+      const reading = this.clock.now();
+      const legacyDecision = this.policyGate.evaluate({
+        action: "task.submit",
+        tenant_id,
+        task_id: optionalId("task_id", body.task_id) ?? "task_budget_check01",
+        attempt_id: optionalId("attempt_id", body.attempt_id) ?? "attempt_budget_check01",
+        execution_id: optionalId("execution_id", body.execution_id) ?? "exec_budget_check01",
+        conversation_id: optionalId("conversation_id", body.conversation_id) ?? "conv_budget_check01",
+        trace_id,
+        monotonic_ms: reading.monotonic_ms,
+        requested_at_utc: reading.utc_timestamp,
+        principal,
+        budget: {
+          requested_units,
+          remaining_units: legacyRemainingUnits,
+          ...(legacyMaxUnitsPerAttempt === undefined ? {} : { max_units_per_attempt: legacyMaxUnitsPerAttempt }),
+        },
+      });
+      if (!legacyDecision.allow) {
+        return {
+          schema_version: "nexus.token_budget.p7.v1",
+          tenant_id,
+          user_id,
+          trace_id,
+          policy_id: `policy_${tenant_id}_token_budget`,
+          decision_id: legacyDecision.decision_id,
+          status: "denied",
+          code: legacyDecision.code ?? "PLATFORM_RATE_LIMITED",
+          requested_units,
+          remaining_units: legacyRemainingUnits,
+          max_units_per_attempt: legacyMaxUnitsPerAttempt ?? legacyRemainingUnits,
+          reasons: legacyDecision.reasons,
+          reason_codes: ["TOKEN_BUDGET_EXCEEDED"],
+          checked_at_utc: reading.utc_timestamp,
+          monotonic_ms: reading.monotonic_ms,
+        };
+      }
+    }
+    return this.tokenBudget.check({
       tenant_id,
-      execution_id: this.#nextId("exec", trace_id),
+      user_id,
+      agent_id: optionalId("agent_id", body.agent_id),
+      task_id: optionalId("task_id", body.task_id),
+      attempt_id: optionalId("attempt_id", body.attempt_id),
+      execution_id: optionalId("execution_id", body.execution_id),
+      conversation_id: optionalId("conversation_id", body.conversation_id),
       trace_id,
-      monotonic_ms: reading.monotonic_ms,
-      requested_at_utc: reading.utc_timestamp,
-      principal,
-      budget: { requested_units, remaining_units, max_units_per_attempt },
-    });
-    return {
-      tenant_id,
-      trace_id,
-      status: decision.allow ? "approved" : "denied",
       requested_units,
-      remaining_units,
-      ...(decision.code === undefined ? {} : { code: decision.code }),
-      reasons: [...decision.reasons],
-    };
+      reason_code: "api_check",
+    }, { consume: body.consume === true }) as unknown as JsonObject;
   }
 
   #listChannels(query: URLSearchParams, principal: Principal): readonly JsonObject[] {
@@ -935,6 +1057,34 @@ function optionalMemoryLayer(value: unknown): MemoryLayer | undefined {
   if (value === undefined) return undefined;
   if (["session", "user", "agent_skill", "organization", "audit_snapshot"].includes(String(value))) return value as MemoryLayer;
   throw new PlatformApiError("PLATFORM_INVALID_REQUEST", "Memory layer is unsupported", { layer: value });
+}
+
+function requiredConflictId(value: unknown): string {
+  if (typeof value !== "string" || !/^conflict_[A-Za-z0-9][A-Za-z0-9_-]{2,127}$/.test(value)) {
+    throw new PlatformApiError("PLATFORM_INVALID_REQUEST", "Memory conflict identifier is invalid", { field: "conflict_id" });
+  }
+  return value;
+}
+
+function optionalMemoryConflictStatus(value: unknown): "open" | "resolved" | "ignored" | undefined {
+  if (value === undefined) return undefined;
+  if (["open", "resolved", "ignored"].includes(String(value))) return value as "open" | "resolved" | "ignored";
+  throw new PlatformApiError("PLATFORM_INVALID_REQUEST", "Memory conflict status is unsupported", { status: value });
+}
+
+function requiredMemoryConflictDecision(value: unknown): "resolve" | "ignore" {
+  if (value === "resolve" || value === "ignore") return value;
+  throw new PlatformApiError("PLATFORM_INVALID_REQUEST", "Memory conflict decision is unsupported", { decision: value });
+}
+
+function budgetLimitsPatch(value: JsonObject): Partial<TokenBudgetLimits> {
+  const allowed = new Set(["tenant_units", "user_units", "agent_units", "task_units", "max_units_per_attempt"]);
+  const limits: Partial<TokenBudgetLimits> = {};
+  for (const [key, item] of Object.entries(value)) {
+    if (!allowed.has(key)) throw new PlatformApiError("PLATFORM_INVALID_REQUEST", "Token budget limit field is unsupported", { field: key });
+    limits[key as keyof TokenBudgetLimits] = positiveInteger(item, key);
+  }
+  return limits;
 }
 
 function projectTask(task: StoredTask): StoredTask {

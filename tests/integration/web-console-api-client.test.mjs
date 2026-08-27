@@ -63,6 +63,29 @@ test('operator workflow submits lists reads cancels retries events memory approv
 
   const budget = await client.checkBudget({ requested_units: 10, remaining_units: 25, max_units_per_attempt: 25, trace_id: 'trace_console07' });
   assert.equal(budget.status, 'approved');
+  assert.equal(budget.schema_version, 'nexus.token_budget.p7.v1');
+});
+
+test('tenant admin workflow manages token budget policy and ledger while operator management fails closed', async () => {
+  const tenantAdmin = clientFor('tenant-admin').client;
+  const operator = clientFor('operator').client;
+
+  const policy = await tenantAdmin.getBudgetPolicy({ trace_id: 'trace_console_budget01' });
+  assert.equal(policy.schema_version, 'nexus.token_budget.p7.v1');
+  assert.equal(policy.dimension_mode, 'all_configured');
+  const updated = await tenantAdmin.updateBudgetPolicy({ trace_id: 'trace_console_budget02', limits: { task_units: 30, max_units_per_attempt: 20 } });
+  assert.equal(updated.limits.task_units, 30);
+  const checked = await tenantAdmin.checkBudget({ requested_units: 5, user_id: 'user_tenant_admin', task_id: 'task_console_budget01', trace_id: 'trace_console_budget03', consume: true });
+  assert.equal(checked.status, 'approved');
+  const ledger = await tenantAdmin.listBudgetLedger();
+  assert.equal(ledger.items.some((entry) => entry.status === 'reserved' && entry.consumed_units === 5), true);
+
+  await assert.rejects(() => operator.getBudgetPolicy({ trace_id: 'trace_console_budget04' }), (error) => {
+    assert.equal(error instanceof PlatformApiError, true);
+    assert.equal(error.status, 403);
+    assert.equal(error.code, 'PLATFORM_FORBIDDEN');
+    return true;
+  });
 });
 
 test('platform admin workflow manages plugin metadata while tenant admin forced access fails closed', async () => {
@@ -158,6 +181,19 @@ test('tenant admin workflow manages memory retention while operator forced acces
   assert.equal(Object.hasOwn(deleted, 'text'), false);
   const sweep = await tenantAdmin.sweepMemoryRetention({ trace_id: 'trace_console_retention05' });
   assert.equal(sweep.schema_version, 'nexus.memory_retention.p7.v1');
+
+  await assert.rejects(() => tenantAdmin.writeMemory({ text: 'console conflict stale memory', layer: 'user', trace_id: 'trace_console_conflict01', expected_version: 0 }), (error) => {
+    assert.equal(error instanceof PlatformApiError, true);
+    assert.equal(error.status, 409);
+    assert.equal(error.code, 'PLATFORM_CONFLICT');
+    return true;
+  });
+  const conflicts = await tenantAdmin.listMemoryConflicts();
+  assert.equal(conflicts.items.length, 1);
+  const conflict = await tenantAdmin.getMemoryConflict(conflicts.items[0].conflict_id);
+  assert.equal(conflict.status, 'open');
+  const ignored = await tenantAdmin.decideMemoryConflict(conflict.conflict_id, { decision: 'ignore', reason: 'console reviewed conflict metadata', trace_id: 'trace_console_conflict02' });
+  assert.equal(ignored.status, 'ignored');
 
   await assert.rejects(() => operator.sweepMemoryRetention({ trace_id: 'trace_console_retention06' }), (error) => {
     assert.equal(error instanceof PlatformApiError, true);
