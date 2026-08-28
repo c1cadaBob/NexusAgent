@@ -6,6 +6,10 @@
 
 P8-01 已关闭 `OQ-DEPLOY-001`：两者都交付但 Kubernetes 优先；Kubernetes 是标准生产主路径，Docker Compose prod 是单机私有化、小规模部署和故障复现路径。`deploy/docker-compose.prod.yml`、`deploy/k8s/`、`config/services.prod.yaml` 和 `tests/smoke/P8.sh` 已提供生产模板与静态隔离门禁。消息、对象存储、密钥、观测、Memory 生产后端、备份恢复、CI/CD、provider/插件兼容矩阵和法务发布包仅获得 backend reference 与编排证据，仍由 P8-02/P8-03/P8-04 承接。
 
+## P8-02 同步状态
+
+P8-02 已补 CI/CD、发布和上游追踪门禁：`.github/workflows/p8-release-gate.yml` 在 PR/main/tag 上运行规划生成、diff、P0-P8 smoke、P8 targeted deployment/security tests 和 release/upstream validators；tag `v*` 通过 `GITHUB_TOKEN` 推送 GHCR candidate images。由于仓库当前只有 `product/api/server.mjs` 与 Vite `product/web-console/` 具备真实 runtime，P8-02 只发布 `platform-api` 与 `web-console` 镜像，内部 adapters、memory、artifact、event、credential 和 observability 镜像继续通过生产模板的显式外部引用治理。`config/provider-compatibility.p8.json`、`config/plugin-compatibility.p8.json` 和 `config/release-gate.p8.json` 固定 `canary_first`、`optional_remote`、`real_runtime_only`、`P8-02_PROVIDER_BREAKING_CHANGE_PAUSE`、`P8-02_PLUGIN_UPGRADE_GATE_PAUSE` 和 `P8-02_RELEASE_PAUSE_CANARY_ONLY`；upstream remote/commit 未确认时输出 `UPSTREAM_IDENTITY_UNCONFIRMED` 并阻止 production default promotion。生产 Event Bus/Object Store/Secret/Observability/Memory 后端、备份恢复、法务 NOTICE 发布包和完整 sidecar/OS 隔离仍由 P8-03/P8-04 承接，不在 P8-02 冒充关闭。
+
 ## OQ-INFRA-002：消息总线生产后端复核
 
 推荐处理：P1-P6 默认使用 NATS JetStream，P8 做生产复核；如果客户或企业标准要求 Kafka、Pulsar 或托管消息系统，只能通过 EventBus provider 替换，不改变平台事件信封、task state、audit 和 adapter contract。
@@ -104,6 +108,8 @@ P8-01 已关闭 `OQ-DEPLOY-001`：两者都交付但 Kubernetes 优先；Kuberne
 
 关闭证据：`docs/operations/` 或 provider 兼容矩阵记录 Hermes 升级、禁用、回滚演练；P8 smoke 覆盖计划生成、memory 防直读和 provider 回滚。
 
+P8-02 证据：`config/provider-compatibility.p8.json` 已登记 `hermes-0.20.5` current default、vendor tree sha、required tests、`rollback_target` 和 `HermesProviderRegistry.rollbackDefault`；`scripts/upstream-tracking/weekly-upstream-check.mjs` 在 remote/commit 仍未确认时输出 `UPSTREAM_IDENTITY_UNCONFIRMED` 并保持 release pause，避免把未取证来源写成事实。
+
 ## OQ-UPSTREAM-002：OpenClaw provider 兼容矩阵
 
 推荐处理：P8 将 OpenClaw 当前生产 provider、候选新版本和回滚版本纳入兼容矩阵，记录 remote、release commit、fork 分支、vendor hash、本地 patch、渠道插件 fixture、升级门禁和回滚目标。
@@ -115,6 +121,8 @@ P8-01 已关闭 `OQ-DEPLOY-001`：两者都交付但 Kubernetes 优先；Kuberne
 - DSH：OpenClaw 渠道消息不得直接触发 executor；必须经过 Coordinator、Policy-Gate、Hermes planner 或明确的执行路径。
 
 关闭证据：兼容矩阵记录 OpenClaw provider 升级/回滚；P8 smoke 覆盖渠道 ingress、tools.invoke 拒绝、原生 gateway 禁用和插件禁用。
+
+P8-02 证据：`config/provider-compatibility.p8.json` 已登记 `openclaw-2026.8.1` current default、vendor tree sha、required tests、`rollback_target` 和 `OpenClawProviderRegistry.rollbackDefault`；P8 smoke 新增 provider compatibility validator、release pause marker 和 OpenClaw network/bypass 回归入口。
 
 ## OQ-UPSTREAM-003：DSH provider 兼容矩阵
 
@@ -128,6 +136,8 @@ P8-01 已关闭 `OQ-DEPLOY-001`：两者都交付但 Kubernetes 优先；Kuberne
 
 关闭证据：兼容矩阵记录 DSH provider 升级/回滚；P8 smoke 覆盖执行成功、取消、超时、恶意工具、artifact 校验和回滚。
 
+P8-02 证据：`config/provider-compatibility.p8.json` 已登记 `dsh-0.1.1-rc.2` current default、vendor tree sha、required tests、`rollback_target` 和 `DshProviderRegistry.rollbackDefault`；P8 smoke 新增 release gate validator、weekly upstream check、DSH network isolation 回归和 candidate manifest 生成。
+
 ## OQ-PLUGIN-001：插件市场开放范围复核
 
 推荐处理：首版仍不开放租户任意安装第三方插件；P8 只复核是否进入“管理员白名单 + 原生宿主侧车 + 能力代理”的生产治理形态。若评估租户自助市场，必须新增产品/安全 ADR，并通过恶意插件、防绕过、许可证和凭据泄漏测试。
@@ -139,3 +149,5 @@ P8-01 已关闭 `OQ-DEPLOY-001`：两者都交付但 Kubernetes 优先；Kuberne
 - DSH：Cordis 工具插件可以在 executor 宿主中复用，但执行必须经过 Policy-Gate、Credential Center、Artifact Store 和 audit。
 
 关闭证据：插件兼容矩阵、默认启用白名单、禁用/升级/回滚脚本、恶意插件测试和许可证记录全部完成；产品文档明确首版不提供租户任意安装。
+
+P8-02 证据：`config/plugin-compatibility.p8.json` 已固定 `tenant_self_service_third_party_install=false`，要求 hash、license、notice_status、risk_level、allowlist_status、required tests 和 `rollback_target`；缺 hash/license/NOTICE、未批准状态、缺回滚目标或 breaking change 均触发 `P8-02_PLUGIN_UPGRADE_GATE_PAUSE`，生产默认 promotion 继续 blocked until canary review。

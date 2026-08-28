@@ -24,6 +24,8 @@
 - [P6 阶段门禁报告](planning/phase-gates/P6-gate-review.md)：P6 门禁收口，确认 P6-01 至 P6-03 完成，列明基础业务闭环、防腐层/防绕过、故障注入、降级路线、provider 回滚、plugin rollback、真实 dev service lifecycle drill 和仍为 `自动确认` 的 P6/P8 问题。
 - [P7 阶段门禁报告](planning/phase-gates/P7-gate-review.md)：P7 门禁收口，确认 P7-01 至 P7-05 完成，列明计划质量信号、主动遗忘与保留策略、技能自动评测、Token 预算、记忆冲突、定时长期目标任务和仍为 `自动确认` 的 P7/P8 问题。
 - [P8-01 生产编排说明](operations/production-orchestration.md)：P8-01 生产 Compose/Kubernetes 编排基线，确认 Kubernetes 是标准生产主路径，Docker Compose prod 是单机私有化/小规模部署/故障复现路径，并记录 public/internal 服务边界与静态验证命令。
+- [P8-02 发布门禁说明](operations/release-gate.md)：P8-02 CI/CD release gate，覆盖 tag 推 GHCR、真实 runtime image 范围、candidate release manifest、canary-first promotion、release pause 和 rollback 要求。
+- [P8-02 provider/plugin 兼容矩阵](operations/provider-plugin-compatibility.md)：P8-02 上游可选远端检查、provider compatibility matrix、plugin upgrade gate、`UPSTREAM_IDENTITY_UNCONFIRMED` 暂停策略和租户不得自助安装第三方插件的发布治理说明。
 - [AI 排期提示词模板](planning/ai-schedule-prompt-template.md)
 - [任务实施规划提示词索引](planning/task-prompts/README.md)
 - [子 Agent 角色记忆](agents/README.md)：P0-01 基线，固化长期协作角色、只读上游边界、交接格式和各角色常读资料，避免上下文压缩或交接后遗忘项目约束。
@@ -61,6 +63,7 @@
 - [P7 Token 预算与记忆冲突检测](../platform/coordinator/token-budget.ts)：P7-04 基线，覆盖 Default On、All configured 预算维度、Task+adapter+API enforcement、Admin resolve queue、API+SDK+Console 暴露和 metadata-only 冲突审计。
 - [P7 定时长期目标任务](../platform/coordinator/scheduled-goals.ts)：P7-05 基线，覆盖 Default Off + manual tick、UTC 5-field Cron-like recurrence、ordinary scheduler-source TaskRequest、资源预算、取消/重试、API+SDK+Console 暴露和公共面泄漏防护。
 - [P8 生产 Compose/Kubernetes 编排](../deploy/docker-compose.prod.yml)：P8-01 基线，覆盖生产 Compose、Kubernetes namespace/service account/config/secret template/deployments/services/ingress/network policies、`config/services.prod.yaml`、`tests/smoke/P8.sh` 和 `OQ-DEPLOY-001` 已关闭结论；只有 `platform-api` 与 `web-console` 暴露入口，内部 adapters 与数据服务不暴露宿主端口或 NodePort/LoadBalancer。
+- [P8 CI/CD、发布和上游追踪](operations/release-gate.md)：P8-02 基线，覆盖 `.github/workflows/p8-release-gate.yml`、`config/release-gate.p8.json`、provider/plugin compatibility matrix、GHCR tag candidate publish、canary-first promotion、release pause、上游 optional remote check、真实 runtime image scope 和 P8-02 targeted release/security tests；生产后端、备份恢复、法务 NOTICE 包和完整 sidecar/OS 隔离继续由 P8-03/P8-04 承接。
 - [服务功能与整合蓝图](architecture/service-blueprint.md)：P0-07 基线，覆盖十个基础服务的功能、技术栈、输入输出、复用边界、参考项目和 P1 工作包。
 - [DSH 版本兼容与替换策略](architecture/dsh-versioning-and-replacement.md)
 - [上游版本适配与社区插件复用桥接策略](architecture/upstream-versioning-and-plugin-bridge.md)

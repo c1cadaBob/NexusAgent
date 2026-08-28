@@ -1,0 +1,75 @@
+{
+  "schema_version": "nexus.release_gate.p8.v1",
+  "task_id": "P8-02",
+  "release_behavior": "tag_push_ghcr",
+  "tag_pattern": "v*",
+  "registry": "ghcr.io",
+  "image_namespace": "ghcr.io/c1cadabob/nexusagent",
+  "promotion_strategy": "canary_first",
+  "upstream_check_mode": "optional_remote",
+  "image_publish_scope": "real_runtime_only",
+  "production_default_switch": "blocked_until_canary_review",
+  "root_dependency_changes_allowed": false,
+  "public_api_changes_allowed": false,
+  "published_images": [
+    {
+      "service": "platform-api",
+      "image": "ghcr.io/c1cadabob/nexusagent/platform-api",
+      "context": ".",
+      "dockerfile": "deploy/docker/platform-api.Dockerfile",
+      "runtime_entrypoint": "product/api/server.mjs",
+      "health_path": "/v1/health",
+      "publish_on_tags": true
+    },
+    {
+      "service": "web-console",
+      "image": "ghcr.io/c1cadabob/nexusagent/web-console",
+      "context": ".",
+      "dockerfile": "deploy/docker/web-console.Dockerfile",
+      "runtime_entrypoint": "deploy/docker/web-console-server.mjs",
+      "health_path": "/health",
+      "publish_on_tags": true
+    }
+  ],
+  "external_image_refs": [
+    { "service": "openclaw-adapter", "image_env": "NEXUS_OPENCLAW_ADAPTER_IMAGE", "publish_blocking": true },
+    { "service": "hermes-adapter", "image_env": "NEXUS_HERMES_ADAPTER_IMAGE", "publish_blocking": true },
+    { "service": "dsh-adapter", "image_env": "NEXUS_DSH_ADAPTER_IMAGE", "publish_blocking": true },
+    { "service": "memory-gateway", "image_env": "NEXUS_MEMORY_GATEWAY_IMAGE", "publish_blocking": true },
+    { "service": "artifact-store", "image_env": "NEXUS_ARTIFACT_STORE_IMAGE", "publish_blocking": true },
+    { "service": "event-bus", "image_env": "NEXUS_EVENT_BUS_IMAGE", "publish_blocking": true },
+    { "service": "credential-center", "image_env": "NEXUS_CREDENTIAL_CENTER_IMAGE", "publish_blocking": true },
+    { "service": "observability", "image_env": "NEXUS_OBSERVABILITY_IMAGE", "publish_blocking": true }
+  ],
+  "quality_gates": [
+    "scripts/planning/generate-task-prompts.py --check",
+    "git diff --check",
+    "git diff --check -- . ':!vendor/**'",
+    "node --test tests/deployment/p8-release-gate.test.mjs tests/deployment/p8-provider-compatibility.test.mjs tests/security/p8-release-supply-chain.test.mjs",
+    "bash tests/smoke/P0.sh",
+    "bash tests/smoke/P1.sh",
+    "bash tests/smoke/P2.sh",
+    "bash tests/smoke/P3.sh",
+    "bash tests/smoke/P4.sh",
+    "bash tests/smoke/P5.sh",
+    "bash tests/smoke/P6.sh",
+    "bash tests/smoke/P7.sh",
+    "bash tests/smoke/P8.sh"
+  ],
+  "release_pause_policy": {
+    "pause_on": ["failed_gate", "breaking_change", "upstream_identity_unconfirmed", "missing_rollback_target", "missing_external_image_ref"],
+    "candidate_images_may_publish": true,
+    "production_default_may_promote": false,
+    "release_pause_marker": "P8-02_RELEASE_PAUSE_CANARY_ONLY"
+  },
+  "forbidden_public_fields": [
+    "raw_credential",
+    "credential_material",
+    "native_url",
+    "native_path",
+    "native_session",
+    "native_error",
+    "provider_runtime",
+    "secret"
+  ]
+}
