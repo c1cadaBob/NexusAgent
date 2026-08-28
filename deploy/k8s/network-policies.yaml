@@ -1,0 +1,128 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny
+  namespace: nexusagent-prod
+  labels:
+    app.kubernetes.io/name: nexusagent
+    nexus.p8.network_policy: default_deny
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+    - Egress
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-edge-to-public-services
+  namespace: nexusagent-prod
+  labels:
+    app.kubernetes.io/name: nexusagent
+    nexus.p8.network_policy: public_ingress_only
+spec:
+  podSelector:
+    matchLabels:
+      nexus.service.public: "true"
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              nexusagent.io/ingress: "true"
+      ports:
+        - protocol: TCP
+          port: 8080
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-web-console-to-platform-api
+  namespace: nexusagent-prod
+  labels:
+    app.kubernetes.io/name: nexusagent
+    nexus.p8.network_policy: public_to_platform_api
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/component: platform-api
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/component: web-console
+      ports:
+        - protocol: TCP
+          port: 8080
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-platform-governed-internal
+  namespace: nexusagent-prod
+  labels:
+    app.kubernetes.io/name: nexusagent
+    nexus.p8.network_policy: platform_governed_internal_only
+spec:
+  podSelector:
+    matchLabels:
+      nexus.p8.internal_only: "true"
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/component: platform-api
+      ports:
+        - protocol: TCP
+          port: 8080
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-platform-egress-to-internal
+  namespace: nexusagent-prod
+  labels:
+    app.kubernetes.io/name: nexusagent
+    nexus.p8.network_policy: platform_egress_to_internal
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/component: platform-api
+  policyTypes:
+    - Egress
+  egress:
+    - to:
+        - podSelector:
+            matchLabels:
+              nexus.p8.internal_only: "true"
+      ports:
+        - protocol: TCP
+          port: 8080
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-web-console-egress-to-platform-api
+  namespace: nexusagent-prod
+  labels:
+    app.kubernetes.io/name: nexusagent
+    nexus.p8.network_policy: web_console_egress_to_platform_api
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/component: web-console
+  policyTypes:
+    - Egress
+  egress:
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/component: platform-api
+      ports:
+        - protocol: TCP
+          port: 8080

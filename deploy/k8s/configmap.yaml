@@ -1,0 +1,20 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nexusagent-prod-config
+  namespace: nexusagent-prod
+  labels:
+    app.kubernetes.io/name: nexusagent
+    nexus.p8.orchestration: P8-01
+data:
+  NODE_ENV: production
+  NEXUS_DEPLOYMENT_STAGE: production
+  NEXUS_ORCHESTRATION_PROFILE: p8-01-kubernetes-template
+  NEXUS_CLOCK_MODE: platform
+  NEXUS_EVENT_BUS_BACKEND_REF: p8-event-bus-backend-ref
+  NEXUS_ARTIFACT_BACKEND_REF: p8-artifact-backend-ref
+  NEXUS_CREDENTIAL_BACKEND_REF: p8-credential-backend-ref
+  NEXUS_MEMORY_BACKEND_REF: p8-memory-backend-ref
+  NEXUS_OBSERVABILITY_BACKEND_REF: p8-observability-backend-ref
+  NEXUS_BACKUP_PROFILE: p8-03-pending
+  NEXUS_RELEASE_PROFILE: p8-02-pending

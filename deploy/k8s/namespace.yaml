@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: nexusagent-prod
+  labels:
+    app.kubernetes.io/name: nexusagent
+    app.kubernetes.io/part-of: nexusagent
+    nexus.p8.orchestration: P8-01
+    nexus.p8.production_primary_path: kubernetes

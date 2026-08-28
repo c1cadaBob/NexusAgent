@@ -1,5 +1,157 @@
 version: 1
 mode: production
+orchestration_marker: P8-01 production_orchestration
+production_primary_path: kubernetes
+production_compose_path: single_node_private_fault_reproduction
 hot_reload: false
 debug_ports: false
-services: {}
+source_bind_mounts: false
+allowed_public_services:
+  - platform-api
+  - web-console
+required_external_backend_refs:
+  event_bus: NEXUS_EVENT_BUS_BACKEND_REF
+  artifact_store: NEXUS_ARTIFACT_BACKEND_REF
+  credential_center: NEXUS_CREDENTIAL_BACKEND_REF
+  memory_gateway: NEXUS_MEMORY_BACKEND_REF
+  observability: NEXUS_OBSERVABILITY_BACKEND_REF
+services:
+  platform-api:
+    role: platform-api
+    image_env: NEXUS_PLATFORM_API_IMAGE
+    public: true
+    network_scope: public_edge_and_internal
+    container_port: 8080
+    health_path: /health
+    readiness_path: /ready
+    required_backend_refs:
+      - NEXUS_EVENT_BUS_BACKEND_REF
+      - NEXUS_ARTIFACT_BACKEND_REF
+      - NEXUS_CREDENTIAL_BACKEND_REF
+      - NEXUS_MEMORY_BACKEND_REF
+      - NEXUS_OBSERVABILITY_BACKEND_REF
+    debug: false
+    hot_reload: false
+    source_mounts: false
+  web-console:
+    role: web-console
+    image_env: NEXUS_WEB_CONSOLE_IMAGE
+    public: true
+    network_scope: public_edge
+    container_port: 8080
+    health_path: /health
+    readiness_path: /ready
+    required_backend_refs: []
+    debug: false
+    hot_reload: false
+    source_mounts: false
+  openclaw-adapter:
+    role: gateway-adapter
+    image_env: NEXUS_OPENCLAW_ADAPTER_IMAGE
+    public: false
+    network_scope: internal_only
+    container_port: 8080
+    health_path: /health
+    readiness_path: /ready
+    required_backend_refs:
+      - NEXUS_CREDENTIAL_BACKEND_REF
+    entrypoint_policy: platform_governed_gateway_only
+    native_entrypoints: disabled
+    debug: false
+    hot_reload: false
+    source_mounts: false
+  hermes-adapter:
+    role: planner-adapter
+    image_env: NEXUS_HERMES_ADAPTER_IMAGE
+    public: false
+    network_scope: internal_only
+    container_port: 8080
+    health_path: /health
+    readiness_path: /ready
+    required_backend_refs:
+      - NEXUS_MEMORY_BACKEND_REF
+    entrypoint_policy: platform_governed_planner_only
+    native_entrypoints: disabled
+    debug: false
+    hot_reload: false
+    source_mounts: false
+  dsh-adapter:
+    role: executor-adapter
+    image_env: NEXUS_DSH_ADAPTER_IMAGE
+    public: false
+    network_scope: internal_only
+    container_port: 8080
+    health_path: /health
+    readiness_path: /ready
+    required_backend_refs:
+      - NEXUS_ARTIFACT_BACKEND_REF
+    entrypoint_policy: platform_governed_executor_only
+    native_entrypoints: disabled
+    debug: false
+    hot_reload: false
+    source_mounts: false
+  memory-gateway:
+    role: memory-gateway
+    image_env: NEXUS_MEMORY_GATEWAY_IMAGE
+    public: false
+    network_scope: internal_only
+    container_port: 8080
+    health_path: /health
+    readiness_path: /ready
+    required_backend_refs:
+      - NEXUS_MEMORY_BACKEND_REF
+    debug: false
+    hot_reload: false
+    source_mounts: false
+  artifact-store:
+    role: artifact-store
+    image_env: NEXUS_ARTIFACT_STORE_IMAGE
+    public: false
+    network_scope: internal_only
+    container_port: 8080
+    health_path: /health
+    readiness_path: /ready
+    required_backend_refs:
+      - NEXUS_ARTIFACT_BACKEND_REF
+    debug: false
+    hot_reload: false
+    source_mounts: false
+  event-bus:
+    role: event-bus
+    image_env: NEXUS_EVENT_BUS_IMAGE
+    public: false
+    network_scope: internal_only
+    container_port: 8080
+    health_path: /health
+    readiness_path: /ready
+    required_backend_refs:
+      - NEXUS_EVENT_BUS_BACKEND_REF
+    debug: false
+    hot_reload: false
+    source_mounts: false
+  credential-center:
+    role: credential-center
+    image_env: NEXUS_CREDENTIAL_CENTER_IMAGE
+    public: false
+    network_scope: internal_only
+    container_port: 8080
+    health_path: /health
+    readiness_path: /ready
+    required_backend_refs:
+      - NEXUS_CREDENTIAL_BACKEND_REF
+    debug: false
+    hot_reload: false
+    source_mounts: false
+  observability:
+    role: observability
+    image_env: NEXUS_OBSERVABILITY_IMAGE
+    public: false
+    network_scope: internal_only
+    container_port: 8080
+    health_path: /health
+    readiness_path: /ready
+    required_backend_refs:
+      - NEXUS_OBSERVABILITY_BACKEND_REF
+    debug: false
+    hot_reload: false
+    source_mounts: false

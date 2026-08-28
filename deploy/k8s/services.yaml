@@ -1,0 +1,207 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: platform-api
+  namespace: nexusagent-prod
+  labels:
+    app.kubernetes.io/name: nexusagent
+    app.kubernetes.io/component: platform-api
+    nexus.service.public: "true"
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: nexusagent
+    app.kubernetes.io/component: platform-api
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http
+      protocol: TCP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: web-console
+  namespace: nexusagent-prod
+  labels:
+    app.kubernetes.io/name: nexusagent
+    app.kubernetes.io/component: web-console
+    nexus.service.public: "true"
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: nexusagent
+    app.kubernetes.io/component: web-console
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http
+      protocol: TCP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: openclaw-adapter
+  namespace: nexusagent-prod
+  labels:
+    app.kubernetes.io/name: nexusagent
+    app.kubernetes.io/component: openclaw-adapter
+    nexus.service.public: "false"
+    nexus.p8.internal_only: "true"
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: nexusagent
+    app.kubernetes.io/component: openclaw-adapter
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http
+      protocol: TCP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: hermes-adapter
+  namespace: nexusagent-prod
+  labels:
+    app.kubernetes.io/name: nexusagent
+    app.kubernetes.io/component: hermes-adapter
+    nexus.service.public: "false"
+    nexus.p8.internal_only: "true"
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: nexusagent
+    app.kubernetes.io/component: hermes-adapter
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http
+      protocol: TCP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: dsh-adapter
+  namespace: nexusagent-prod
+  labels:
+    app.kubernetes.io/name: nexusagent
+    app.kubernetes.io/component: dsh-adapter
+    nexus.service.public: "false"
+    nexus.p8.internal_only: "true"
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: nexusagent
+    app.kubernetes.io/component: dsh-adapter
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http
+      protocol: TCP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: memory-gateway
+  namespace: nexusagent-prod
+  labels:
+    app.kubernetes.io/name: nexusagent
+    app.kubernetes.io/component: memory-gateway
+    nexus.service.public: "false"
+    nexus.p8.internal_only: "true"
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: nexusagent
+    app.kubernetes.io/component: memory-gateway
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http
+      protocol: TCP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: artifact-store
+  namespace: nexusagent-prod
+  labels:
+    app.kubernetes.io/name: nexusagent
+    app.kubernetes.io/component: artifact-store
+    nexus.service.public: "false"
+    nexus.p8.internal_only: "true"
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: nexusagent
+    app.kubernetes.io/component: artifact-store
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http
+      protocol: TCP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: event-bus
+  namespace: nexusagent-prod
+  labels:
+    app.kubernetes.io/name: nexusagent
+    app.kubernetes.io/component: event-bus
+    nexus.service.public: "false"
+    nexus.p8.internal_only: "true"
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: nexusagent
+    app.kubernetes.io/component: event-bus
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http
+      protocol: TCP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: credential-center
+  namespace: nexusagent-prod
+  labels:
+    app.kubernetes.io/name: nexusagent
+    app.kubernetes.io/component: credential-center
+    nexus.service.public: "false"
+    nexus.p8.internal_only: "true"
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: nexusagent
+    app.kubernetes.io/component: credential-center
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http
+      protocol: TCP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: observability
+  namespace: nexusagent-prod
+  labels:
+    app.kubernetes.io/name: nexusagent
+    app.kubernetes.io/component: observability
+    nexus.service.public: "false"
+    nexus.p8.internal_only: "true"
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: nexusagent
+    app.kubernetes.io/component: observability
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http
+      protocol: TCP

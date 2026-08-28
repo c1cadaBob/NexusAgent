@@ -18,6 +18,21 @@ function devComposeConfig() {
   }));
 }
 
+function prodComposeConfig() {
+  return JSON.parse(execFileSync('docker', [
+    'compose',
+    '-f',
+    'deploy/docker-compose.prod.yml',
+    'config',
+    '--format',
+    'json',
+  ], {
+    cwd: process.cwd(),
+    encoding: 'utf8',
+    stdio: ['ignore', 'pipe', 'pipe'],
+  }));
+}
+
 function assertInternalService(config, serviceName, servicePort, debugPort) {
   const service = config.services[serviceName];
   assert.ok(service, `${serviceName} service must exist`);
@@ -41,6 +56,19 @@ test('Hermes adapter and Memory Gateway dev compose exposure is loopback-only an
 });
 
 test('production compose does not expose Hermes dev ports native gateway or debug settings', () => {
+  const config = prodComposeConfig();
+  for (const serviceName of ['hermes-adapter', 'memory-gateway']) {
+    const service = config.services[serviceName];
+    assert.ok(service, `P8 production compose may include ${serviceName} as an internal workload`);
+    assert.equal(Boolean(service.ports), false, `${serviceName} must not publish host ports in production`);
+    assert.deepEqual(Object.keys(service.networks), ['nexus-prod-internal']);
+    assert.equal(service.environment.NEXUS_SERVICE_PUBLIC, 'false');
+    assert.equal(service.labels['nexus.service.public'], 'false');
+    assert.equal(service.labels['nexus.p8.internal_only'], 'true');
+  }
+  assert.equal(config.services['hermes-adapter'].environment.NEXUS_PLANNER_ONLY, 'true');
+  assert.equal(config.services['hermes-adapter'].environment.NEXUS_PROVIDER_ENTRYPOINTS, 'platform-governed');
+
   const prodCompose = readFileSync('deploy/docker-compose.prod.yml', 'utf8');
   for (const forbidden of [
     '3054',
@@ -50,8 +78,6 @@ test('production compose does not expose Hermes dev ports native gateway or debu
     '--inspect',
     'NEXUS_HOT_RELOAD',
     'NEXUS_DEBUG_PORT',
-    'hermes-adapter',
-    'memory-gateway',
     'native gateway',
     'NEXUS_HERMES_PLANNER_ONLY_GATEWAY',
   ]) {

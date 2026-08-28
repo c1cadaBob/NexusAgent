@@ -23,6 +23,7 @@
 - [P5 阶段门禁报告](planning/phase-gates/P5-gate-review.md)：P5 门禁收口，确认 P5-01 至 P5-04 完成，列明 REST-first API、Web 控制台、渠道管理、TypeScript SDK、开发者文档站、插件治理和仍为 `自动确认` 的 P5/P6/P8 问题。
 - [P6 阶段门禁报告](planning/phase-gates/P6-gate-review.md)：P6 门禁收口，确认 P6-01 至 P6-03 完成，列明基础业务闭环、防腐层/防绕过、故障注入、降级路线、provider 回滚、plugin rollback、真实 dev service lifecycle drill 和仍为 `自动确认` 的 P6/P8 问题。
 - [P7 阶段门禁报告](planning/phase-gates/P7-gate-review.md)：P7 门禁收口，确认 P7-01 至 P7-05 完成，列明计划质量信号、主动遗忘与保留策略、技能自动评测、Token 预算、记忆冲突、定时长期目标任务和仍为 `自动确认` 的 P7/P8 问题。
+- [P8-01 生产编排说明](operations/production-orchestration.md)：P8-01 生产 Compose/Kubernetes 编排基线，确认 Kubernetes 是标准生产主路径，Docker Compose prod 是单机私有化/小规模部署/故障复现路径，并记录 public/internal 服务边界与静态验证命令。
 - [AI 排期提示词模板](planning/ai-schedule-prompt-template.md)
 - [任务实施规划提示词索引](planning/task-prompts/README.md)
 - [子 Agent 角色记忆](agents/README.md)：P0-01 基线，固化长期协作角色、只读上游边界、交接格式和各角色常读资料，避免上下文压缩或交接后遗忘项目约束。
@@ -59,6 +60,7 @@
 - [P7 技能自动评测回归](../platform/skill-evaluation/index.ts)：P7-03 基线，覆盖 Default Off、管理员显式启用/手动触发、Approved + Rejected deterministic corpus、metadata-only report、API+Console 暴露和失败隔离。
 - [P7 Token 预算与记忆冲突检测](../platform/coordinator/token-budget.ts)：P7-04 基线，覆盖 Default On、All configured 预算维度、Task+adapter+API enforcement、Admin resolve queue、API+SDK+Console 暴露和 metadata-only 冲突审计。
 - [P7 定时长期目标任务](../platform/coordinator/scheduled-goals.ts)：P7-05 基线，覆盖 Default Off + manual tick、UTC 5-field Cron-like recurrence、ordinary scheduler-source TaskRequest、资源预算、取消/重试、API+SDK+Console 暴露和公共面泄漏防护。
+- [P8 生产 Compose/Kubernetes 编排](../deploy/docker-compose.prod.yml)：P8-01 基线，覆盖生产 Compose、Kubernetes namespace/service account/config/secret template/deployments/services/ingress/network policies、`config/services.prod.yaml`、`tests/smoke/P8.sh` 和 `OQ-DEPLOY-001` 已关闭结论；只有 `platform-api` 与 `web-console` 暴露入口，内部 adapters 与数据服务不暴露宿主端口或 NodePort/LoadBalancer。
 - [服务功能与整合蓝图](architecture/service-blueprint.md)：P0-07 基线，覆盖十个基础服务的功能、技术栈、输入输出、复用边界、参考项目和 P1 工作包。
 - [DSH 版本兼容与替换策略](architecture/dsh-versioning-and-replacement.md)
 - [上游版本适配与社区插件复用桥接策略](architecture/upstream-versioning-and-plugin-bridge.md)
@@ -79,7 +81,7 @@
 - P0-09 的 [待确认问题集中台账](planning/open-questions-register.md) 是后续 AI 排期、任务提示词和阶段门禁的未关闭问题索引；状态流为 `打开`、`自动确认`、`人工确认`、`已关闭`。[待确认问题确认文件目录](planning/open-questions/README.md) 是推荐处理方式、默认解决方案、三平台影响和关闭证据的保存位置。问题关闭后必须回写台账确认结论、解决说明文档和关闭任务/commit；需要加入开发排期的问题必须同步更新 `planning/task-prompts/` 对应阶段提示词。
 - P0-10 的 [任务提示词生成器](../scripts/planning/generate-task-prompts.py) 默认只执行 `--check` 覆盖率和治理校验；显式 `--write` 才创建缺失文档，`--write --overwrite` 才允许覆盖已有人工优化提示词。生成器校验 45 个任务 ID、差异化角色、审计记录、集中台账、确认文件目录和阶段历史问题回扫规则。
 - P0-11 的 [实时规划提示词](planning/task-prompts/P0/P0-11.md) 已把 P0-01 至 P0-08 已 `自动确认` 但尚未同步的问题回写到对应任务文档，形成 OQ ID、确认文件和未关闭状态的同步矩阵；实时规划任务必须先填写“修改前分析”，先处理待确认问题，再进入后续实现。
-- P0 阶段门禁的 [阶段门禁报告](planning/phase-gates/P0-gate-review.md) 已关闭 `OQ-UPSTREAM-004`、`OQ-SCHEDULE-001`、`OQ-SCHEDULE-002`、`OQ-CHANNEL-001`；P7-04 新增 `OQ-BUDGET-001` 后其余 20 个问题仍为 `自动确认`，按 P1-P8 后续最晚确认阶段继续关闭。
+- P0 阶段门禁的 [阶段门禁报告](planning/phase-gates/P0-gate-review.md) 已关闭 `OQ-UPSTREAM-004`、`OQ-SCHEDULE-001`、`OQ-SCHEDULE-002`、`OQ-CHANNEL-001`；P7-04 新增 `OQ-BUDGET-001`，P8-01 关闭 `OQ-DEPLOY-001` 后其余 19 个问题仍为 `自动确认`，按 P1-P8 后续最晚确认阶段继续关闭。
 - P1 阶段门禁的 [阶段门禁报告](planning/phase-gates/P1-gate-review.md) 已确认 P1-01 至 P1-06 全部完成并通过 P1 smoke；P1 相关 `OQ-INFRA-*`、`OQ-API-001` 和 `OQ-DEPLOY-001` 仍保持 `自动确认`，已映射到 P5/P6/P8 后续任务继续关闭。
 - P2 阶段门禁的 [阶段门禁报告](planning/phase-gates/P2-gate-review.md) 已确认 P2-01 至 P2-04 全部完成并通过 P2 smoke；P2 相关 `OQ-UPSTREAM-003`、`OQ-DSH-001` 和 `OQ-DSH-002` 仍保持 `自动确认`，已映射到 P6/P8 后续故障注入、生产 sandbox、sidecar 权限和上游追踪任务继续关闭。
 - P3-01 已完成 Hermes planner-only provider 最小基线并通过 `tests/smoke/P3.sh` 纳入门禁；P3-02 已把 planner-only 记忆读取和受控写入代理到 Memory Gateway，验证三层 scope、sanitizer、缺 scope fail-closed 和原生文件 drift 回归；P3-03 已把当前 planner 输出升级为严格 `nexus.execution_plan.p3.v1` 并禁止解释字段、自然语言 final response 和原生 URL/session/path/error/raw credential；P3-04 已补 Hermes planner+memory 组合验证、Memory Gateway 防直读、防原生端口静态隔离和 Plugin Bridge 最小 approved skill/MCP planner hint 准入。P3 相关 `OQ-UPSTREAM-001`、`OQ-MEMORY-002` 和 `OQ-PLUGIN-001` 仍保持 `自动确认`，最终 upstream 来源、生产 Memory Gateway 存储/检索和完整插件治理继续由 P5/P6/P8 关闭。
@@ -96,6 +98,7 @@
 - P7-04 已新增 Token 预算与记忆冲突检测：`platform/coordinator/token-budget.ts` 提供默认启用的 `nexus.token_budget.p7.v1`、All configured tenant/user/agent/task ledger、conservative alpha limits 和 Task+adapter+API enforcement；`platform/memory-gateway/index.ts` 提供默认启用的 `nexus.memory_conflict.p7.v1` Admin resolve queue，`expected_version` mismatch 继续 fail closed 且只产生 metadata-only conflict record。`product/api`、OpenAPI、TypeScript SDK、Web Console 和 docs-site 增加 budget policy/ledger/check 与 memory conflict queue 管理面，`tests/smoke/P7.sh` 纳入 P7-04 targeted tests、Date.now 禁用和公共面泄漏扫描。生产 billing、真实 tokenizer/model accounting、durable storage/search 和 P8 发布治理仍由后续任务关闭。
 - P7-05 已新增定时长期目标任务：`platform/coordinator/scheduled-goals.ts` 提供默认关闭的 `nexus.scheduled_goal.p7.v1` runtime，支持 UTC 5-field Cron-like alpha 子集、manual due scan、普通 `source.kind = "scheduler"` 平台 TaskRequest、资源预算和取消/重试；`product/api`、OpenAPI、TypeScript SDK、Web Console 和 docs-site 增加 `/v1/scheduled-goals*` 管理面，`tests/smoke/P7.sh` 纳入 P7-05 required files、targeted tests、Date.now 禁用和公共面泄漏扫描。生产 durable scheduler、后台 daemon、分布式锁、错过窗口补偿、真实外部网络和 P8 发布治理仍由后续任务关闭。
 - P7 阶段门禁的 [阶段门禁报告](planning/phase-gates/P7-gate-review.md) 已确认 P7-01 至 P7-05 全部完成并通过 P0-P7 smoke；P7 相关自动确认问题已映射到 P8 或后续生产化任务继续关闭，用户指定的高级能力 alpha 增量、开关策略、预算降级、公共面治理、内部观测和防泄漏门禁已完成收口。
+- P8-01 已新增生产 Compose/Kubernetes 编排：`deploy/docker-compose.prod.yml` 覆盖十个生产服务，只有 `platform-api` 与 `web-console` 发布宿主端口；`deploy/k8s/` 覆盖 namespace、service accounts、ConfigMap、Secret template、deployments、services、Ingress、NetworkPolicy 和 kustomization，所有 workload 具备 probes、resource requests/limits、non-root、read-only root filesystem、no privilege escalation 和 capabilities drop all；`tests/smoke/P8.sh` 纳入生产隔离、OQ-DEPLOY-001 已关闭、Date.now 禁用、secret/build artifact 扫描和 targeted deployment/security tests。消息、对象存储、密钥、观测、Memory 后端、备份恢复、CI/CD、provider/插件兼容矩阵和法务发布包继续由 P8-02/P8-03/P8-04 承接。
 - 每个阶段结束前必须回扫当前阶段及其之前阶段的未处理问题、任务修改记录包、风险登记册和需求追踪矩阵；如果仍有未处理或未同步问题，必须先修复或创建后续实时规划提示词，再判断是否允许进入下一阶段。
 
 所有文档使用 UTC 时间、平台统一标识和平台层术语。Hermes、OpenClaw、DSH 只在内部实现、适配器、风险和源码追踪语境中出现。

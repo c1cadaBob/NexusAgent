@@ -18,6 +18,21 @@ function devComposeConfig() {
   }));
 }
 
+function prodComposeConfig() {
+  return JSON.parse(execFileSync('docker', [
+    'compose',
+    '-f',
+    'deploy/docker-compose.prod.yml',
+    'config',
+    '--format',
+    'json',
+  ], {
+    cwd: process.cwd(),
+    encoding: 'utf8',
+    stdio: ['ignore', 'pipe', 'pipe'],
+  }));
+}
+
 test('openclaw-adapter dev compose exposure is loopback-only and internal', () => {
   const config = devComposeConfig();
   const service = config.services['openclaw-adapter'];
@@ -36,6 +51,17 @@ test('openclaw-adapter dev compose exposure is loopback-only and internal', () =
 });
 
 test('production compose does not expose OpenClaw dev ports native gateway or debug settings', () => {
+  const config = prodComposeConfig();
+  const service = config.services['openclaw-adapter'];
+  assert.ok(service, 'P8 production compose may include OpenClaw adapter as an internal gateway workload');
+  assert.equal(Boolean(service.ports), false, 'openclaw-adapter must not publish host ports in production');
+  assert.deepEqual(Object.keys(service.networks), ['nexus-prod-internal']);
+  assert.equal(service.environment.NEXUS_SERVICE_PUBLIC, 'false');
+  assert.equal(service.environment.NEXUS_GATEWAY_ONLY, 'true');
+  assert.equal(service.environment.NEXUS_PROVIDER_ENTRYPOINTS, 'platform-governed');
+  assert.equal(service.labels['nexus.p8.internal_only'], 'true');
+  assert.equal(service.labels['nexus.service.public'], 'false');
+
   const prodCompose = readFileSync('deploy/docker-compose.prod.yml', 'utf8');
   for (const forbidden of [
     '3052',
@@ -43,7 +69,6 @@ test('production compose does not expose OpenClaw dev ports native gateway or de
     '--inspect',
     'NEXUS_HOT_RELOAD',
     'NEXUS_DEBUG_PORT',
-    'openclaw-adapter',
     'tools.invoke',
     'agentCommandFromGatewayIngress',
   ]) {

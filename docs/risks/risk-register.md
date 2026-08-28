@@ -11,7 +11,7 @@
 | R-005 | 记忆快照、并发写入和脏数据 | 高 | P0-03 已验证实验模式拒绝原生文件记忆直读直写；P1-04 已新增本地 Memory Gateway、五层 memory scope、版本和租户隔离测试；P3-02 已新增三层 planner snapshot sanitizer、`expected_version` 冲突检测、跨用户/租户过滤、vendor proxy fail-closed 和非 planner-only drift 回归测试；长期保留、真实存储、检索排序和生产迁移仍待 P3/P6/P8 | P1/P3/P6 |
 | R-006 | 跨栈联调、性能或 Token 超标 | 高 | P1-06 已新增 10 服务开发 Compose、健康占位服务和 P1 smoke 编排校验，降低本地联调端口/健康检查漂移风险；P7-04 已补 Default On Token budget ledger 和 Task+adapter+API enforcement；P7-05 已把定时长期目标任务限制为 Default Off + manual tick、每租户 active goal 上限、每次 due scan 上限和单 goal budget units；真实跨栈性能、生产 quota/billing 和上游 provider 联调仍待 P8 | P1-P8 |
 | R-007 | 服务边界不清导致上游原生概念泄漏到产品层 | 极高 | P0-02/P0-03/P0-04 已记录 OpenClaw、Hermes、DSH 原生入口阻断证据；P0-05 已把已知入口登记为保留/隔离/禁止；P0-06/P1-06 已新增公共 OpenAPI 与平台错误码泄漏检查；P2-01 smoke 增加公共 API/error/product surface 上游命名扫描；P2-02 已新增 DSH adapter 原生 URL/session/path/error/secret 字段清洗测试；P2-03 已验证 stdout/stderr/artifact/event/error 不泄漏原生 URL/path/session/credential；P2-04 已新增 native/raw credential request denylist 和 dev/prod 编排隔离测试；P3-01 smoke 继续扫描公共 API/error/product surface，并验证 Hermes provider status view 不含原生 URL/session/path/error；P3-02 smoke 增加 Memory Gateway proxy marker 与 public surface 泄漏扫描；P3-03 smoke 增加 strict ExecutionPlan schema/validator/security marker，验证 plan 和 validator error 不泄漏解释字段、原生路径/session/error 或 raw credential；P3-04 smoke 增加 Plugin Bridge、memory bypass 和 network isolation marker；P4-01 smoke 增加 OpenClaw provider、gateway event、plugin allowlist、network isolation 和 public surface 泄漏扫描；P4-02 smoke 增加 channel inbound/outbound schema、send intent、PluginInventory 和泄漏测试 marker；P4-03 smoke 增加 command mapping、task command idempotency、cancel event 和 command bypass marker；P4-04 smoke 增加 channel-routing、openclaw-bypass 和私有 trusted marker 防绕过 marker；P5-01 已新增 `product/api/` REST MVP、`platform/public-surface/` request/response guard、OpenAPI runtime alignment 和 P5 contract/integration/security smoke，验证产品 API 与公共契约不暴露上游原生命名、URL/path/session/error 或 secret material；P5-02 已新增 `product/web-console/` API client、view-model 泄漏扫描、OpenAPI route alignment 和 Vite build smoke，验证控制台只调用平台 `/v1/*` API 且不展示上游原生字段；P5-03 已新增渠道管理 API/控制台/README 和 P5 smoke 扫描，验证 `/v1/channels*`、OpenAPI、产品渠道文档和控制台 Channels 页面不暴露上游原生命名、原生 URL/path/session/error、provider binding、runtime 或凭据引用值；P5-04 已新增 TypeScript SDK、examples、developer docs-site、SDK/docs leakage tests 和 P5 smoke 扫描，验证 SDK/docs 只调用平台 `/v1/*` API、不展示上游原生命名、原生 URL/path/session/error、provider binding、runtime、raw credential 或真实 secret；其他 SDK 语言和发布包仍待 P8 或后续批次验证 | P0-P6 |
-| R-008 | 外部基础设施选型过早锁死导致 P1/P8 返工 | 高 | P0-07 已把 Temporal/OPA/NATS/Kafka/MinIO/S3/Vault/KMS/Keycloak/OpenTelemetry/Grafana/pgvector/Qdrant 标记为候选或可借鉴项目；P1-01/P1-03/P1-04 仅固定平台抽象、schema、状态机、Clock、内存 Event Bus、本地 Artifact/Memory/Credential；P1-05 仅固定本地 RBAC、hash-chain Audit 和 Observability 接口；P1-06 仅固定开发 Compose、Node health 占位、端口和 smoke，不锁死生产 IdP、OPA、审计存储、观测后端或 Kubernetes/Compose 最终生产形态，生产选型仍待 P1/P8 | P0/P1/P8 |
+| R-008 | 外部基础设施选型过早锁死导致 P1/P8 返工 | 高 | P0-07 已把 Temporal/OPA/NATS/Kafka/MinIO/S3/Vault/KMS/Keycloak/OpenTelemetry/Grafana/pgvector/Qdrant 标记为候选或可借鉴项目；P1-01/P1-03/P1-04 仅固定平台抽象、schema、状态机、Clock、内存 Event Bus、本地 Artifact/Memory/Credential；P1-05 仅固定本地 RBAC、hash-chain Audit 和 Observability 接口；P1-06 仅固定开发 Compose、Node health 占位、端口和 smoke；P8-01 已关闭 `OQ-DEPLOY-001`，选择 Kubernetes 为标准生产主路径、Docker Compose prod 为单机私有化/小规模部署/故障复现路径，同时只声明 backend reference，不锁死 Event Bus/Object Store/Secret/Observability/Memory 最终生产后端 | P0/P1/P8 |
 | R-009 | 实际团队容量低于排期基线导致关键路径延后 | 高 | P0 门禁已关闭 `OQ-SCHEDULE-001` 和 `OQ-SCHEDULE-002`，默认采用 8-10 核心角色容量模型、4-5 人降级排期和当前日历冻结缓冲；真实容量或冻结窗口变化由自动重排触发器处理 | P0-P8 |
 | R-010 | AI 自动生成排期时遗漏只读目录、上游不可见、防绕过或验收命令等高危约束 | 高 | P0-10 生成器已默认执行 `--check`，校验只读目录、差异化角色、集中台账、确认文件目录、阶段历史问题回扫和验收命令；显式 `--write --overwrite` 才允许覆盖已有提示词 | P0-P8 |
 | R-011 | 任务提示词文档与实施规划任务表不同步 | 中 | P0-10 已校验 45 个任务 ID 均有单独提示词文档，并把生成器检查纳入 P0 smoke；后续任务变更仍需同步运行生成器 `--check` | P0-P8 |
@@ -37,6 +37,13 @@ DSH 不作为稳定平台契约，只作为内部 executor provider。P2 必须�
 - R-013/R-014：恶意插件 fixture 采用“双格式覆盖”，即平台中性 mock manifest/payload + Hermes/OpenClaw Plugin Bridge fixture 变体；Hermes/OpenClaw bridge 输入侧 denylist 已补 `provider_runtime`、`native_agent`、`native_tool`、`native_memory`、`native_runtime`、`plugin_subagent`、env secret、raw/native manifest 和 source/path/url marker。
 - R-012：`tests/smoke/P6.sh` 已扩展 P6-02 required files、审计无占位、attack matrix marker、dual-format malicious plugin marker、denied audit/trace marker、Date.now 禁用扫描和 targeted security tests。
 - 遗留风险：P6-02 不关闭故障注入、降级路线、生产 sidecar/OS 隔离、真实插件运行时、真实业务评测集、真实渠道网络、生产 durable workflow 或插件升级回滚矩阵；这些继续由 P6-03、P6 gate 和 P8 关闭。
+
+## P8-01 生产 Compose/Kubernetes 编排更新
+
+- R-008：`OQ-DEPLOY-001` 已关闭为“两者都交付但 Kubernetes 优先”；`deploy/k8s/` 是标准生产主路径，`deploy/docker-compose.prod.yml` 是单机私有化/小规模部署/故障复现路径，避免生产部署目标继续悬空。
+- R-003/R-004/R-007：生产 Compose 只有 `platform-api` 与 `web-console` 发布宿主端口，内部 adapters 和数据服务只加入 `nexus-prod-internal`；Kubernetes services 全部为 `ClusterIP`，Ingress 仅路由 `platform-api` 与 `web-console`，NetworkPolicy 从 default deny 起步并只允许平台治理路径通信。
+- R-010/R-012：`tests/smoke/P8.sh` 新增 P8-01 required files、审计无占位、生产编排 marker、OQ-DEPLOY-001 已关闭 marker、Date.now 禁用扫描、secret/build artifact 扫描以及 deployment/security targeted tests，防止生产模板回退到开发模式。
+- R-013/R-014/R-016：P8-01 仅允许 DSH/Hermes/OpenClaw adapters 作为内部 workload 存在，不暴露 provider-native gateway/tool/agent/plugin/session/runtime/credential/public port；真实插件运行时、provider 升级兼容矩阵、许可证发布包、生产 SecretBackend 和 OS/sidecar 隔离仍由 P8-02/P8-04 承接。
 
 ## P6-03 故障注入与降级路径更新
 
@@ -239,11 +246,11 @@ DSH 不作为稳定平台契约，只作为内部 executor provider。P2 必须�
 - R-012：P0-11 新增实时规划提示词执行规则，要求任务开始前先填写“修改前分析”，如存在未处理待确认问题必须先处理再进入实现；修改过程中持续补充“修改过程记录”，验证完成后补齐“修改后验证与总结”。
 - R-012：每个阶段结束前必须回扫当前阶段及其之前阶段的 `OQ-*`、任务修改记录包、风险登记册、需求追踪矩阵和专业文档；若仍有未处理或未同步问题，必须先修复或创建后续实时规划提示词，不能直接进入下一阶段。
 - R-010/R-011：P0-10 已将 `scripts/planning/generate-task-prompts.py` 升级为安全生成器，默认 `--check` 不覆盖人工优化文档，显式 `--write` 只创建缺失文档，`--write --overwrite` 才覆盖已有文档；P0 smoke 已运行生成器检查并阻止脚本缓存目录进入工作树。
-- R-012：P0-11 已把 P0-01 至 P0-08 的历史待确认问题回写为 `OQ-*`、状态和确认文件引用；P0 门禁关闭 4 个到期问题后，P7-04 新增 `OQ-BUDGET-001`，当前仍有 20 个问题未关闭，后续阶段门禁必须继续补齐确认结论和关闭任务/commit。
+- R-012：P0-11 已把 P0-01 至 P0-08 的历史待确认问题回写为 `OQ-*`、状态和确认文件引用；P0 门禁关闭 4 个到期问题后，P7-04 新增 `OQ-BUDGET-001`，P8-01 关闭 `OQ-DEPLOY-001`，当前仍有 19 个问题未关闭，后续阶段门禁必须继续补齐确认结论和关闭任务/commit。
 
 ## P0 阶段门禁收口更新
 
 - R-009：P0 门禁关闭 `OQ-SCHEDULE-001` 和 `OQ-SCHEDULE-002`，默认容量模型与日历冻结缓冲已成为后续排期基线；实际资源变化继续触发重排。
 - R-013/R-014：P0 门禁关闭 `OQ-CHANNEL-001`，默认首批渠道为钉钉、飞书、Telegram；新增企业微信、Slack 等渠道必须进入 P4/P5 范围变更，并补渠道插件、凭据和防绕过测试。
 - R-015：P0 门禁关闭 `OQ-UPSTREAM-004`，确认 vendor 快照长期排除构建产物、缓存、日志和依赖目录；后续上游升级仍需记录版本、hash、许可证/NOTICE 和回滚方式。
-- 保留【待确认问题】：当前 20 个问题仍为 `自动确认`，表示已结合三大平台生成默认解决方案，但仍未关闭；后续必须按最晚确认阶段补齐确认结论和关闭任务/commit。
+- 保留【待确认问题】：当前 19 个问题仍为 `自动确认`，表示已结合三大平台生成默认解决方案，但仍未关闭；后续必须按最晚确认阶段补齐确认结论和关闭任务/commit。

@@ -1,0 +1,33 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: nexusagent-public
+  namespace: nexusagent-prod
+  labels:
+    app.kubernetes.io/name: nexusagent
+    nexus.p8.orchestration: P8-01
+    nexus.p8.public_ingress: platform-api-and-web-console-only
+  annotations:
+    kubernetes.io/ingress.class: nginx
+spec:
+  rules:
+    - host: platform-api.example.invalid
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: platform-api
+                port:
+                  name: http
+    - host: web-console.example.invalid
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: web-console
+                port:
+                  name: http

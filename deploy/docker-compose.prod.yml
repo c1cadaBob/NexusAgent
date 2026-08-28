@@ -1,3 +1,290 @@
 name: nexusagent-prod
 
-services: {}
+x-nexus-prod-env: &nexus-prod-env
+  NODE_ENV: production
+  NEXUS_DEPLOYMENT_STAGE: production
+  NEXUS_ORCHESTRATION_PROFILE: p8-01-production-template
+  NEXUS_CLOCK_MODE: platform
+  NEXUS_CONFIG_PROFILE: services.prod
+
+x-nexus-prod-healthcheck: &nexus-prod-healthcheck
+  test:
+    - CMD-SHELL
+    - >-
+      node -e "require('node:http').get({host:'127.0.0.1',port:Number(process.env.PORT||8080),path:'/health'},r=>process.exit(r.statusCode>=200&&r.statusCode<400?0:1)).on('error',()=>process.exit(1))"
+  interval: 30s
+  timeout: 5s
+  retries: 3
+  start_period: 20s
+
+x-nexus-prod-service: &nexus-prod-service
+  restart: unless-stopped
+  init: true
+  read_only: true
+  cap_drop:
+    - ALL
+  security_opt:
+    - no-new-privileges:true
+  tmpfs:
+    - /tmp:size=64m,mode=1777
+  networks:
+    - nexus-prod-internal
+  healthcheck: *nexus-prod-healthcheck
+  labels:
+    nexus.p8.orchestration: P8-01 production compose template
+    nexus.p8.debug: "false"
+    nexus.p8.hot_reload: "false"
+    nexus.p8.source_mounts: "false"
+
+services:
+  platform-api:
+    <<: *nexus-prod-service
+    image: ${NEXUS_PLATFORM_API_IMAGE:-nexusagent/platform-api:p8-template}
+    environment:
+      <<: *nexus-prod-env
+      PORT: "8080"
+      NEXUS_SERVICE_NAME: platform-api
+      NEXUS_SERVICE_PUBLIC: "true"
+      NEXUS_EVENT_BUS_BACKEND_REF: ${NEXUS_EVENT_BUS_BACKEND_REF:-p8-event-bus-backend-ref}
+      NEXUS_ARTIFACT_BACKEND_REF: ${NEXUS_ARTIFACT_BACKEND_REF:-p8-artifact-backend-ref}
+      NEXUS_CREDENTIAL_BACKEND_REF: ${NEXUS_CREDENTIAL_BACKEND_REF:-p8-credential-backend-ref}
+      NEXUS_MEMORY_BACKEND_REF: ${NEXUS_MEMORY_BACKEND_REF:-p8-memory-backend-ref}
+      NEXUS_OBSERVABILITY_BACKEND_REF: ${NEXUS_OBSERVABILITY_BACKEND_REF:-p8-observability-backend-ref}
+    ports:
+      - target: 8080
+        published: ${NEXUS_PLATFORM_API_PORT:-8080}
+        protocol: tcp
+        mode: host
+    networks:
+      - nexus-prod-edge
+      - nexus-prod-internal
+    depends_on:
+      openclaw-adapter:
+        condition: service_healthy
+      hermes-adapter:
+        condition: service_healthy
+      dsh-adapter:
+        condition: service_healthy
+      memory-gateway:
+        condition: service_healthy
+      artifact-store:
+        condition: service_healthy
+      event-bus:
+        condition: service_healthy
+      credential-center:
+        condition: service_healthy
+      observability:
+        condition: service_healthy
+    labels:
+      nexus.p8.orchestration: P8-01 production compose template
+      nexus.service.role: platform-api
+      nexus.service.public: "true"
+      nexus.p8.public_ingress: platform-api
+      nexus.p8.debug: "false"
+      nexus.p8.hot_reload: "false"
+      nexus.p8.source_mounts: "false"
+
+  web-console:
+    <<: *nexus-prod-service
+    image: ${NEXUS_WEB_CONSOLE_IMAGE:-nexusagent/web-console:p8-template}
+    environment:
+      <<: *nexus-prod-env
+      PORT: "8080"
+      NEXUS_SERVICE_NAME: web-console
+      NEXUS_SERVICE_PUBLIC: "true"
+      NEXUS_PLATFORM_API_SERVICE: platform-api
+      NEXUS_PLATFORM_API_PORT: "8080"
+    ports:
+      - target: 8080
+        published: ${NEXUS_WEB_CONSOLE_PORT:-8081}
+        protocol: tcp
+        mode: host
+    networks:
+      - nexus-prod-edge
+    depends_on:
+      platform-api:
+        condition: service_healthy
+    labels:
+      nexus.p8.orchestration: P8-01 production compose template
+      nexus.service.role: web-console
+      nexus.service.public: "true"
+      nexus.p8.public_ingress: web-console
+      nexus.p8.debug: "false"
+      nexus.p8.hot_reload: "false"
+      nexus.p8.source_mounts: "false"
+
+  openclaw-adapter:
+    <<: *nexus-prod-service
+    image: ${NEXUS_OPENCLAW_ADAPTER_IMAGE:-nexusagent/openclaw-adapter:p8-template}
+    environment:
+      <<: *nexus-prod-env
+      PORT: "8080"
+      NEXUS_SERVICE_NAME: openclaw-adapter
+      NEXUS_SERVICE_PUBLIC: "false"
+      NEXUS_GATEWAY_ONLY: "true"
+      NEXUS_PROVIDER_ENTRYPOINTS: platform-governed
+      NEXUS_CREDENTIAL_BACKEND_REF: ${NEXUS_CREDENTIAL_BACKEND_REF:-p8-credential-backend-ref}
+    expose:
+      - "8080"
+    labels:
+      nexus.p8.orchestration: P8-01 production compose template
+      nexus.service.role: gateway-adapter
+      nexus.service.public: "false"
+      nexus.p8.internal_only: "true"
+      nexus.p8.native_entrypoints: disabled
+      nexus.p8.debug: "false"
+      nexus.p8.hot_reload: "false"
+      nexus.p8.source_mounts: "false"
+
+  hermes-adapter:
+    <<: *nexus-prod-service
+    image: ${NEXUS_HERMES_ADAPTER_IMAGE:-nexusagent/hermes-adapter:p8-template}
+    environment:
+      <<: *nexus-prod-env
+      PORT: "8080"
+      NEXUS_SERVICE_NAME: hermes-adapter
+      NEXUS_SERVICE_PUBLIC: "false"
+      NEXUS_PLANNER_ONLY: "true"
+      NEXUS_PROVIDER_ENTRYPOINTS: platform-governed
+      NEXUS_MEMORY_BACKEND_REF: ${NEXUS_MEMORY_BACKEND_REF:-p8-memory-backend-ref}
+    expose:
+      - "8080"
+    labels:
+      nexus.p8.orchestration: P8-01 production compose template
+      nexus.service.role: planner-adapter
+      nexus.service.public: "false"
+      nexus.p8.internal_only: "true"
+      nexus.p8.native_entrypoints: disabled
+      nexus.p8.debug: "false"
+      nexus.p8.hot_reload: "false"
+      nexus.p8.source_mounts: "false"
+
+  dsh-adapter:
+    <<: *nexus-prod-service
+    image: ${NEXUS_DSH_ADAPTER_IMAGE:-nexusagent/dsh-adapter:p8-template}
+    environment:
+      <<: *nexus-prod-env
+      PORT: "8080"
+      NEXUS_SERVICE_NAME: dsh-adapter
+      NEXUS_SERVICE_PUBLIC: "false"
+      NEXUS_EXECUTOR_ONLY: "true"
+      NEXUS_PROVIDER_ENTRYPOINTS: platform-governed
+      NEXUS_ARTIFACT_BACKEND_REF: ${NEXUS_ARTIFACT_BACKEND_REF:-p8-artifact-backend-ref}
+    expose:
+      - "8080"
+    labels:
+      nexus.p8.orchestration: P8-01 production compose template
+      nexus.service.role: executor-adapter
+      nexus.service.public: "false"
+      nexus.p8.internal_only: "true"
+      nexus.p8.native_entrypoints: disabled
+      nexus.p8.debug: "false"
+      nexus.p8.hot_reload: "false"
+      nexus.p8.source_mounts: "false"
+
+  memory-gateway:
+    <<: *nexus-prod-service
+    image: ${NEXUS_MEMORY_GATEWAY_IMAGE:-nexusagent/memory-gateway:p8-template}
+    environment:
+      <<: *nexus-prod-env
+      PORT: "8080"
+      NEXUS_SERVICE_NAME: memory-gateway
+      NEXUS_SERVICE_PUBLIC: "false"
+      NEXUS_MEMORY_BACKEND_REF: ${NEXUS_MEMORY_BACKEND_REF:-p8-memory-backend-ref}
+    expose:
+      - "8080"
+    labels:
+      nexus.p8.orchestration: P8-01 production compose template
+      nexus.service.role: memory-gateway
+      nexus.service.public: "false"
+      nexus.p8.internal_only: "true"
+      nexus.p8.debug: "false"
+      nexus.p8.hot_reload: "false"
+      nexus.p8.source_mounts: "false"
+
+  artifact-store:
+    <<: *nexus-prod-service
+    image: ${NEXUS_ARTIFACT_STORE_IMAGE:-nexusagent/artifact-store:p8-template}
+    environment:
+      <<: *nexus-prod-env
+      PORT: "8080"
+      NEXUS_SERVICE_NAME: artifact-store
+      NEXUS_SERVICE_PUBLIC: "false"
+      NEXUS_ARTIFACT_BACKEND_REF: ${NEXUS_ARTIFACT_BACKEND_REF:-p8-artifact-backend-ref}
+    expose:
+      - "8080"
+    labels:
+      nexus.p8.orchestration: P8-01 production compose template
+      nexus.service.role: artifact-store
+      nexus.service.public: "false"
+      nexus.p8.internal_only: "true"
+      nexus.p8.debug: "false"
+      nexus.p8.hot_reload: "false"
+      nexus.p8.source_mounts: "false"
+
+  event-bus:
+    <<: *nexus-prod-service
+    image: ${NEXUS_EVENT_BUS_IMAGE:-nexusagent/event-bus:p8-template}
+    environment:
+      <<: *nexus-prod-env
+      PORT: "8080"
+      NEXUS_SERVICE_NAME: event-bus
+      NEXUS_SERVICE_PUBLIC: "false"
+      NEXUS_EVENT_BUS_BACKEND_REF: ${NEXUS_EVENT_BUS_BACKEND_REF:-p8-event-bus-backend-ref}
+    expose:
+      - "8080"
+    labels:
+      nexus.p8.orchestration: P8-01 production compose template
+      nexus.service.role: event-bus
+      nexus.service.public: "false"
+      nexus.p8.internal_only: "true"
+      nexus.p8.debug: "false"
+      nexus.p8.hot_reload: "false"
+      nexus.p8.source_mounts: "false"
+
+  credential-center:
+    <<: *nexus-prod-service
+    image: ${NEXUS_CREDENTIAL_CENTER_IMAGE:-nexusagent/credential-center:p8-template}
+    environment:
+      <<: *nexus-prod-env
+      PORT: "8080"
+      NEXUS_SERVICE_NAME: credential-center
+      NEXUS_SERVICE_PUBLIC: "false"
+      NEXUS_CREDENTIAL_BACKEND_REF: ${NEXUS_CREDENTIAL_BACKEND_REF:-p8-credential-backend-ref}
+    expose:
+      - "8080"
+    labels:
+      nexus.p8.orchestration: P8-01 production compose template
+      nexus.service.role: credential-center
+      nexus.service.public: "false"
+      nexus.p8.internal_only: "true"
+      nexus.p8.debug: "false"
+      nexus.p8.hot_reload: "false"
+      nexus.p8.source_mounts: "false"
+
+  observability:
+    <<: *nexus-prod-service
+    image: ${NEXUS_OBSERVABILITY_IMAGE:-nexusagent/observability:p8-template}
+    environment:
+      <<: *nexus-prod-env
+      PORT: "8080"
+      NEXUS_SERVICE_NAME: observability
+      NEXUS_SERVICE_PUBLIC: "false"
+      NEXUS_OBSERVABILITY_BACKEND_REF: ${NEXUS_OBSERVABILITY_BACKEND_REF:-p8-observability-backend-ref}
+    expose:
+      - "8080"
+    labels:
+      nexus.p8.orchestration: P8-01 production compose template
+      nexus.service.role: observability
+      nexus.service.public: "false"
+      nexus.p8.internal_only: "true"
+      nexus.p8.debug: "false"
+      nexus.p8.hot_reload: "false"
+      nexus.p8.source_mounts: "false"
+
+networks:
+  nexus-prod-edge:
+    name: nexusagent-prod-edge
+  nexus-prod-internal:
+    name: nexusagent-prod-internal
+    internal: true

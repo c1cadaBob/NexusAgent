@@ -1,0 +1,15 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: nexusagent-prod
+resources:
+  - namespace.yaml
+  - serviceaccount.yaml
+  - configmap.yaml
+  - secret-template.yaml
+  - deployments.yaml
+  - services.yaml
+  - ingress.yaml
+  - network-policies.yaml
+commonLabels:
+  app.kubernetes.io/part-of: nexusagent
+  nexus.p8.orchestration: P8-01

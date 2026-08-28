@@ -2,6 +2,10 @@
 
 > 阶段目标：把 P1-P6 的默认实现和抽象接口复核为生产交付形态，完成部署、备份恢复、观测告警、provider/插件兼容矩阵、许可证声明和运维手册。P8 不改变平台 API，只替换或锁定生产 provider。
 
+## P8-01 同步状态
+
+P8-01 已关闭 `OQ-DEPLOY-001`：两者都交付但 Kubernetes 优先；Kubernetes 是标准生产主路径，Docker Compose prod 是单机私有化、小规模部署和故障复现路径。`deploy/docker-compose.prod.yml`、`deploy/k8s/`、`config/services.prod.yaml` 和 `tests/smoke/P8.sh` 已提供生产模板与静态隔离门禁。消息、对象存储、密钥、观测、Memory 生产后端、备份恢复、CI/CD、provider/插件兼容矩阵和法务发布包仅获得 backend reference 与编排证据，仍由 P8-02/P8-03/P8-04 承接。
+
 ## OQ-INFRA-002：消息总线生产后端复核
 
 推荐处理：P1-P6 默认使用 NATS JetStream，P8 做生产复核；如果客户或企业标准要求 Kafka、Pulsar 或托管消息系统，只能通过 EventBus provider 替换，不改变平台事件信封、task state、audit 和 adapter contract。
@@ -64,7 +68,9 @@
 
 ## OQ-DEPLOY-001：生产部署目标
 
-推荐处理：选择“两者都交付但分优先级”。Kubernetes 是标准生产主路径，Docker Compose prod 是单机私有化、小规模部署和故障复现路径。两个交付物都必须关闭热更新和调试端口；只有平台 API、Web 控制台和经平台治理的渠道入口可对外暴露。
+状态：已关闭于 P8-01。确认结论为两者都交付但 Kubernetes 优先；Kubernetes 是标准生产主路径，Docker Compose prod 是单机私有化、小规模部署和故障复现路径。
+
+推荐处理：选择“两者都交付但分优先级”。Kubernetes 是标准生产主路径，Docker Compose prod 是单机私有化、小规模部署和故障复现路径。两个交付物都必须关闭热更新和调试端口；只有平台 API 与 Web 控制台可对外暴露，渠道入口继续经平台 API、Coordinator、Policy-Gate 和内部 adapter 治理。
 
 三平台影响：
 
@@ -72,7 +78,7 @@
 - Hermes：adapter 作为内部 planner provider workload，限制 Python sidecar 访问范围，不暴露 Hermes 原生 gateway、CLI 或 memory 文件路径。
 - DSH：adapter 作为内部 executor provider workload，必须启用网络隔离、资源限制、sandbox policy、artifact 入库和 provider 回滚。
 
-关闭证据：`deploy/docker-compose.prod.yml`、`deploy/k8s/`、NetworkPolicy、Secret/ExternalSecret、health probes、资源限制、备份恢复脚本和 P8 smoke 全部通过。
+关闭证据：P8-01 新增生产 Compose 模板、Kubernetes namespace/service account/config/secret template/deployments/services/ingress/network policies/kustomization、`config/services.prod.yaml`、`tests/deployment/p8-production-orchestration.test.mjs`、`tests/security/p8-production-isolation.test.mjs` 和 `tests/smoke/P8.sh`。静态门禁验证只有 `platform-api` 与 `web-console` 暴露入口，adapter、memory、artifact、event、credential 和 observability 全部 internal-only；Kubernetes workload 具备 probes、resource requests/limits、non-root、read-only root filesystem、no privilege escalation 和 capabilities drop all。备份恢复细节、生产 SecretBackend、ExternalSecret 控制器和发布运维演练继续由 P8-03/P8-04 承接，不作为 P8-01 关闭前提。
 
 ## OQ-LEGAL-001：许可证与再分发复核
 
