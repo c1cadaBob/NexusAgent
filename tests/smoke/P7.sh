@@ -55,6 +55,7 @@ required_files=(
   docs/planning/open-questions/P3-resolution-plan.md
   docs/planning/open-questions/P6-resolution-plan.md
   docs/planning/open-questions/P7-resolution-plan.md
+  docs/planning/phase-gates/P7-gate-review.md
   docs/traceability/requirements-matrix.md
   docs/risks/risk-register.md
   docs/README.md
@@ -248,6 +249,7 @@ for marker in \
   'Cron-like recurrence' \
   'Default Off + manual tick' \
   '定时长期目标任务' \
+  'P7 阶段门禁报告' \
   'Conservative retention' \
   'Soft delete' \
   'Manual sweep' \

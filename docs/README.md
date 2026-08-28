@@ -22,6 +22,7 @@
 - [P4 阶段门禁报告](planning/phase-gates/P4-gate-review.md)：P4 门禁收口，确认 P4-01 至 P4-04 完成，列明 OpenClaw gateway-only、channel 防腐、command mapping、渠道防绕过和仍为 `自动确认` 的 P4/P5/P6/P8 问题。
 - [P5 阶段门禁报告](planning/phase-gates/P5-gate-review.md)：P5 门禁收口，确认 P5-01 至 P5-04 完成，列明 REST-first API、Web 控制台、渠道管理、TypeScript SDK、开发者文档站、插件治理和仍为 `自动确认` 的 P5/P6/P8 问题。
 - [P6 阶段门禁报告](planning/phase-gates/P6-gate-review.md)：P6 门禁收口，确认 P6-01 至 P6-03 完成，列明基础业务闭环、防腐层/防绕过、故障注入、降级路线、provider 回滚、plugin rollback、真实 dev service lifecycle drill 和仍为 `自动确认` 的 P6/P8 问题。
+- [P7 阶段门禁报告](planning/phase-gates/P7-gate-review.md)：P7 门禁收口，确认 P7-01 至 P7-05 完成，列明计划质量信号、主动遗忘与保留策略、技能自动评测、Token 预算、记忆冲突、定时长期目标任务和仍为 `自动确认` 的 P7/P8 问题。
 - [AI 排期提示词模板](planning/ai-schedule-prompt-template.md)
 - [任务实施规划提示词索引](planning/task-prompts/README.md)
 - [子 Agent 角色记忆](agents/README.md)：P0-01 基线，固化长期协作角色、只读上游边界、交接格式和各角色常读资料，避免上下文压缩或交接后遗忘项目约束。
@@ -94,6 +95,7 @@
 - P7-03 已新增技能自动评测回归：`platform/skill-evaluation/index.ts` 提供默认关闭的 `nexus.skill_evaluation.p7.v1` runtime，管理员必须先启用再手动触发 run，Approved + Rejected deterministic corpus 同时覆盖 approved capability 可见和 rejected/disabled 候选 blocked；`product/api`、OpenAPI、TypeScript SDK 和 Web Console Evaluations 页面增加管理员 skill evaluation 操作，operator/viewer 和跨租户调用 fail closed；`tests/smoke/P7.sh` 纳入 P7-03 required files、schema/default-off/API/SDK/Console markers、公共面泄漏扫描和 targeted evaluation/integration/security tests。P7-04 已继续新增预算与冲突检测，P7-05 已补 Default Off + manual tick 定时长期目标任务，真实业务评测平台和 P8 发布治理仍由后续任务关闭。
 - P7-04 已新增 Token 预算与记忆冲突检测：`platform/coordinator/token-budget.ts` 提供默认启用的 `nexus.token_budget.p7.v1`、All configured tenant/user/agent/task ledger、conservative alpha limits 和 Task+adapter+API enforcement；`platform/memory-gateway/index.ts` 提供默认启用的 `nexus.memory_conflict.p7.v1` Admin resolve queue，`expected_version` mismatch 继续 fail closed 且只产生 metadata-only conflict record。`product/api`、OpenAPI、TypeScript SDK、Web Console 和 docs-site 增加 budget policy/ledger/check 与 memory conflict queue 管理面，`tests/smoke/P7.sh` 纳入 P7-04 targeted tests、Date.now 禁用和公共面泄漏扫描。生产 billing、真实 tokenizer/model accounting、durable storage/search 和 P8 发布治理仍由后续任务关闭。
 - P7-05 已新增定时长期目标任务：`platform/coordinator/scheduled-goals.ts` 提供默认关闭的 `nexus.scheduled_goal.p7.v1` runtime，支持 UTC 5-field Cron-like alpha 子集、manual due scan、普通 `source.kind = "scheduler"` 平台 TaskRequest、资源预算和取消/重试；`product/api`、OpenAPI、TypeScript SDK、Web Console 和 docs-site 增加 `/v1/scheduled-goals*` 管理面，`tests/smoke/P7.sh` 纳入 P7-05 required files、targeted tests、Date.now 禁用和公共面泄漏扫描。生产 durable scheduler、后台 daemon、分布式锁、错过窗口补偿、真实外部网络和 P8 发布治理仍由后续任务关闭。
+- P7 阶段门禁的 [阶段门禁报告](planning/phase-gates/P7-gate-review.md) 已确认 P7-01 至 P7-05 全部完成并通过 P0-P7 smoke；P7 相关自动确认问题已映射到 P8 或后续生产化任务继续关闭，用户指定的高级能力 alpha 增量、开关策略、预算降级、公共面治理、内部观测和防泄漏门禁已完成收口。
 - 每个阶段结束前必须回扫当前阶段及其之前阶段的未处理问题、任务修改记录包、风险登记册和需求追踪矩阵；如果仍有未处理或未同步问题，必须先修复或创建后续实时规划提示词，再判断是否允许进入下一阶段。
 
 所有文档使用 UTC 时间、平台统一标识和平台层术语。Hermes、OpenClaw、DSH 只在内部实现、适配器、风险和源码追踪语境中出现。

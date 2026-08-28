@@ -77,3 +77,9 @@
 - REQ-007/REQ-017：P7-05 将 scheduled goals config、CRUD、cancel/retry 和 run-due 暴露到 REST/OpenAPI/TypeScript SDK/Web Console/docs-site，operator 只能管理自身 goal，tenant/platform admin 可管理授权租户，viewer 只读；本任务修改记录包和 P7 smoke 均纳入审计无占位检查。
 - R-003/R-006/R-007/R-009：P7-05 targeted tests 覆盖 cron 校验、默认关闭、manual tick、资源预算、取消/重试、预算降级、租户隔离、OpenAPI alignment、SDK/Console alignment 和 leakage guard；响应、事件、logs、SDK/Console/docs 不含 raw credential、native URL/path/session/error、provider runtime、provider binding、真实网络 URL 或本地路径。
 - OQ-PRODUCT-001：P7-05 是用户明确指定的 P7 增量能力，不改变 P6 MVP 基础链路；生产 durable scheduler、后台 daemon、分布式锁、错过窗口补偿、真实业务评测平台和 P8 发布治理继续后续复核。
+
+## P7 阶段门禁收口补充
+
+- REQ-014/REQ-015/REQ-016/REQ-017：`docs/planning/phase-gates/P7-gate-review.md` 已回扫 P0-P7 任务文档、P0-P6 阶段门禁、OQ 台账、需求追踪矩阵、风险登记册和 P0-P7 smoke，确认 P7-01 至 P7-05 全部完成并通过阶段门禁。
+- R-010/R-012：`tests/smoke/P7.sh` 已把 P7 阶段门禁报告纳入 required files 与文档 marker 检查，阶段报告缺失时 P7 smoke fail closed。
+- OQ-PRODUCT-001/OQ-BUDGET-001/OQ-MEMORY-001/OQ-PLUGIN-001：P7 阶段门禁报告列明相关问题仍为 `自动确认`，默认方案和 alpha 证据已同步，生产 durable scheduler、真实业务评测、生产 billing/quota、durable Memory Gateway、真实插件运行时和 P8 发布治理继续后续承接。

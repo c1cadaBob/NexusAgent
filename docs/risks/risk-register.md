@@ -86,6 +86,12 @@ DSH 不作为稳定平台契约，只作为内部 executor provider。P2 必须�
 - R-004：due goal 只能通过 Coordinator `submitTask()` 创建 ordinary scheduler-source `TaskRequest`，仍经过 Policy-Gate、Token Budget、Event Bus、Audit 和 Observability；超预算或策略拒绝不调用 adapter，并记录 `scheduled_goal.blocked` / `policy.denied` evidence。
 - 遗留风险：P7-05 不关闭生产 durable scheduler、后台 daemon、分布式锁、错过窗口补偿、真实业务评测平台、真实外部网络、生产凭据、production quota backend 或 P8 发布治理。
 
+## P7 阶段门禁收口更新
+
+- R-010/R-012：`docs/planning/phase-gates/P7-gate-review.md` 已完成 P7 阶段门禁报告，回扫 P0-P7 任务修改记录包、P0-P6 阶段门禁、OQ 台账、需求追踪矩阵、风险登记册和 P0-P7 smoke；`tests/smoke/P7.sh` 已纳入 P7 gate report marker，报告缺失会导致 P7 smoke fail closed。
+- R-003/R-006/R-007/R-009：P7 门禁确认计划质量、记忆保留、技能评测、Token 预算、记忆冲突和定时长期目标任务均有开关、权限、预算、metadata-only 投影和泄漏门禁；生产 durable scheduler、真实业务评测、生产 billing/quota、durable Memory Gateway、生产凭据和发布治理继续由 P8 承接。
+- 遗留风险：P7 阶段自身已完成 alpha 收口，但 20 个 `自动确认` OQ 仍需在 P8 或后续生产化任务补齐最终确认结论、发布证据和关闭任务/commit。
+
 ## P6-01 内部业务闭环更新
 
 - R-003/R-007：P6-01 新增 deterministic in-process `tests/integration/p6-business-closed-loop.test.mjs`，断言 closed-loop Event Bus/audit timeline 不含 raw credential、native URL/path/session/error、provider runtime、真实网络 URL 或 `/opt/` 路径；公共 API、SDK、控制台和 OpenAPI 未在本任务变更。
