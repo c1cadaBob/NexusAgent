@@ -33,11 +33,11 @@
 |---|---:|---|
 | 待确认问题总数 | 24 | 来自当前 `OQ-*` 台账 |
 | 打开 | 0 | 暂无仅登记但未生成推荐处理方式的问题 |
-| 自动确认 | 14 | 已结合三大平台在确认文件中生成默认解决方案，但尚未关闭 |
+| 自动确认 | 13 | 已结合三大平台在确认文件中生成默认解决方案，但尚未关闭 |
 | 人工确认 | 0 | 暂无人工覆盖默认解决方案的问题；该状态可省略 |
-| 已关闭 | 10 | P0 门禁已关闭上游快照排除规则、资源容量、日历冻结窗口和首批渠道默认范围；P8-01 已关闭生产部署目标问题；P8-03 已关闭生产 Event Bus、Artifact Store、Credential Center、Observability 和 Memory Store 后端默认问题 |
+| 已关闭 | 11 | P0 门禁已关闭上游快照排除规则、资源容量、日历冻结窗口和首批渠道默认范围；P8-01 已关闭生产部署目标问题；P8-03 已关闭生产 Event Bus、Artifact Store、Credential Center、Observability 和 Memory Store 后端默认问题；P8-04 已关闭许可证/NOTICE 发布包问题 |
 
-当前 14 个问题仍为“自动确认”：即已结合 OpenClaw、Hermes、DSH 在 `docs/planning/open-questions/` 生成推荐处理方式，推荐处理方式即默认解决方案，但确认结论和关闭任务/commit 尚未补齐。P0 门禁已关闭 4 个最晚确认阶段属于 P0 的问题，P8-01 已关闭 `OQ-DEPLOY-001`；P8-03 已关闭 `OQ-INFRA-002/003/004/005` 与 `OQ-MEMORY-002` 的生产后端默认和备份恢复证据；P8-02 已为 upstream/provider/plugin 发布治理补兼容矩阵、release pause 和 canary rollback 证据，但不把未确认 upstream remote/commit、法务发布包或真实客户 rollout 冒充为关闭。
+当前 13 个问题仍为“自动确认”：即已结合 OpenClaw、Hermes、DSH 在 `docs/planning/open-questions/` 生成推荐处理方式，推荐处理方式即默认解决方案，但确认结论和关闭任务/commit 尚未补齐。P0 门禁已关闭 4 个最晚确认阶段属于 P0 的问题，P8-01 已关闭 `OQ-DEPLOY-001`；P8-03 已关闭 `OQ-INFRA-002/003/004/005` 与 `OQ-MEMORY-002` 的生产后端默认和备份恢复证据；P8-04 已通过 `config/legal-notice.p8.json` 和 `docs/legal/THIRD_PARTY_NOTICE.md` 关闭 `OQ-LEGAL-001`；P8-02 已为 upstream/provider/plugin 发布治理补兼容矩阵、release pause 和 canary rollback 证据，但不把未确认 upstream remote/commit、真实客户 rollout 或外部律师意见冒充为关闭。
 
 ## 4. 人工确认（可省略）的问题
 
@@ -69,7 +69,7 @@
 | 问题ID | 状态 | 分类 | 问题描述 | 最晚确认阶段 | 负责人/工作流 | 解决说明文档 |
 | --- | --- | --- | --- | --- | --- | --- |
 | OQ-PLUGIN-001 | 自动确认 | 插件治理 | 插件市场是否仅管理员白名单，P7/P8 后是否开放租户自助安装。 | P5 前。 | 产品/安全/插件治理。 | `docs/planning/open-questions/P5-resolution-plan.md`、`docs/planning/open-questions/P6-resolution-plan.md`、`docs/planning/open-questions/P8-resolution-plan.md`。 |
-| OQ-LEGAL-001 | 自动确认 | 许可证/法务 | 上游二次开发、第三方插件、extras、native addon、vendored packages 的许可证、NOTICE 和再分发条款是否需要法务确认。 | P5 前，P8 发布前复核。 | 法务/安全/上游改造。 | `docs/planning/open-questions/P5-resolution-plan.md`、`docs/planning/open-questions/P8-resolution-plan.md`。 |
+| OQ-LEGAL-001 | 已关闭 | 许可证/法务 | 上游二次开发、第三方插件、extras、native addon、vendored packages 的许可证、NOTICE 和再分发条款是否需要法务确认。 | P5 前，P8 发布前复核。 | 法务/安全/上游改造。 | `docs/planning/open-questions/P5-resolution-plan.md`、`docs/planning/open-questions/P8-resolution-plan.md`、`docs/legal/THIRD_PARTY_NOTICE.md`。 |
 
 ### 4.4 P6/P8 前人工确认（可省略）
 
@@ -118,7 +118,7 @@
 
 ## 6. 完整问题台账
 
-> 本节保留完整审计字段。当前 14 条记录仍处于 `自动确认` 状态，4 条 P0 到期记录、1 条 P8 部署目标记录和 5 条 P8-03 生产后端/备份恢复记录已补齐确认结论、解决说明文档和关闭任务/commit 占位；P8-02 为 upstream/provider/plugin 变更补 release gate、compatibility matrix 和 canary rollback 证据，但真实 upstream identity 未确认项继续保持自动确认。
+> 本节保留完整审计字段。当前 13 条记录仍处于 `自动确认` 状态，4 条 P0 到期记录、1 条 P8 部署目标记录、5 条 P8-03 生产后端/备份恢复记录和 1 条 P8-04 法务/NOTICE 发布包记录已补齐确认结论、解决说明文档和关闭任务/commit 占位；P8-02 为 upstream/provider/plugin 变更补 release gate、compatibility matrix 和 canary rollback 证据，但真实 upstream identity 未确认项继续保持自动确认。
 
 | 问题ID | 状态 | 分类 | 来源文档 | 问题描述 | 影响 | 负责人/工作流 | 最晚确认阶段 | 确认结论 | 解决说明文档 | 关联需求/风险 | 关闭任务/commit | 最后更新UTC |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -132,7 +132,7 @@
 | OQ-API-002 | 自动确认 | API/产品 | `docs/risks/risk-register.md`、`docs/contracts/openapi.yaml`。 | 生产鉴权方案、分页游标格式、审批动作全集、错误码最终枚举和事件出口是什么。 | 影响公共契约稳定性、SDK 生成和控制台一致性。 | API/SDK/安全/产品。 | P5 前。 | P5-01 固定 REST MVP、平台错误码、基础审批/预算和本地 dev bearer resolver；P5-02 固定控制台手动刷新 + 15 秒轮询；P5-03 固定渠道管理 REST routes 和 dry-run 连接测试；P5-04 固定 TypeScript-only SDK、可运行 examples 和 docs-site，事件出口使用 task events 轮询文档化；生产 IdP/SSO、真实渠道网络、webhook delivery、streaming 和其他 SDK 语言继续由 P8 或后续 SDK 批次关闭。 | `docs/planning/open-questions/P5-resolution-plan.md`。 | REQ-007/R-007。 | P5-01/P5-02/P5-03/P5-04，生产项仍待后续任务。 | 2026-08-26。 |
 | OQ-CHANNEL-001 | 已关闭 | 渠道/插件 | `docs/planning/integrated-platform-plan.md`、`docs/architecture/upstream-versioning-and-plugin-bridge.md`、`docs/risks/risk-register.md`。 | 首批正式渠道是否为钉钉、飞书、Telegram，是否需要企业微信、Slack 等。 | 影响 P4 OpenClaw gateway adapter、P5 渠道管理和插件白名单测试。 | 渠道/产品/安全。 | P0 结束前。 | 接受默认首批渠道：钉钉、飞书、Telegram；企业微信、Slack 等新增渠道作为 P4/P5 范围变更处理。 | `docs/planning/open-questions/P0-resolution-plan.md`、`docs/planning/open-questions/P4-resolution-plan.md`、`docs/planning/phase-gates/P0-gate-review.md`。 | REQ-020/R-013/R-014。 | 568014bebb2ae256b1d86a9618adde1abd6c24d1 | 2026-08-23。 |
 | OQ-PLUGIN-001 | 自动确认 | 插件治理 | `docs/architecture/upstream-versioning-and-plugin-bridge.md`、`docs/architecture/service-blueprint.md`。 | 插件市场是否仅管理员白名单，P7/P8 后是否开放租户自助安装。 | 影响 Plugin Bridge 产品范围、租户权限、恶意插件测试和许可证审核。 | 产品/安全/插件治理。 | P5 前。 | P5-01/P5-02/P5-04 接受默认管理员治理：平台管理员可通过 API、控制台和 TypeScript SDK examples 导入/批准/禁用/拒绝插件元数据，tenant admin/viewer 不显示治理入口且强制 API 调用 fail closed；开发者文档明确租户不得自助安装第三方插件。P6-02 补充“双格式覆盖”恶意插件隔离：平台中性 mock manifest/payload 与 Hermes/OpenClaw Plugin Bridge fixture 变体均无法注入 native agent/tool/memory/runtime、provider runtime、plugin subagent、env secret 或未批准 capability。P6-03 补充 plugin rollback 证据：`LocalPluginGovernance` approve/disable/reject 控制 capability visibility，metadata-only import 不创建 tenant-visible capability，公共投影不含 raw credential、native URL/path/session/error 或 provider runtime。P7-03 补充技能自动评测证据：Default Off runner 使用 Approved + Rejected deterministic corpus，approved capability 预期 visible，rejected/disabled candidate 预期 blocked，case mismatch 只生成 failed report 和 Observability warning，不改变 plugin/channel/task/memory 状态。P8-02 补充插件升级发布门禁：`config/plugin-compatibility.p8.json` 固定 `tenant_self_service_third_party_install=false`、license/hash/notice/risk/allowlist/required tests/rollback target 必填，缺元数据或 breaking change 触发 `P8-02_PLUGIN_UPGRADE_GATE_PAUSE`。 | `docs/planning/open-questions/P5-resolution-plan.md`、`docs/planning/open-questions/P6-resolution-plan.md`、`docs/planning/open-questions/P8-resolution-plan.md`、`docs/operations/provider-plugin-compatibility.md`。 | REQ-020/R-013/R-014。 | P5-01/P5-02/P5-04/P6-02/P6-03/P7-03/P8-02 已补管理员治理、恶意插件隔离、plugin rollback、skill regression 和插件升级门禁证据；生产 sidecar/OS 隔离、许可证发布包和发布运维最终包仍待 P8-04。 | 2026-08-28。 |
-| OQ-LEGAL-001 | 自动确认 | 许可证/法务 | `docs/risks/risk-register.md`、`docs/architecture/upstream-interface-inventory.md`。 | 上游二次开发、第三方插件、extras、native addon、vendored packages 的许可证、NOTICE 和再分发条款是否需要法务确认。 | 影响生产交付、插件启用、客户分发和补丁维护边界。 | 法务/安全/上游改造。 | P5 前，P8 发布前复核。 | P5-01 已要求插件导入携带 hash、license、notice_status、risk_level 和版本元数据；P5-04 SDK/docs 继续把这些字段作为管理员插件治理示例和开发者说明；P8-02 plugin compatibility matrix 已把 license、sha256、notice_status 和 breaking-change pause 纳入发布门禁；法务确认、THIRD_PARTY/NOTICE 发布包仍待 P8。 | `docs/planning/open-questions/P5-resolution-plan.md`、`docs/planning/open-questions/P8-resolution-plan.md`、`docs/operations/provider-plugin-compatibility.md`。 | R-015/R-016/REQ-020。 | P5-01/P5-04/P8-02 补 API、SDK/docs 和发布门禁元数据证据，最终法务/NOTICE 发布包关闭仍待 P8-04。 | 2026-08-28。 |
+| OQ-LEGAL-001 | 已关闭 | 许可证/法务 | `docs/risks/risk-register.md`、`docs/architecture/upstream-interface-inventory.md`。 | 上游二次开发、第三方插件、extras、native addon、vendored packages 的许可证、NOTICE 和再分发条款是否需要法务确认。 | 影响生产交付、插件启用、客户分发和补丁维护边界。 | 法务/安全/上游改造。 | P5 前，P8 发布前复核。 | 接受 P8-04 用户确认口径：P8 Alpha 仓库级 license/NOTICE/再分发证据包即可关闭本仓库发布包问题；外部律师意见或客户合同审查不在仓库内伪造。`config/legal-notice.p8.json` 汇总 provider 根许可证、nested notice evidence、provider tree sha、plugin license/notice/hash/risk/allowlist/rollback 证据，`docs/legal/THIRD_PARTY_NOTICE.md` 形成发布 NOTICE 文档，P8 smoke 和 targeted tests fail closed。 | `docs/planning/open-questions/P5-resolution-plan.md`、`docs/planning/open-questions/P8-resolution-plan.md`、`docs/operations/provider-plugin-compatibility.md`、`docs/legal/THIRD_PARTY_NOTICE.md`、`config/legal-notice.p8.json`。 | R-015/R-016/REQ-020。 | P8-04 本次提交补 legal notice package、delivery docs、P8 gate report、validator 和 smoke 证据；最终 commit hash 见完成报告。 | 2026-08-29。 |
 | OQ-INFRA-001 | 自动确认 | 基础设施 | `docs/architecture/service-blueprint.md`、`docs/planning/development-schedule.md`。 | Web/API 框架是否选择 Fastify、NestJS 或企业标准框架。 | 影响 P1 middleware、依赖注入、测试结构和 SDK/契约生成方式。 | 平台内核/API/SRE。 | P1 前。 | 待补齐 | `docs/planning/open-questions/P1-resolution-plan.md`。 | REQ-011/R-008。 | 待补齐 | 2026-08-23。 |
 | OQ-INFRA-002 | 已关闭 | 基础设施 | `docs/architecture/service-blueprint.md`、`docs/planning/development-schedule.md`。 | Event Bus 生产底层选型是什么。 | 影响事件重放、顺序性、死信、容量规划和运维成本。 | 平台内核/SRE。 | P1 结束前，P8 发布前复核。 | 接受 P8-03 默认生产后端：NATS JetStream；平台事件信封、tenant subject partition、stream replay、durable consumers、DLQ 和审计关联保持平台契约不随后端漂移。 | `docs/planning/open-questions/P1-resolution-plan.md`、`docs/planning/open-questions/P8-resolution-plan.md`、`docs/operations/backup-restore.md`、`docs/operations/incident-restore-drill.md`。 | REQ-013/R-008。 | P8-03 本次提交补 `config/backup-restore.p8.json`、restore drill、P8 smoke 和 Event Bus replay/DLQ 门禁；最终 commit hash 见完成报告。 | 2026-08-29。 |
 | OQ-INFRA-003 | 已关闭 | 基础设施 | `docs/architecture/service-blueprint.md`、`docs/planning/development-schedule.md`。 | Artifact Store 生产对象存储和备份策略是什么。 | 影响 artifact URL、生命周期、加密、备份恢复和越权测试。 | 平台内核/SRE/安全。 | P1 结束前，P8 发布前复核。 | 接受 P8-03 默认生产后端：S3-compatible Object Store；恢复门禁要求 artifact reference、tenant boundary、SHA-256 checksum、object versioning、retention 和 encryption markers。 | `docs/planning/open-questions/P1-resolution-plan.md`、`docs/planning/open-questions/P8-resolution-plan.md`、`docs/operations/backup-restore.md`、`docs/operations/incident-restore-drill.md`。 | REQ-009/REQ-013/R-008。 | P8-03 本次提交补 artifact checksum restore gate、backup profile、deployment markers 和 targeted backup restore tests；最终 commit hash 见完成报告。 | 2026-08-29。 |
@@ -152,6 +152,6 @@
 | 状态 | 数量 | 说明 |
 |---|---:|---|
 | 打开 | 0 | 暂无 |
-| 自动确认 | 14 | 已生成默认解决方案，尚未关闭 |
+| 自动确认 | 13 | 已生成默认解决方案，尚未关闭 |
 | 人工确认 | 0 | 暂无；可省略 |
-| 已关闭 | 10 | P0 门禁已关闭 4 个到期问题；P8-01 已关闭 `OQ-DEPLOY-001`；P8-03 已关闭 `OQ-INFRA-002/003/004/005` 与 `OQ-MEMORY-002` |
+| 已关闭 | 11 | P0 门禁已关闭 4 个到期问题；P8-01 已关闭 `OQ-DEPLOY-001`；P8-03 已关闭 `OQ-INFRA-002/003/004/005` 与 `OQ-MEMORY-002`；P8-04 已关闭 `OQ-LEGAL-001` |

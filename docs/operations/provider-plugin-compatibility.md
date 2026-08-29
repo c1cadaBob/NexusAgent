@@ -37,6 +37,10 @@ Use `--strict` only in promotion contexts where `remote_unavailable` or `identit
 4. Publish candidate images on a tag if quality gates pass.
 5. Keep production default blocked until canary review and rollback confirmation complete.
 
+## P8-04 Delivery And Legal Closure
+
+P8-04 adds the operator rollback manual at `docs/operations/provider-plugin-rollback.md`, the delivery readiness package at `config/delivery-readiness.p8.json`, and the legal notice package at `config/legal-notice.p8.json` plus `docs/legal/THIRD_PARTY_NOTICE.md`. The P8 Alpha repository legal package closes `OQ-LEGAL-001`; upstream identity remains release-paused until real remote and commit evidence is confirmed.
+
 ## Deferred Items
 
-P8-02 does not close production Event Bus, Artifact Store, Credential Center, Observability, Memory backend, backup/restore, legal NOTICE bundle, or production sidecar/OS isolation decisions. Those remain assigned to P8-03/P8-04 or later production hardening tasks.
+P8-02 plus P8-04 do not open tenant self-service plugin installation and do not implement full provider sidecar/OS isolation. Production Event Bus, Artifact Store, Credential Center, Observability, Memory backend, and backup/restore defaults were closed by P8-03; customer infrastructure rollout, external legal opinions, upstream identity confirmation, and deeper production sidecar hardening remain later production governance work.

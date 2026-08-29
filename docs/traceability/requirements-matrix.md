@@ -103,3 +103,10 @@
 - REQ-013/REQ-017：`config/observability-alerts.p8.json`、`config/backup-restore.p8.json`、`docs/operations/observability-alerts.md`、`docs/operations/backup-restore.md` 和 `docs/operations/incident-restore-drill.md` 固定 RPO `15m`、RTO `4h`、SLO/alert catalog、restore acceptance gates 和 runbook anchors。
 - REQ-005/REQ-013：`deploy/docker-compose.prod.yml`、`deploy/k8s/configmap.yaml` 和 `config/services.prod.yaml` 已同步 P8-03 backup/observability profile、backend kind、RPO/RTO 和 exporter refs，同时保持只有 `platform-api` 与 `web-console` 对外暴露。
 - REQ-013/R-014：`tests/deployment/p8-backup-restore-drill.test.mjs` 和 `tests/security/p8-backup-secret-isolation.test.mjs` 验证恢复报告只包含 metadata：audit hash-chain、Event Bus replay/DLQ、artifact SHA-256、memory version/conflict metadata 和 credential reference hash-only，不导出 memory text、credential material、native/provider/local locator 字段。
+
+## P8-04 交付文档、法务 NOTICE 和 P8 门禁更新
+
+- REQ-014/REQ-015/REQ-016/REQ-017：P8-04 新增 `config/delivery-readiness.p8.json`、`docs/operations/admin-handoff.md`、`docs/operations/developer-handoff.md`、`docs/operations/upgrade-migration.md`、`docs/operations/provider-plugin-rollback.md`、`docs/operations/delivery-readiness.md`、`docs/planning/phase-gates/P8-gate-review.md`、validators 和 P8 smoke markers，确认 P8 阶段交付、审计记录、阶段门禁和历史问题回扫可重复验收。
+- REQ-018/REQ-019：P8-04 provider/plugin rollback manual 明确 DSH/Hermes/OpenClaw provider 替换、禁用和回滚只改变内部 compatibility matrix、release pause 和治理状态，不改变平台 TaskRequest、ExecutionPlan、ExecutionResult、Event Bus envelope、ArtifactReference、CredentialReference、PlatformError 或 `/v1/*` 公共 API。
+- REQ-020/R-015：P8-04 新增 `config/legal-notice.p8.json` 和 `docs/legal/THIRD_PARTY_NOTICE.md`，把 provider 根许可证、nested notice evidence、provider tree sha、plugin license、notice_status、sha256、risk_level、allowlist_status、rollback_target 和 required tests 纳入 legal/NOTICE release package，并关闭 `OQ-LEGAL-001`。
+- REQ-005/REQ-013：P8-04 交付手册串联 Kubernetes 主路径、Compose 私有路径、release gate、observability alerts、backup/restore drill、upgrade migration 和 rollback checkpoint；不新增公共 REST/OpenAPI/SDK/Console 行为，不接真实外部网络，不使用真实凭据。

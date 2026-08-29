@@ -12,7 +12,11 @@ P8-02 已补 CI/CD、发布和上游追踪门禁：`.github/workflows/p8-release
 
 ## P8-03 同步状态
 
-P8-03 已锁定生产 Alpha 后端默认和恢复门禁：Event Bus 使用 NATS JetStream，Artifact Store 使用 S3-compatible Object Store，Credential Center 使用 Vault，Memory Gateway 使用 PostgreSQL + pgvector，Observability 使用 OpenTelemetry + Prometheus/Loki/Tempo；RPO 为 `15m`，RTO 为 `4h`。`config/observability-alerts.p8.json`、`config/backup-restore.p8.json`、`platform/observability/readiness.ts`、`platform/backup-restore/index.ts`、`docs/operations/observability-alerts.md`、`docs/operations/backup-restore.md` 和 `docs/operations/incident-restore-drill.md` 提供机器可读 profile、告警目录、metadata-only restore drill、audit hash-chain、Event Bus replay/DLQ、artifact checksum、memory version/conflict metadata 和 credential reference-only evidence。P8-03 关闭 `OQ-INFRA-002/003/004/005` 与 `OQ-MEMORY-002`；`OQ-LEGAL-001`、法务 NOTICE 发布包、真实客户基础设施 rollout 和完整 provider sidecar/OS 生产隔离继续由 P8-04 或后续发布治理承接。
+P8-03 已锁定生产 Alpha 后端默认和恢复门禁：Event Bus 使用 NATS JetStream，Artifact Store 使用 S3-compatible Object Store，Credential Center 使用 Vault，Memory Gateway 使用 PostgreSQL + pgvector，Observability 使用 OpenTelemetry + Prometheus/Loki/Tempo；RPO 为 `15m`，RTO 为 `4h`。`config/observability-alerts.p8.json`、`config/backup-restore.p8.json`、`platform/observability/readiness.ts`、`platform/backup-restore/index.ts`、`docs/operations/observability-alerts.md`、`docs/operations/backup-restore.md` 和 `docs/operations/incident-restore-drill.md` 提供机器可读 profile、告警目录、metadata-only restore drill、audit hash-chain、Event Bus replay/DLQ、artifact checksum、memory version/conflict metadata 和 credential reference-only evidence。P8-03 关闭 `OQ-INFRA-002/003/004/005` 与 `OQ-MEMORY-002`；真实客户基础设施 rollout 和完整 provider sidecar/OS 生产隔离继续由 P8-04 或后续发布治理承接。
+
+## P8-04 同步状态
+
+P8-04 已补交付文档、法务 NOTICE 与 P8 阶段门禁：`config/delivery-readiness.p8.json` 固定 `nexus.delivery_readiness.p8.v1`、Kubernetes 主路径、Compose 私有路径、deploy/upgrade/rollback 验收和 `P8-04_PUBLIC_API_STABILITY`；`config/legal-notice.p8.json` 固定 `nexus.legal_notice.p8.v1`、provider 根许可证、nested notice evidence、provider tree sha、plugin license/notice/hash/risk/allowlist/rollback 证据和 `OQ-LEGAL-001` closure；`docs/operations/admin-handoff.md`、`docs/operations/developer-handoff.md`、`docs/operations/upgrade-migration.md`、`docs/operations/provider-plugin-rollback.md`、`docs/operations/delivery-readiness.md`、`docs/legal/THIRD_PARTY_NOTICE.md` 和 `docs/planning/phase-gates/P8-gate-review.md` 提供可审计交付包。P8-04 关闭 `OQ-LEGAL-001`；`OQ-UPSTREAM-001/002/003` 继续因真实 remote/commit 未确认保持 release pause，不冒充关闭。
 
 ## OQ-INFRA-002：消息总线生产后端复核
 
@@ -108,7 +112,9 @@ P8-03 已锁定生产 Alpha 后端默认和恢复门禁：Event Bus 使用 NATS 
 - Hermes：skills、Agent Plugins v1、MCP 和 Python 依赖需要记录再分发边界，禁止许可证不清的 planner 插件默认启用。
 - DSH：Cordis 工具插件、执行型工具、sandbox 运行时和 native addon 需要额外检查二进制再分发限制。
 
-关闭证据：生成第三方声明、NOTICE、插件许可证清单和默认启用白名单；风险登记册关闭或降级许可证风险；P8 smoke 检查默认启用插件均有许可证记录。
+状态：已关闭于 P8-04。
+
+关闭证据：P8-04 新增 `config/legal-notice.p8.json`、`docs/legal/THIRD_PARTY_NOTICE.md`、`scripts/quality/validate-p8-legal-notice.mjs`、`tests/security/p8-legal-notice-isolation.test.mjs` 和 P8 smoke legal gate。关闭口径为 P8 Alpha 仓库级 license/NOTICE/再分发证据包：三大 provider 根许可证、nested LICENSE/NOTICE evidence、provider tree sha、plugin `license`、`notice_status`、`sha256`、`risk_level`、`allowlist_status`、`rollback_target` 与 required tests 均已登记并可校验；外部律师意见或客户合同审查不在仓库自动化内伪造。
 
 ## OQ-UPSTREAM-001：Hermes provider 兼容矩阵
 
@@ -165,3 +171,5 @@ P8-02 证据：`config/provider-compatibility.p8.json` 已登记 `dsh-0.1.1-rc.2
 关闭证据：插件兼容矩阵、默认启用白名单、禁用/升级/回滚脚本、恶意插件测试和许可证记录全部完成；产品文档明确首版不提供租户任意安装。
 
 P8-02 证据：`config/plugin-compatibility.p8.json` 已固定 `tenant_self_service_third_party_install=false`，要求 hash、license、notice_status、risk_level、allowlist_status、required tests 和 `rollback_target`；缺 hash/license/NOTICE、未批准状态、缺回滚目标或 breaking change 均触发 `P8-02_PLUGIN_UPGRADE_GATE_PAUSE`，生产默认 promotion 继续 blocked until canary review。
+
+P8-04 证据：`docs/operations/provider-plugin-rollback.md` 将 provider contract stability、provider rollback flow、plugin admission rollback 和 public API invariant 写成交付手册；`config/legal-notice.p8.json` 与 `docs/legal/THIRD_PARTY_NOTICE.md` 补 legal/NOTICE 发布包证据。`OQ-PLUGIN-001` 仍不关闭，因为租户自助市场、真实插件运行时和完整 sidecar/OS 隔离需要独立产品/安全任务。

@@ -22,6 +22,8 @@ required_files=(
   config/plugin-compatibility.p8.json
   config/observability-alerts.p8.json
   config/backup-restore.p8.json
+  config/delivery-readiness.p8.json
+  config/legal-notice.p8.json
   deploy/k8s/namespace.yaml
   deploy/k8s/serviceaccount.yaml
   deploy/k8s/configmap.yaml
@@ -36,15 +38,20 @@ required_files=(
   tests/deployment/p8-provider-compatibility.test.mjs
   tests/deployment/p8-observability-alerts.test.mjs
   tests/deployment/p8-backup-restore-drill.test.mjs
+  tests/deployment/p8-delivery-docs.test.mjs
   tests/security/p8-production-isolation.test.mjs
   tests/security/p8-release-supply-chain.test.mjs
   tests/security/p8-backup-secret-isolation.test.mjs
+  tests/security/p8-delivery-public-surface.test.mjs
+  tests/security/p8-legal-notice-isolation.test.mjs
   tests/security/dsh-network-isolation.test.mjs
   tests/security/hermes-network-isolation.test.mjs
   tests/security/openclaw-network-isolation.test.mjs
   scripts/quality/validate-p8-release-gate.mjs
   scripts/quality/validate-p8-observability-alerts.mjs
   scripts/quality/validate-p8-backup-restore.mjs
+  scripts/quality/validate-p8-delivery-docs.mjs
+  scripts/quality/validate-p8-legal-notice.mjs
   scripts/upstream-tracking/validate-provider-compatibility.mjs
   scripts/upstream-tracking/weekly-upstream-check.mjs
   scripts/upstream-tracking/generate-release-manifest.mjs
@@ -52,11 +59,19 @@ required_files=(
   docs/planning/task-prompts/P8/P8-01.md
   docs/planning/task-prompts/P8/P8-02.md
   docs/planning/task-prompts/P8/P8-03.md
+  docs/planning/task-prompts/P8/P8-04.md
+  docs/planning/phase-gates/P8-gate-review.md
   docs/operations/release-gate.md
   docs/operations/provider-plugin-compatibility.md
   docs/operations/observability-alerts.md
   docs/operations/backup-restore.md
   docs/operations/incident-restore-drill.md
+  docs/operations/admin-handoff.md
+  docs/operations/developer-handoff.md
+  docs/operations/upgrade-migration.md
+  docs/operations/provider-plugin-rollback.md
+  docs/operations/delivery-readiness.md
+  docs/legal/THIRD_PARTY_NOTICE.md
   platform/observability/readiness.ts
   platform/backup-restore/index.ts
   docs/planning/open-questions-register.md
@@ -137,11 +152,35 @@ for audit_marker in \
   printf '%s\n' "$p803_audit_block" | rg -q "$audit_marker" || fail "P8-03 audit marker missing: $audit_marker"
 done
 
+p804_audit_block="$(sed -n '/^# P8-04 修改记录包$/,/^## 完整提示词$/p' docs/planning/task-prompts/P8/P8-04.md)"
+[[ -n "$p804_audit_block" ]] || fail 'P8-04 audit record package is missing'
+if printf '%s\n' "$p804_audit_block" | rg -q '\.\.\.'; then
+  fail 'P8-04 audit record package still contains placeholder ellipses'
+fi
+
+for audit_marker in \
+  '任务与验收条件' \
+  '源码证据' \
+  '基线测试' \
+  '影响面分析' \
+  '修改计划与回滚' \
+  '待确认问题' \
+  '实际变更文件' \
+  '关键改动点' \
+  '新增测试' \
+  '测试结果' \
+  '防绕过测试' \
+  '回滚验证'; do
+  printf '%s\n' "$p804_audit_block" | rg -q "$audit_marker" || fail "P8-04 audit marker missing: $audit_marker"
+done
+
 docker compose -f deploy/docker-compose.prod.yml config --format json >/tmp/nexusagent-p8-prod-compose.json
 
 node scripts/quality/validate-p8-release-gate.mjs >/tmp/nexusagent-p8-release-gate.txt
 node scripts/quality/validate-p8-observability-alerts.mjs >/tmp/nexusagent-p8-observability-alerts.txt
 node scripts/quality/validate-p8-backup-restore.mjs >/tmp/nexusagent-p8-backup-restore.txt
+node scripts/quality/validate-p8-delivery-docs.mjs >/tmp/nexusagent-p8-delivery-docs.txt
+node scripts/quality/validate-p8-legal-notice.mjs >/tmp/nexusagent-p8-legal-notice.txt
 node scripts/upstream-tracking/validate-provider-compatibility.mjs >/tmp/nexusagent-p8-provider-compatibility.txt
 node scripts/upstream-tracking/weekly-upstream-check.mjs >/tmp/nexusagent-p8-upstream-check.json
 node scripts/upstream-tracking/generate-release-manifest.mjs >/tmp/nexusagent-p8-release-manifest.json
@@ -276,6 +315,55 @@ for marker in \
   rg -F -q "$marker" docs/planning/open-questions-register.md docs/planning/open-questions/P8-resolution-plan.md docs/traceability/requirements-matrix.md docs/risks/risk-register.md docs/README.md tests/smoke/README.md docs/planning/task-prompts/P8/P8-03.md || fail "P8-03 OQ/docs marker missing: $marker"
 done
 
+for marker in \
+  'nexus.delivery_readiness.p8.v1' \
+  'delivery_readiness_p8_04' \
+  'P8-04_ADMIN_HANDOFF' \
+  'P8-04_DEVELOPER_HANDOFF' \
+  'P8-04_UPGRADE_MIGRATION' \
+  'P8-04_PROVIDER_PLUGIN_ROLLBACK_MANUAL' \
+  'P8-04_DELIVERY_DOCS_COMPLETE' \
+  'P8-04_PUBLIC_API_STABILITY' \
+  'deploy_from_docs' \
+  'upgrade_from_docs' \
+  'rollback_from_docs' \
+  'provider_contract_stability' \
+  'plugin_admission_rollback'; do
+  rg -F -q "$marker" config/delivery-readiness.p8.json docs/operations/admin-handoff.md docs/operations/developer-handoff.md docs/operations/upgrade-migration.md docs/operations/provider-plugin-rollback.md docs/operations/delivery-readiness.md /tmp/nexusagent-p8-delivery-docs.txt || fail "P8-04 delivery marker missing: $marker"
+done
+
+for marker in \
+  'nexus.legal_notice.p8.v1' \
+  'legal_notice_p8_04_release_package' \
+  'P8-04_LEGAL_NOTICE_PACKAGE' \
+  'THIRD_PARTY_NOTICE' \
+  'OQ-LEGAL-001' \
+  'OQ-LEGAL-001_closed' \
+  'license_files_present' \
+  'notice_document_recorded' \
+  'provider_hashes_match_vendor_manifest' \
+  'plugin_matrix_notice_recorded' \
+  'plugin_matrix_license_recorded' \
+  'plugin_matrix_rollback_recorded' \
+  'repository_release_package'; do
+  rg -F -q "$marker" config/legal-notice.p8.json docs/legal/THIRD_PARTY_NOTICE.md docs/planning/open-questions-register.md docs/planning/open-questions/P8-resolution-plan.md docs/operations/provider-plugin-compatibility.md /tmp/nexusagent-p8-legal-notice.txt || fail "P8-04 legal notice marker missing: $marker"
+done
+
+for marker in \
+  'P8 阶段门禁报告' \
+  'P8-01' \
+  'P8-02' \
+  'P8-03' \
+  'P8-04' \
+  'OQ-LEGAL-001' \
+  'OQ-UPSTREAM-001' \
+  'OQ-UPSTREAM-002' \
+  'OQ-UPSTREAM-003' \
+  '自动确认' \
+  'P8-04_PUBLIC_API_STABILITY'; do
+  rg -F -q "$marker" docs/planning/phase-gates/P8-gate-review.md docs/README.md tests/smoke/README.md || fail "P8 phase gate marker missing: $marker"
+done
+
 if rg -n -- '--watch|--inspect|NEXUS_HOT_RELOAD|NEXUS_DEBUG_PORT|9229|925[0-9]|type: bind|source: \.\./|/opt/project|tools\.invoke|agentCommandFromGatewayIngress|native gateway' deploy/docker-compose.prod.yml deploy/k8s deploy/docker config/services.prod.yaml .github/workflows/p8-release-gate.yml; then
   fail 'P8 production orchestration leaked dev, debug, source mount, local path, or native entrypoint marker'
 fi
@@ -288,6 +376,10 @@ if rg -n 'Date\.now\(|datetime\.now\(' config/observability-alerts.p8.json confi
   fail 'wall-clock duration helper detected in P8-03 observability/backup gate'
 fi
 
+if rg -n 'Date\.now\(|datetime\.now\(' config/delivery-readiness.p8.json config/legal-notice.p8.json docs/operations/admin-handoff.md docs/operations/developer-handoff.md docs/operations/upgrade-migration.md docs/operations/provider-plugin-rollback.md docs/operations/delivery-readiness.md docs/legal/THIRD_PARTY_NOTICE.md docs/planning/phase-gates/P8-gate-review.md scripts/quality/validate-p8-delivery-docs.mjs scripts/quality/validate-p8-legal-notice.mjs tests/deployment/p8-delivery-docs.test.mjs tests/security/p8-delivery-public-surface.test.mjs tests/security/p8-legal-notice-isolation.test.mjs; then
+  fail 'wall-clock duration helper detected in P8-04 delivery/legal gate'
+fi
+
 node --input-type=module - <<'NODE'
 import { runBackupRestoreDrill } from './platform/backup-restore/index.ts';
 const report = JSON.stringify(runBackupRestoreDrill());
@@ -298,15 +390,38 @@ if (forbidden.test(report)) {
 }
 NODE
 
-if find deploy config scripts tests/deployment tests/security -type d \( -name node_modules -o -name dist -o -name coverage -o -name .cache -o -name .vite -o -name __pycache__ \) -print | rg -q .; then
+node --input-type=module - <<'NODE'
+import { readFileSync } from 'node:fs';
+const forbidden = /raw_credential|credential_material|native_url|native_path|native_session|native_error|provider_runtime|provider_binding|https?:\/\/|\/(?:opt|tmp|var|etc|home|usr)\//i;
+const legal = JSON.parse(readFileSync('config/legal-notice.p8.json', 'utf8'));
+const legalWithoutDenylist = JSON.stringify({ ...legal, forbidden_material_policy: undefined });
+const paths = [
+  'config/delivery-readiness.p8.json',
+  'docs/operations/admin-handoff.md',
+  'docs/operations/developer-handoff.md',
+  'docs/operations/upgrade-migration.md',
+  'docs/operations/provider-plugin-rollback.md',
+  'docs/operations/delivery-readiness.md',
+  'docs/legal/THIRD_PARTY_NOTICE.md',
+  'docs/planning/phase-gates/P8-gate-review.md',
+];
+for (const text of [legalWithoutDenylist, ...paths.map((path) => readFileSync(path, 'utf8'))]) {
+  if (forbidden.test(text)) {
+    console.error('FAIL: P8-04 delivery/legal package leaked forbidden data');
+    process.exit(1);
+  }
+}
+NODE
+
+if find deploy config scripts tests/deployment tests/security docs/legal -type d \( -name node_modules -o -name dist -o -name coverage -o -name .cache -o -name .vite -o -name __pycache__ \) -print | rg -q .; then
   fail 'P8 deployment surface contains generated dependency/cache/build artifacts'
 fi
 
-if find deploy config scripts tests/deployment tests/security -type f \( -name '.env' -o -name '.env.*' \) -print | rg -q .; then
+if find deploy config scripts tests/deployment tests/security docs/legal -type f \( -name '.env' -o -name '.env.*' \) -print | rg -q .; then
   fail 'P8 deployment surface contains environment files'
 fi
 
-if rg -n 'AKIA[0-9A-Z]{16}|-----BEGIN [A-Z ]+PRIVATE KEY-----|ghp_[A-Za-z0-9_]{30,}|xox[baprs]-[A-Za-z0-9-]{20,}' deploy config scripts .github/workflows docs/planning/open-questions/P8-resolution-plan.md docs/operations/release-gate.md docs/operations/provider-plugin-compatibility.md; then
+if rg -n 'AKIA[0-9A-Z]{16}|-----BEGIN [A-Z ]+PRIVATE KEY-----|ghp_[A-Za-z0-9_]{30,}|xox[baprs]-[A-Za-z0-9-]{20,}' deploy config scripts .github/workflows docs/planning/open-questions/P8-resolution-plan.md docs/planning/phase-gates/P8-gate-review.md docs/operations/release-gate.md docs/operations/provider-plugin-compatibility.md docs/operations/admin-handoff.md docs/operations/developer-handoff.md docs/operations/upgrade-migration.md docs/operations/provider-plugin-rollback.md docs/operations/delivery-readiness.md docs/legal/THIRD_PARTY_NOTICE.md; then
   fail 'P8 production surface contains high-confidence secret pattern'
 fi
 
@@ -316,7 +431,8 @@ fi
 
 node --test tests/deployment/p8-release-gate.test.mjs tests/deployment/p8-provider-compatibility.test.mjs tests/security/p8-release-supply-chain.test.mjs
 node --test tests/deployment/p8-observability-alerts.test.mjs tests/deployment/p8-backup-restore-drill.test.mjs tests/security/p8-backup-secret-isolation.test.mjs
+node --test tests/deployment/p8-delivery-docs.test.mjs tests/security/p8-delivery-public-surface.test.mjs tests/security/p8-legal-notice-isolation.test.mjs
 node --test tests/deployment/p8-production-orchestration.test.mjs tests/security/p8-production-isolation.test.mjs
 node --test tests/security/dsh-network-isolation.test.mjs tests/security/hermes-network-isolation.test.mjs tests/security/openclaw-network-isolation.test.mjs
 
-echo 'PASS: P8-01/P8-02/P8-03 production orchestration, release gate, GHCR candidate publish, canary rollback, upstream tracking, compatibility matrix, observability alerts, backup restore drill, static isolation, and smoke checks'
+echo 'PASS: P8-01/P8-02/P8-03/P8-04 production orchestration, release gate, GHCR candidate publish, canary rollback, upstream tracking, compatibility matrix, observability alerts, backup restore drill, delivery docs, legal notice, P8 gate review, static isolation, and smoke checks'

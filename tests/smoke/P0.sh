@@ -330,9 +330,10 @@ for open_question_marker in \
   '6. 完整问题台账' \
   '7. 当前关闭摘要' \
   '本台账不展示候选方案' \
-  '当前 14 个问题仍为“自动确认”' \
+  '当前 13 个问题仍为“自动确认”' \
   'P8-01 已关闭 `OQ-DEPLOY-001`' \
   'P8-03 已关闭 `OQ-INFRA-002/003/004/005` 与 `OQ-MEMORY-002`' \
+  'P8-04 已通过 `config/legal-notice.p8.json` 和 `docs/legal/THIRD_PARTY_NOTICE.md` 关闭 `OQ-LEGAL-001`' \
   'OQ-UPSTREAM-001' \
   'OQ-SCHEDULE-001' \
   'OQ-DSH-001' \
@@ -347,8 +348,8 @@ for open_question_marker in \
 done
 rg -F -q '| 问题ID | 状态 | 分类 | 问题描述 | 最晚确认阶段 | 负责人/工作流 | 解决说明文档 |' docs/planning/open-questions-register.md || fail 'open questions register missing summary table header'
 rg -F -q '| 问题ID | 状态 | 分类 | 来源文档 | 问题描述 | 影响 | 负责人/工作流 | 最晚确认阶段 | 确认结论 | 解决说明文档 | 关联需求/风险 | 关闭任务/commit | 最后更新UTC |' docs/planning/open-questions-register.md || fail 'open questions register missing full table header'
-rg -F -q '| 自动确认 | 14 | 已结合三大平台在确认文件中生成默认解决方案，但尚未关闭 |' docs/planning/open-questions-register.md || fail 'open questions register must show 14 auto-confirmed items'
-rg -F -q '| 已关闭 | 10 | P0 门禁已关闭上游快照排除规则、资源容量、日历冻结窗口和首批渠道默认范围；P8-01 已关闭生产部署目标问题；P8-03 已关闭生产 Event Bus、Artifact Store、Credential Center、Observability 和 Memory Store 后端默认问题 |' docs/planning/open-questions-register.md || fail 'open questions register must show ten closed items after P8-03'
+rg -F -q '| 自动确认 | 13 | 已结合三大平台在确认文件中生成默认解决方案，但尚未关闭 |' docs/planning/open-questions-register.md || fail 'open questions register must show 13 auto-confirmed items'
+rg -F -q '| 已关闭 | 11 | P0 门禁已关闭上游快照排除规则、资源容量、日历冻结窗口和首批渠道默认范围；P8-01 已关闭生产部署目标问题；P8-03 已关闭生产 Event Bus、Artifact Store、Credential Center、Observability 和 Memory Store 后端默认问题；P8-04 已关闭许可证/NOTICE 发布包问题 |' docs/planning/open-questions-register.md || fail 'open questions register must show eleven closed items after P8-04'
 for closed_oq in OQ-UPSTREAM-004 OQ-SCHEDULE-001 OQ-SCHEDULE-002 OQ-CHANNEL-001; do
   rg -F -q "| ${closed_oq} | 已关闭 |" docs/planning/open-questions-register.md || fail "P0 gate OQ must be closed in register: ${closed_oq}"
   rg -q "${closed_oq}" docs/planning/phase-gates/P0-gate-review.md || fail "P0 gate report missing closed OQ: ${closed_oq}"
@@ -357,7 +358,8 @@ rg -F -q '| OQ-DEPLOY-001 | 已关闭 |' docs/planning/open-questions-register.m
 for p803_closed_oq in OQ-INFRA-002 OQ-INFRA-003 OQ-INFRA-004 OQ-INFRA-005 OQ-MEMORY-002; do
   rg -F -q "| ${p803_closed_oq} | 已关闭 |" docs/planning/open-questions-register.md || fail "P8-03 OQ must be closed in register: ${p803_closed_oq}"
 done
-for still_auto_oq in OQ-UPSTREAM-001 OQ-UPSTREAM-002 OQ-UPSTREAM-003 OQ-INFRA-001 OQ-API-001 OQ-DSH-001 OQ-MEMORY-001 OQ-PLUGIN-001 OQ-LEGAL-001 OQ-PRODUCT-001 OQ-BUDGET-001; do
+rg -F -q '| OQ-LEGAL-001 | 已关闭 |' docs/planning/open-questions-register.md || fail 'P8-04 legal OQ must be closed in register'
+for still_auto_oq in OQ-UPSTREAM-001 OQ-UPSTREAM-002 OQ-UPSTREAM-003 OQ-INFRA-001 OQ-API-001 OQ-DSH-001 OQ-MEMORY-001 OQ-PLUGIN-001 OQ-PRODUCT-001 OQ-BUDGET-001; do
   rg -F -q "| ${still_auto_oq} | 自动确认 |" docs/planning/open-questions-register.md || fail "non-P0 OQ must remain auto-confirmed: ${still_auto_oq}"
 done
 for p0_gate_marker in \
