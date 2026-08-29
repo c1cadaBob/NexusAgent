@@ -10,6 +10,10 @@ P8-01 已关闭 `OQ-DEPLOY-001`：两者都交付但 Kubernetes 优先；Kuberne
 
 P8-02 已补 CI/CD、发布和上游追踪门禁：`.github/workflows/p8-release-gate.yml` 在 PR/main/tag 上运行规划生成、diff、P0-P8 smoke、P8 targeted deployment/security tests 和 release/upstream validators；tag `v*` 通过 `GITHUB_TOKEN` 推送 GHCR candidate images。由于仓库当前只有 `product/api/server.mjs` 与 Vite `product/web-console/` 具备真实 runtime，P8-02 只发布 `platform-api` 与 `web-console` 镜像，内部 adapters、memory、artifact、event、credential 和 observability 镜像继续通过生产模板的显式外部引用治理。`config/provider-compatibility.p8.json`、`config/plugin-compatibility.p8.json` 和 `config/release-gate.p8.json` 固定 `canary_first`、`optional_remote`、`real_runtime_only`、`P8-02_PROVIDER_BREAKING_CHANGE_PAUSE`、`P8-02_PLUGIN_UPGRADE_GATE_PAUSE` 和 `P8-02_RELEASE_PAUSE_CANARY_ONLY`；upstream remote/commit 未确认时输出 `UPSTREAM_IDENTITY_UNCONFIRMED` 并阻止 production default promotion。生产 Event Bus/Object Store/Secret/Observability/Memory 后端、备份恢复、法务 NOTICE 发布包和完整 sidecar/OS 隔离仍由 P8-03/P8-04 承接，不在 P8-02 冒充关闭。
 
+## P8-03 同步状态
+
+P8-03 已锁定生产 Alpha 后端默认和恢复门禁：Event Bus 使用 NATS JetStream，Artifact Store 使用 S3-compatible Object Store，Credential Center 使用 Vault，Memory Gateway 使用 PostgreSQL + pgvector，Observability 使用 OpenTelemetry + Prometheus/Loki/Tempo；RPO 为 `15m`，RTO 为 `4h`。`config/observability-alerts.p8.json`、`config/backup-restore.p8.json`、`platform/observability/readiness.ts`、`platform/backup-restore/index.ts`、`docs/operations/observability-alerts.md`、`docs/operations/backup-restore.md` 和 `docs/operations/incident-restore-drill.md` 提供机器可读 profile、告警目录、metadata-only restore drill、audit hash-chain、Event Bus replay/DLQ、artifact checksum、memory version/conflict metadata 和 credential reference-only evidence。P8-03 关闭 `OQ-INFRA-002/003/004/005` 与 `OQ-MEMORY-002`；`OQ-LEGAL-001`、法务 NOTICE 发布包、真实客户基础设施 rollout 和完整 provider sidecar/OS 生产隔离继续由 P8-04 或后续发布治理承接。
+
 ## OQ-INFRA-002：消息总线生产后端复核
 
 推荐处理：P1-P6 默认使用 NATS JetStream，P8 做生产复核；如果客户或企业标准要求 Kafka、Pulsar 或托管消息系统，只能通过 EventBus provider 替换，不改变平台事件信封、task state、audit 和 adapter contract。
@@ -20,7 +24,9 @@ P8-02 已补 CI/CD、发布和上游追踪门禁：`.github/workflows/p8-release
 - Hermes：planner 产出的 ExecutionPlan 和 memory 事件只发布平台事件，避免 Hermes 原生事件格式泄漏到产品层。
 - DSH：executor 执行事件、artifact 完成事件和 sandbox 失败事件需要支持至少一次投递、幂等消费和 DLQ，避免任务状态丢失。
 
-关闭证据：`deploy/k8s/` 和 `deploy/docker-compose.prod.yml` 均声明生产消息后端；P8 smoke 验证事件发布、消费、重放、DLQ 和 provider 回滚；`docs/operations/` 记录消息堆积、重放和故障恢复步骤。
+状态：已关闭于 P8-03。
+
+关闭证据：P8-03 接受 NATS JetStream 作为生产默认 Event Bus 后端；`config/backup-restore.p8.json` 记录 `nats_jetstream`、stream replay、durable consumers、dead_letter_queue 和 tenant subject partition；`runBackupRestoreDrill()` 与 `tests/deployment/p8-backup-restore-drill.test.mjs` 验证 ordered event replay、DLQ evidence、trace/tenant metadata 和 metadata-only report；`tests/smoke/P8.sh` 纳入 P8-03 restore gate。
 
 ## OQ-INFRA-003：Artifact Store 生产对象存储复核
 
@@ -32,7 +38,9 @@ P8-02 已补 CI/CD、发布和上游追踪门禁：`.github/workflows/p8-release
 - Hermes：planner 只能引用平台 artifact，不能把本地 memory 文件、trace 文件或临时文件作为对外产物。
 - DSH：executor 所有 stdout/stderr、补丁、报告、沙箱输出和大文件必须入库并带 checksum，不能让用户直接访问 sandbox 路径。
 
-关闭证据：生产对象存储完成 checksum、versioning、lifecycle、加密、租户隔离、备份和恢复演练；P8 smoke 能上传、下载、权限拒绝、回滚 provider；风险登记册记录残留限制。
+状态：已关闭于 P8-03。
+
+关闭证据：P8-03 接受 S3-compatible Object Store 作为生产默认 Artifact Store 后端；`config/backup-restore.p8.json` 记录 SHA-256 checksum、object versioning、server-side encryption、tenant prefix policy 和 lifecycle retention；`runBackupRestoreDrill()` 验证 artifact reference 的 checksum continuity 且不导出 artifact bytes；`tests/security/p8-backup-secret-isolation.test.mjs` 验证恢复报告不含 native path、external locator 或 credential material。
 
 ## OQ-INFRA-004：Credential Center 生产密钥后端复核
 
@@ -44,7 +52,9 @@ P8-02 已补 CI/CD、发布和上游追踪门禁：`.github/workflows/p8-release
 - Hermes：planner/skill/MCP 只能拿到脱敏后的能力授权，不能直接读取明文凭据或持久化到 memory。
 - DSH：executor 工具调用按用途申请短租约凭据，sandbox、artifact、event 和日志中不得出现明文 secret。
 
-关闭证据：SecretBackend provider 兼容矩阵完成；P8 smoke 覆盖签发、撤销、过期、越权拒绝、日志脱敏和 provider 回滚；`docs/operations/` 写明密钥轮换和泄漏响应流程。
+状态：已关闭于 P8-03。
+
+关闭证据：P8-03 接受 Vault 作为生产默认 Credential Center 后端；`config/backup-restore.p8.json` 记录 `reference_hash_and_redaction_only`、short lease、revocation、audit、tenant policy 和 rotation runbook requirements；deterministic restore drill 只导出 `credential_ref`、purpose、lease metadata、redaction metadata 和 material hash marker，不导出明文凭据；P8 smoke 和 security tests 验证 credential reference-only gate。
 
 ## OQ-INFRA-005：Observability 生产后端复核
 
@@ -56,7 +66,9 @@ P8-02 已补 CI/CD、发布和上游追踪门禁：`.github/workflows/p8-release
 - Hermes：planner-only 决策、memory gateway 调用、降级路径和 provider 版本必须进入 trace，便于排查计划质量问题。
 - DSH：sandbox 生命周期、资源限制、工具调用、artifact 入库和失败原因必须可观测，便于安全审计和成本控制。
 
-关闭证据：P8 完成告警规则、SLO、trace/log/metrics 关联和任务时间线展示；生产配置可切换 OTEL exporter；P8 smoke 验证 trace_id 从 API 到三个 provider 全链路贯穿。
+状态：已关闭于 P8-03。
+
+关闭证据：P8-03 接受 OpenTelemetry + Prometheus/Loki/Tempo 作为生产默认 Observability 后端；`config/observability-alerts.p8.json` 与 `platform/observability/readiness.ts` 固定 `nexus.observability_readiness.p8.v1`、RPO `15m`、RTO `4h`、sanitized labels 和 9 类告警信号；`docs/operations/observability-alerts.md` 提供 runbook anchors；validator 和 P8 smoke 验证 alert catalog、backend defaults 和 label policy。
 
 ## OQ-MEMORY-002：Memory Gateway 存储生产复核
 
@@ -68,7 +80,9 @@ P8-02 已补 CI/CD、发布和上游追踪门禁：`.github/workflows/p8-release
 - Hermes：Hermes 原生 memory 文件和 provider 只能作为内部迁移/适配输入，最终读写必须落到 Memory Gateway。
 - DSH：执行器只消费经过 Coordinator/Policy-Gate 批准的 memory context，不能直接查询 Hermes 或其他原生存储。
 
-关闭证据：MemoryStore provider 完成容量、延迟、并发写、冲突检测、备份恢复、租户隔离和回滚演练；P8 文档记录保留期、删除策略和记忆冲突处理。
+状态：已关闭于 P8-03。
+
+关闭证据：P8-03 接受 PostgreSQL + pgvector 作为生产默认 Memory Store 后端；`config/backup-restore.p8.json` 记录 tenant partition、versioned writes、conflict queue、retention sweep 和 point-in-time restore；`runBackupRestoreDrill()` 生成 active record metadata 与 expected_version conflict metadata，并验证 tenant version continuity；恢复报告不含 memory text、tombstone text 或 stale payload。
 
 ## OQ-DEPLOY-001：生产部署目标
 

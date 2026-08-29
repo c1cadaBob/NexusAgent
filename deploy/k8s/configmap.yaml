@@ -16,5 +16,15 @@ data:
   NEXUS_CREDENTIAL_BACKEND_REF: p8-credential-backend-ref
   NEXUS_MEMORY_BACKEND_REF: p8-memory-backend-ref
   NEXUS_OBSERVABILITY_BACKEND_REF: p8-observability-backend-ref
-  NEXUS_BACKUP_PROFILE: p8-03-pending
+  NEXUS_BACKUP_PROFILE: backup_restore_p8_03_production_default
+  NEXUS_OBSERVABILITY_READINESS_PROFILE: observability_readiness_p8_03_production_default
+  NEXUS_BACKUP_RPO_MINUTES: "15"
+  NEXUS_BACKUP_RTO_HOURS: "4"
+  NEXUS_EVENT_BUS_BACKEND_KIND: nats_jetstream
+  NEXUS_ARTIFACT_BACKEND_KIND: s3_compatible_object_store
+  NEXUS_CREDENTIAL_BACKEND_KIND: vault
+  NEXUS_MEMORY_BACKEND_KIND: postgres_pgvector
+  NEXUS_OBSERVABILITY_BACKEND_KIND: otel_prometheus_loki_tempo
+  NEXUS_OBSERVABILITY_EXPORTER_REF: p8-observability-exporter-ref
+  NEXUS_OBSERVABILITY_ALERT_PROFILE: observability_readiness_p8_03_production_default
   NEXUS_RELEASE_PROFILE: p8-02-pending

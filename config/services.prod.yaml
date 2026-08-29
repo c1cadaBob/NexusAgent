@@ -15,6 +15,24 @@ required_external_backend_refs:
   credential_center: NEXUS_CREDENTIAL_BACKEND_REF
   memory_gateway: NEXUS_MEMORY_BACKEND_REF
   observability: NEXUS_OBSERVABILITY_BACKEND_REF
+backup_restore_profile: backup_restore_p8_03_production_default
+observability_readiness_profile: observability_readiness_p8_03_production_default
+rpo_minutes: 15
+rto_hours: 4
+production_backend_defaults:
+  event_bus: nats_jetstream
+  artifact_store: s3_compatible_object_store
+  credential_center: vault
+  memory_store: postgres_pgvector
+  observability: otel_prometheus_loki_tempo
+restore_acceptance_markers:
+  - audit_hash_chain_verified
+  - event_order_and_dlq_replay_verified
+  - artifact_sha256_verified
+  - memory_version_continuity_verified
+  - credential_reference_hash_only_verified
+  - observability_readiness_reported
+  - rpo_15m_rto_4h_recorded
 services:
   platform-api:
     role: platform-api
@@ -30,6 +48,8 @@ services:
       - NEXUS_CREDENTIAL_BACKEND_REF
       - NEXUS_MEMORY_BACKEND_REF
       - NEXUS_OBSERVABILITY_BACKEND_REF
+      - NEXUS_BACKUP_PROFILE
+      - NEXUS_OBSERVABILITY_READINESS_PROFILE
     debug: false
     hot_reload: false
     source_mounts: false
@@ -152,6 +172,8 @@ services:
     readiness_path: /ready
     required_backend_refs:
       - NEXUS_OBSERVABILITY_BACKEND_REF
+      - NEXUS_OBSERVABILITY_EXPORTER_REF
+      - NEXUS_OBSERVABILITY_ALERT_PROFILE
     debug: false
     hot_reload: false
     source_mounts: false

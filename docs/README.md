@@ -26,6 +26,9 @@
 - [P8-01 生产编排说明](operations/production-orchestration.md)：P8-01 生产 Compose/Kubernetes 编排基线，确认 Kubernetes 是标准生产主路径，Docker Compose prod 是单机私有化/小规模部署/故障复现路径，并记录 public/internal 服务边界与静态验证命令。
 - [P8-02 发布门禁说明](operations/release-gate.md)：P8-02 CI/CD release gate，覆盖 tag 推 GHCR、真实 runtime image 范围、candidate release manifest、canary-first promotion、release pause 和 rollback 要求。
 - [P8-02 provider/plugin 兼容矩阵](operations/provider-plugin-compatibility.md)：P8-02 上游可选远端检查、provider compatibility matrix、plugin upgrade gate、`UPSTREAM_IDENTITY_UNCONFIRMED` 暂停策略和租户不得自助安装第三方插件的发布治理说明。
+- [P8-03 生产告警说明](operations/observability-alerts.md)：P8-03 SLO/alert catalog，覆盖 `nexus.observability_readiness.p8.v1`、RPO `15m`、RTO `4h`、OpenTelemetry + Prometheus/Loki/Tempo 默认后端和 sanitized label policy。
+- [P8-03 备份恢复说明](operations/backup-restore.md)：P8-03 backup/restore profile，覆盖 NATS JetStream、S3-compatible Object Store、Vault、PostgreSQL + pgvector、metadata-only restore gates、artifact checksum 和 credential reference-only recovery。
+- [P8-03 恢复演练说明](operations/incident-restore-drill.md)：P8-03 deterministic restore drill gate，覆盖 audit hash-chain、Event Bus replay/DLQ、memory version continuity、observability readiness 和公共泄漏拒绝条件。
 - [AI 排期提示词模板](planning/ai-schedule-prompt-template.md)
 - [任务实施规划提示词索引](planning/task-prompts/README.md)
 - [子 Agent 角色记忆](agents/README.md)：P0-01 基线，固化长期协作角色、只读上游边界、交接格式和各角色常读资料，避免上下文压缩或交接后遗忘项目约束。
@@ -64,6 +67,7 @@
 - [P7 定时长期目标任务](../platform/coordinator/scheduled-goals.ts)：P7-05 基线，覆盖 Default Off + manual tick、UTC 5-field Cron-like recurrence、ordinary scheduler-source TaskRequest、资源预算、取消/重试、API+SDK+Console 暴露和公共面泄漏防护。
 - [P8 生产 Compose/Kubernetes 编排](../deploy/docker-compose.prod.yml)：P8-01 基线，覆盖生产 Compose、Kubernetes namespace/service account/config/secret template/deployments/services/ingress/network policies、`config/services.prod.yaml`、`tests/smoke/P8.sh` 和 `OQ-DEPLOY-001` 已关闭结论；只有 `platform-api` 与 `web-console` 暴露入口，内部 adapters 与数据服务不暴露宿主端口或 NodePort/LoadBalancer。
 - [P8 CI/CD、发布和上游追踪](operations/release-gate.md)：P8-02 基线，覆盖 `.github/workflows/p8-release-gate.yml`、`config/release-gate.p8.json`、provider/plugin compatibility matrix、GHCR tag candidate publish、canary-first promotion、release pause、上游 optional remote check、真实 runtime image scope 和 P8-02 targeted release/security tests；生产后端、备份恢复、法务 NOTICE 包和完整 sidecar/OS 隔离继续由 P8-03/P8-04 承接。
+- [P8 告警、备份和恢复](operations/backup-restore.md)：P8-03 基线，覆盖 `config/observability-alerts.p8.json`、`config/backup-restore.p8.json`、`platform/observability/readiness.ts`、`platform/backup-restore/index.ts`、RPO `15m`、RTO `4h`、NATS JetStream、S3-compatible Object Store、Vault、PostgreSQL + pgvector、OpenTelemetry + Prometheus/Loki/Tempo、metadata-only restore drill、P8-03 targeted deployment/security tests 和 `OQ-INFRA-002/003/004/005`、`OQ-MEMORY-002` 已关闭结论；`OQ-LEGAL-001`、NOTICE 发布包、真实客户 rollout 和完整 sidecar/OS 隔离继续由 P8-04 或后续治理承接。
 - [服务功能与整合蓝图](architecture/service-blueprint.md)：P0-07 基线，覆盖十个基础服务的功能、技术栈、输入输出、复用边界、参考项目和 P1 工作包。
 - [DSH 版本兼容与替换策略](architecture/dsh-versioning-and-replacement.md)
 - [上游版本适配与社区插件复用桥接策略](architecture/upstream-versioning-and-plugin-bridge.md)

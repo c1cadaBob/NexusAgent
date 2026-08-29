@@ -1,0 +1,69 @@
+{
+  "schema_version": "nexus.backup_restore.p8.v1",
+  "task_id": "P8-03",
+  "profile_id": "backup_restore_p8_03_production_default",
+  "rpo_minutes": 15,
+  "rto_hours": 4,
+  "production_backend_defaults": {
+    "event_bus": "nats_jetstream",
+    "artifact_store": "s3_compatible_object_store",
+    "credential_center": "vault",
+    "memory_store": "postgres_pgvector",
+    "observability": "otel_prometheus_loki_tempo"
+  },
+  "backup_policy": {
+    "mode": "metadata_first_platform_snapshot",
+    "schedule_hint": "every_15m",
+    "retention_days": 35,
+    "immutable_audit_chain": true,
+    "tenant_scoped_snapshots": true,
+    "manual_restore_drill_required": true
+  },
+  "restore_acceptance_gates": [
+    "audit_hash_chain_verified",
+    "event_order_and_dlq_replay_verified",
+    "artifact_sha256_verified",
+    "memory_version_continuity_verified",
+    "credential_reference_hash_only_verified",
+    "observability_readiness_reported",
+    "rpo_15m_rto_4h_recorded"
+  ],
+  "stores": {
+    "event_bus": {
+      "backend": "nats_jetstream",
+      "required_capabilities": ["stream_replay", "durable_consumers", "dead_letter_queue", "tenant_subject_partition"],
+      "snapshot_fields": ["event_id", "event_type", "tenant_id", "trace_id", "occurred_at_utc", "monotonic_ms", "subject", "producer"]
+    },
+    "artifact_store": {
+      "backend": "s3_compatible_object_store",
+      "required_capabilities": ["sha256_checksum", "object_versioning", "server_side_encryption", "tenant_prefix_policy", "lifecycle_retention"],
+      "restore_verify": ["artifact_id", "tenant_id", "task_id", "trace_id", "sha256", "size_bytes", "classification"]
+    },
+    "credential_center": {
+      "backend": "vault",
+      "backup_mode": "reference_hash_and_redaction_only",
+      "required_capabilities": ["short_lease", "revocation", "audit", "tenant_policy", "rotation_runbook"]
+    },
+    "memory_gateway": {
+      "backend": "postgres_pgvector",
+      "required_capabilities": ["tenant_partition", "versioned_writes", "conflict_queue", "retention_sweep", "point_in_time_restore"],
+      "restore_verify": ["tenant_version", "conflict_metadata", "retention_policy", "planner_snapshot_metadata"]
+    },
+    "observability": {
+      "backend": "otel_prometheus_loki_tempo",
+      "required_capabilities": ["trace_correlation", "metric_alerts", "log_retention", "restore_drill_dashboard", "slo_burn_alerts"]
+    }
+  },
+  "forbidden_backup_fields": [
+    "raw_credential",
+    "credential_material",
+    "memory_text",
+    "memory_tombstone_text",
+    "native_url",
+    "native_path",
+    "native_session",
+    "native_error",
+    "provider_runtime",
+    "absolute_local_path"
+  ]
+}

@@ -6,6 +6,17 @@ x-nexus-prod-env: &nexus-prod-env
   NEXUS_ORCHESTRATION_PROFILE: p8-01-production-template
   NEXUS_CLOCK_MODE: platform
   NEXUS_CONFIG_PROFILE: services.prod
+  NEXUS_BACKUP_PROFILE: backup_restore_p8_03_production_default
+  NEXUS_OBSERVABILITY_READINESS_PROFILE: observability_readiness_p8_03_production_default
+  NEXUS_BACKUP_RPO_MINUTES: "15"
+  NEXUS_BACKUP_RTO_HOURS: "4"
+  NEXUS_EVENT_BUS_BACKEND_KIND: nats_jetstream
+  NEXUS_ARTIFACT_BACKEND_KIND: s3_compatible_object_store
+  NEXUS_CREDENTIAL_BACKEND_KIND: vault
+  NEXUS_MEMORY_BACKEND_KIND: postgres_pgvector
+  NEXUS_OBSERVABILITY_BACKEND_KIND: otel_prometheus_loki_tempo
+  NEXUS_OBSERVABILITY_EXPORTER_REF: ${NEXUS_OBSERVABILITY_EXPORTER_REF:-p8-observability-exporter-ref}
+  NEXUS_OBSERVABILITY_ALERT_PROFILE: observability_readiness_p8_03_production_default
 
 x-nexus-prod-healthcheck: &nexus-prod-healthcheck
   test:
@@ -50,6 +61,8 @@ services:
       NEXUS_CREDENTIAL_BACKEND_REF: ${NEXUS_CREDENTIAL_BACKEND_REF:-p8-credential-backend-ref}
       NEXUS_MEMORY_BACKEND_REF: ${NEXUS_MEMORY_BACKEND_REF:-p8-memory-backend-ref}
       NEXUS_OBSERVABILITY_BACKEND_REF: ${NEXUS_OBSERVABILITY_BACKEND_REF:-p8-observability-backend-ref}
+      NEXUS_BACKUP_STORAGE_REF: ${NEXUS_BACKUP_STORAGE_REF:-p8-backup-storage-ref}
+      NEXUS_RESTORE_DRILL_PROFILE: backup_restore_p8_03_production_default
     ports:
       - target: 8080
         published: ${NEXUS_PLATFORM_API_PORT:-8080}
@@ -271,6 +284,8 @@ services:
       NEXUS_SERVICE_NAME: observability
       NEXUS_SERVICE_PUBLIC: "false"
       NEXUS_OBSERVABILITY_BACKEND_REF: ${NEXUS_OBSERVABILITY_BACKEND_REF:-p8-observability-backend-ref}
+      NEXUS_OBSERVABILITY_EXPORTER_REF: ${NEXUS_OBSERVABILITY_EXPORTER_REF:-p8-observability-exporter-ref}
+      NEXUS_OBSERVABILITY_ALERT_PROFILE: observability_readiness_p8_03_production_default
     expose:
       - "8080"
     labels:
