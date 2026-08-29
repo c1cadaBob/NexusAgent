@@ -64,6 +64,7 @@ interface StoredTask {
   conversation_id: string;
   state: TaskState;
   trace_id: string;
+  input: string;
   summary?: string;
   artifact_ids: readonly string[];
   created_at: string;
@@ -307,6 +308,7 @@ export class PlatformApiApp {
       conversation_id,
       state: result.snapshot.state,
       trace_id,
+      input,
       summary: input.slice(0, 120),
       artifact_ids: [],
       created_at: reading.utc_timestamp,
@@ -320,9 +322,11 @@ export class PlatformApiApp {
   #listTasks(query: URLSearchParams, principal: Principal): StoredTask[] {
     const tenant_id = query.get("tenant_id") ?? principal.tenant_id;
     this.#assertTenant(principal, tenant_id);
+    const conversation_id = optionalId("conversation_id", query.get("conversation_id") ?? undefined);
     const state = query.get("state");
     return [...this.#tasks.values()]
       .filter((task) => task.tenant_id === tenant_id)
+      .filter((task) => conversation_id === undefined || task.conversation_id === conversation_id)
       .filter((task) => isTenantAdmin(principal) || isPlatformAdmin(principal) || task.user_id === principal.user_id)
       .filter((task) => !state || task.state === state)
       .sort((left, right) => left.task_id.localeCompare(right.task_id))
@@ -983,6 +987,9 @@ export class PlatformApiApp {
     if (!task_id || !attempt_id || !execution_id) return;
     const existing = this.#tasks.get(task_id);
     const reading = this.clock.now();
+    const input = "input" in item && typeof item.input === "string"
+      ? item.input
+      : existing?.input ?? "Scheduled goal task";
     this.#tasks.set(task_id, {
       tenant_id: item.tenant_id,
       user_id: item.user_id ?? "user_scheduled_goals",
@@ -993,6 +1000,7 @@ export class PlatformApiApp {
       conversation_id: item.conversation_id ?? "conv_scheduled_goals",
       state,
       trace_id: item.trace_id,
+      input,
       summary: "Scheduled goal task",
       artifact_ids: existing?.artifact_ids ?? [],
       created_at: existing?.created_at ?? reading.utc_timestamp,

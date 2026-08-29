@@ -98,6 +98,7 @@ paths:
       summary: List tasks visible to the caller.
       parameters:
         - $ref: '#/components/parameters/TenantIdQuery'
+        - $ref: '#/components/parameters/ConversationIdQuery'
         - $ref: '#/components/parameters/StateQuery'
         - $ref: '#/components/parameters/LimitQuery'
         - $ref: '#/components/parameters/CursorQuery'
@@ -1289,6 +1290,12 @@ components:
       required: false
       schema:
         $ref: '#/components/schemas/TenantId'
+    ConversationIdQuery:
+      name: conversation_id
+      in: query
+      required: false
+      schema:
+        $ref: '#/components/schemas/ConversationId'
     StateQuery:
       name: state
       in: query
@@ -1501,6 +1508,7 @@ components:
         - task_id
         - attempt_id
         - conversation_id
+        - input
         - state
         - trace_id
         - created_at
@@ -1520,6 +1528,10 @@ components:
           $ref: '#/components/schemas/ExecutionId'
         conversation_id:
           $ref: '#/components/schemas/ConversationId'
+        input:
+          type: string
+          minLength: 1
+          maxLength: 64000
         state:
           $ref: '#/components/schemas/TaskState'
         summary:

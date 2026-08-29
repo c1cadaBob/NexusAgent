@@ -74,6 +74,7 @@ export interface ConsoleDataset {
   health?: HealthStatus;
   tasks: readonly PlatformTask[];
   taskEvents: readonly PlatformEvent[];
+  taskEventsByTaskId?: Readonly<Record<string, readonly PlatformEvent[]>>;
   tenants: readonly TenantRecord[];
   tenantUsers: readonly TenantUserRecord[];
   channels: readonly ChannelConfigRecord[];
@@ -96,6 +97,77 @@ export interface ConsoleDataset {
   budgetLedger?: readonly TokenBudgetLedgerEntry[];
   plugins: readonly PluginInventoryEntry[];
 }
+
+export interface ConversationSummary {
+  conversation_id: string;
+  task_count: number;
+  latest_task_id: string;
+  latest_task_state: PlatformTask["state"];
+  latest_updated_at: string;
+  latest_trace_id: string;
+  agent_ids: readonly string[];
+  user_ids: readonly string[];
+}
+
+export interface ConversationTurn {
+  task_id: string;
+  conversation_id: string;
+  user_id: string;
+  agent_id: string;
+  state: PlatformTask["state"];
+  input: string;
+  summary?: string;
+  trace_id: string;
+  created_at: string;
+  updated_at: string;
+  attempt_id: string;
+  execution_id: string;
+  artifact_ids: readonly string[];
+  event_count: number;
+  event_types: readonly string[];
+  last_event_type?: string;
+  last_event_at?: string;
+}
+
+export interface ConversationEvent {
+  event_id: string;
+  event_type: string;
+  task_id?: string;
+  attempt_id?: string;
+  execution_id?: string;
+  trace_id: string;
+  occurred_at: string;
+}
+
+export interface ConversationWorkbenchModel {
+  conversations: readonly ConversationSummary[];
+  selectedConversation?: ConversationSummary;
+  transcript: readonly ConversationTurn[];
+  selectedTask?: ConversationTurn;
+  selectedTaskEvents: readonly ConversationEvent[];
+}
+
+const CONSOLE_SENSITIVE_PATTERN = new RegExp([
+  "Her" + "mes",
+  "Open" + "Claw",
+  "Deep" + "Seek",
+  "\\bD" + "SH\\b",
+  "native" + "_",
+  "raw" + "_credential",
+  "credential" + "_material",
+  "credential" + "_ref",
+  "provider" + "_(?:agent|task|cancel|binding)",
+  "provider" + "_runtime",
+  "source" + "_ref",
+  "memory" + "_rejected_text",
+  "stale" + "_payload",
+  "session" + "_id",
+  "file" + "_path",
+  "memory" + "_path",
+  "tool" + "_name",
+  "https?:\\/\\/",
+  "\\/(?:opt|tmp|var|etc|home|usr)\\/",
+].join("|"), "gi");
 
 export interface AgentSummary {
   agent_id: string;
@@ -176,6 +248,41 @@ export function buildConsoleDashboardModel(profile: PrincipalProfile, data: Cons
   return model;
 }
 
+export function buildConversationWorkbenchModel(
+  data: ConsoleDataset,
+  selectedConversationId?: string,
+  selectedTaskId?: string,
+): ConversationWorkbenchModel {
+  const conversations = summarizeConversations(data.tasks);
+  const selectedConversation = selectedConversationId === undefined
+    ? conversations[0]
+    : conversations.find((conversation) => conversation.conversation_id === selectedConversationId) ?? conversations[0];
+  const conversationId = selectedConversation?.conversation_id;
+  const conversationTasks = conversationId === undefined
+    ? []
+    : [...data.tasks].filter((task) => task.conversation_id === conversationId);
+  const sortedConversationTasks = conversationTasks.sort((left, right) => right.updated_at.localeCompare(left.updated_at) || left.task_id.localeCompare(right.task_id));
+  const transcript = sortedConversationTasks
+    .slice()
+    .sort((left, right) => left.created_at.localeCompare(right.created_at) || left.task_id.localeCompare(right.task_id))
+    .map((task) => projectConversationTurn(task, data.taskEventsByTaskId?.[task.task_id] ?? (task.task_id === selectedTaskId ? data.taskEvents : [])));
+  const selectedTask = selectedTaskId === undefined
+    ? transcript[0]
+    : transcript.find((turn) => turn.task_id === selectedTaskId) ?? transcript[0];
+  const selectedTaskEvents = selectedTask === undefined
+    ? []
+    : projectConversationEvents(data.taskEventsByTaskId?.[selectedTask.task_id] ?? (selectedTask.task_id === selectedTaskId ? data.taskEvents : []));
+  const model: ConversationWorkbenchModel = {
+    conversations,
+    selectedConversation,
+    transcript,
+    selectedTask,
+    selectedTaskEvents,
+  };
+  assertConsolePublicValue(model);
+  return model;
+}
+
 export function summarizeAgents(tasks: readonly PlatformTask[]): readonly AgentSummary[] {
   const agents = new Map<string, { task_count: number; states: Set<string>; latest_task_id?: string }>();
   for (const task of tasks) {
@@ -193,6 +300,73 @@ export function summarizeAgents(tasks: readonly PlatformTask[]): readonly AgentS
       states: [...value.states].sort(),
       latest_task_id: value.latest_task_id,
     }));
+}
+
+export function summarizeConversations(tasks: readonly PlatformTask[]): readonly ConversationSummary[] {
+  const grouped = new Map<string, PlatformTask[]>();
+  for (const task of tasks) {
+    const current = grouped.get(task.conversation_id) ?? [];
+    current.push(task);
+    grouped.set(task.conversation_id, current);
+  }
+  return [...grouped.entries()]
+    .map(([conversation_id, items]) => {
+      const sorted = items.slice().sort((left, right) => right.updated_at.localeCompare(left.updated_at) || left.task_id.localeCompare(right.task_id));
+      const latest = sorted[0]!;
+      return {
+        conversation_id,
+        task_count: sorted.length,
+        latest_task_id: latest.task_id,
+        latest_task_state: latest.state,
+        latest_updated_at: latest.updated_at,
+        latest_trace_id: latest.trace_id,
+        agent_ids: [...new Set(sorted.map((task) => task.agent_id))].sort(),
+        user_ids: [...new Set(sorted.map((task) => task.user_id))].sort(),
+      };
+    })
+    .sort((left, right) => right.latest_updated_at.localeCompare(left.latest_updated_at) || left.conversation_id.localeCompare(right.conversation_id));
+}
+
+export function projectConversationTurn(task: PlatformTask, events: readonly PlatformEvent[]): ConversationTurn {
+  const sortedEvents = [...events].sort((left, right) => left.occurred_at.localeCompare(right.occurred_at) || left.event_id.localeCompare(right.event_id));
+  const eventTypes = [...new Set(sortedEvents.map((event) => event.event_type))];
+  const projected: ConversationTurn = {
+    task_id: task.task_id,
+    conversation_id: task.conversation_id,
+    user_id: task.user_id,
+    agent_id: task.agent_id,
+    state: task.state,
+    input: sanitizeConsoleText(task.input) ?? task.input,
+    summary: sanitizeConsoleText(task.summary) ?? task.summary,
+    trace_id: task.trace_id,
+    created_at: task.created_at,
+    updated_at: task.updated_at,
+    attempt_id: task.attempt_id,
+    execution_id: task.execution_id,
+    artifact_ids: [...task.artifact_ids],
+    event_count: sortedEvents.length,
+    event_types: eventTypes,
+    last_event_type: sortedEvents.at(-1)?.event_type,
+    last_event_at: sortedEvents.at(-1)?.occurred_at,
+  };
+  assertConsolePublicValue(projected);
+  return projected;
+}
+
+export function projectConversationEvents(events: readonly PlatformEvent[]): readonly ConversationEvent[] {
+  const rows = [...events]
+    .sort((left, right) => left.occurred_at.localeCompare(right.occurred_at) || left.event_id.localeCompare(right.event_id))
+    .map((event) => ({
+      event_id: event.event_id,
+      event_type: event.event_type,
+      task_id: event.task_id,
+      attempt_id: event.attempt_id,
+      execution_id: event.execution_id,
+      trace_id: event.trace_id,
+      occurred_at: event.occurred_at,
+    }));
+  assertConsolePublicValue(rows);
+  return rows;
 }
 
 export function projectChannelRow(entry: ChannelConfigRecord): Pick<ChannelConfigRecord, typeof CHANNEL_PUBLIC_COLUMNS[number]> {
@@ -434,27 +608,13 @@ export function projectSkillEvaluationCaseRows(run: SkillEvaluationRunReport | u
 
 export function assertConsolePublicValue(value: unknown): void {
   const serialized = JSON.stringify(value);
-  const blocked = [
-    "Her" + "mes",
-    "Open" + "Claw",
-    "Deep" + "Seek",
-    "\\bD" + "SH\\b",
-    "native" + "_",
-    "raw" + "_credential",
-    "credential" + "_material",
-    "credential" + "_ref",
-    "provider" + "_(?:agent|task|cancel|binding)",
-    "source" + "_ref",
-    "memory" + "_rejected_text",
-    "stale" + "_payload",
-    "session" + "_id",
-    "file" + "_path",
-    "memory" + "_path",
-    "tool" + "_name",
-    "https?:\\/\\/",
-    "\\/(?:opt|tmp|var|etc|home|usr)\\/",
-  ].join("|");
-  if (new RegExp(blocked, "i").test(serialized)) {
+  const blocked = new RegExp(CONSOLE_SENSITIVE_PATTERN.source, "i");
+  if (blocked.test(serialized)) {
     throw new Error("Console view-model contains a non-platform marker");
   }
+}
+
+function sanitizeConsoleText(value: string | undefined): string | undefined {
+  if (value === undefined) return undefined;
+  return value.replace(CONSOLE_SENSITIVE_PATTERN, "[redacted]");
 }

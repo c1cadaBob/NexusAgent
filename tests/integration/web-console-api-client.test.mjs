@@ -3,6 +3,7 @@ import test from 'node:test';
 
 import { createManualPlatformApi } from '../../product/api/index.ts';
 import { DEV_PRINCIPALS, PlatformApiClient, PlatformApiError } from '../../product/web-console/src/apiClient.ts';
+import { buildConversationWorkbenchModel } from '../../product/web-console/src/viewModel.ts';
 
 function clientFor(profileKey) {
   const app = createManualPlatformApi();
@@ -27,8 +28,8 @@ function clientFor(profileKey) {
 
 test('web console API client attaches bearer tokens and uses platform routes', async () => {
   const { client, calls, profile } = clientFor('operator');
-  await client.listTasks({ tenant_id: profile.tenant_id, limit: 5 });
-  assert.equal(calls[0].path, '/v1/tasks?tenant_id=tenant_alpha01&limit=5');
+  await client.listTasks({ tenant_id: profile.tenant_id, conversation_id: 'conv_console01', limit: 5 });
+  assert.equal(calls[0].path, '/v1/tasks?tenant_id=tenant_alpha01&conversation_id=conv_console01&limit=5');
   assert.equal(calls[0].headers.authorization, 'Bearer dev-operator-alpha');
 });
 
@@ -36,11 +37,13 @@ test('operator workflow submits lists reads cancels retries events memory approv
   const { client, profile } = clientFor('operator');
   const task = await client.submitTask({ input: 'console integration task', conversation_id: 'conv_console01', agent_id: 'agent_alpha01', trace_id: 'trace_console01' });
   assert.match(task.task_id, /^task_console01_/);
+  assert.equal(task.input, 'console integration task');
 
   const tasks = await client.listTasks({ tenant_id: profile.tenant_id });
   assert.equal(tasks.items.length, 1);
   const read = await client.getTask(task.task_id);
   assert.equal(read.task_id, task.task_id);
+  assert.equal(read.input, task.input);
 
   const cancelled = await client.cancelTask(task.task_id, { reason: 'console integration cancel', trace_id: 'trace_console02' });
   assert.equal(cancelled.state, 'cancelled');
@@ -64,6 +67,43 @@ test('operator workflow submits lists reads cancels retries events memory approv
   const budget = await client.checkBudget({ requested_units: 10, remaining_units: 25, max_units_per_attempt: 25, trace_id: 'trace_console07' });
   assert.equal(budget.status, 'approved');
   assert.equal(budget.schema_version, 'nexus.token_budget.p7.v1');
+});
+
+test('web console conversation workbench projects task-backed transcript and task events', async () => {
+  const { client, profile } = clientFor('operator');
+  const first = await client.submitTask({ input: 'conversation workbench first turn', conversation_id: 'conv_console_thread01', agent_id: 'agent_alpha01', trace_id: 'trace_console_thread01' });
+  const second = await client.submitTask({ input: 'conversation workbench follow-up', conversation_id: 'conv_console_thread01', agent_id: 'agent_alpha01', trace_id: 'trace_console_thread02' });
+  const tasks = await client.listTasks({ tenant_id: profile.tenant_id, conversation_id: 'conv_console_thread01' });
+  assert.equal(tasks.items.every((task) => task.conversation_id === 'conv_console_thread01'), true);
+  assert.equal(tasks.items.every((task) => typeof task.input === 'string' && task.input.length > 0), true);
+  const taskEventsByTaskIdEntries = await Promise.all(tasks.items.map(async (task) => {
+    const events = await client.listTaskEvents(task.task_id);
+    return [task.task_id, events.items];
+  }));
+  const taskEventsByTaskId = Object.fromEntries(taskEventsByTaskIdEntries);
+  const model = buildConversationWorkbenchModel({
+    tasks: tasks.items,
+    taskEvents: [],
+    taskEventsByTaskId,
+    tenants: [],
+    tenantUsers: [],
+    channels: [],
+    scheduledGoals: [],
+    approvals: [],
+    skills: [],
+    capabilities: [],
+    skillEvaluationRuns: [],
+    memory: [],
+    memoryConflicts: [],
+    budgetLedger: [],
+    plugins: [],
+  }, 'conv_console_thread01', second.task_id);
+  assert.equal(model.selectedConversation?.conversation_id, 'conv_console_thread01');
+  assert.equal(model.selectedTask?.task_id, second.task_id);
+  assert.equal(model.transcript.some((turn) => turn.input === 'conversation workbench first turn'), true);
+  assert.equal(model.selectedTaskEvents.length > 0, true);
+  assert.doesNotMatch(JSON.stringify(model), /Hermes|OpenClaw|DeepSeek|\bDSH\b|native_|raw_credential|credential_material|provider_binding|runtime|https?:\/\/|\/opt\//i);
+  assert.equal(first.conversation_id, second.conversation_id);
 });
 
 test('tenant admin workflow manages token budget policy and ledger while operator management fails closed', async () => {

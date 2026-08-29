@@ -15,7 +15,7 @@ Run the platform API separately:
 PORT=8080 node product/api/server.mjs
 ```
 
-## P5 scope
+## P5 and later scope
 
 - The console calls only `/v1/*` platform API routes from P5-01.
 - Local development uses the P5-01 dev principals: platform admin, tenant admin, operator, and viewer.
@@ -25,6 +25,7 @@ PORT=8080 node product/api/server.mjs
 - P7-03 adds an Evaluations page for tenant and platform administrators. Skill evaluation is Default Off, uses manual runs against an Approved + Rejected deterministic corpus, and renders only config status, run metadata, totals, reason codes, trace IDs, and case summaries.
 - P7-04 adds token budget policy and ledger controls plus memory conflict handling. Budget uses Default On All configured tenant/user/agent/task dimensions, while the Memory page shows an Admin resolve queue for metadata-only conflicts and Resolve/Ignore actions.
 - P7-05 adds a Scheduled Goals page for Default Off + manual tick long-term goal tasks. The page manages UTC 5-field Cron-like recurrence, create/pause/resume/cancel/retry actions, and manual due scans that create ordinary scheduler-source platform tasks.
+- The first screen is now a conversation-first workbench: the left rail holds the local principal gate and conversation list, the center rail renders the task-backed transcript and composer, and the right rail is the permission-gated inspector for tasks and admin workspaces.
 - Refresh uses the visible Refresh button plus a 15 second polling interval. Streaming and enterprise sign-on remain follow-up work.
 - Plugin governance displays public platform metadata only: ID, display name, source kind, version, SHA-256, license, notice status, risk, allowlist status, and capability IDs.
 

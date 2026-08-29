@@ -5,10 +5,10 @@ import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 
 import { DEV_PRINCIPALS } from '../../product/web-console/src/apiClient.ts';
-import { actionEnabled, assertConsolePublicValue, buildConsoleDashboardModel, projectChannelRow, projectMemoryRetentionRows, projectPluginRow, projectSkillEvaluationCaseRows, projectSkillEvaluationRows, visibleNavigation } from '../../product/web-console/src/viewModel.ts';
+import { actionEnabled, assertConsolePublicValue, buildConsoleDashboardModel, buildConversationWorkbenchModel, projectChannelRow, projectMemoryRetentionRows, projectPluginRow, projectSkillEvaluationCaseRows, projectSkillEvaluationRows, visibleNavigation } from '../../product/web-console/src/viewModel.ts';
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
-const blocked = /Hermes|OpenClaw|DeepSeek|\bDSH\b|native_|raw_credential|credential_material|credential_ref|provider_(?:agent|task|cancel|binding)|source_ref|session_id|file_path|memory_path|tool_name|\/(?:opt|tmp|var|etc|home|usr)\//i;
+const blocked = /Hermes|OpenClaw|DeepSeek|\bDSH\b|native_|raw_credential|credential_material|credential_ref|provider_(?:agent|task|cancel|binding|runtime)|source_ref|session_id|file_path|memory_path|tool_name|\/(?:opt|tmp|var|etc|home|usr)\//i;
 
 test('web console source avoids internal component names and adapter imports', async () => {
   const files = [
@@ -139,6 +139,78 @@ test('web console view-model projects memory retention policy without tombstone 
   assert.equal(rows[0].ttl_days, 7);
   assert.doesNotMatch(JSON.stringify(rows), /text|tombstone|deleted_reason/i);
   assert.doesNotMatch(JSON.stringify(rows), blocked);
+});
+
+test('web console conversation workbench projects task-backed transcripts without raw event payloads', () => {
+  const model = buildConversationWorkbenchModel({
+    tasks: [{
+      tenant_id: 'tenant_alpha01',
+      user_id: 'user_alpha01',
+      agent_id: 'agent_alpha01',
+      task_id: 'task_console01',
+      attempt_id: 'attempt_console01',
+      execution_id: 'exec_console01',
+      conversation_id: 'conv_console01',
+      state: 'admitted',
+      trace_id: 'trace_console01',
+      input: 'Conversation surface prompt https://example.com raw_credential',
+      summary: 'native_url /opt/project/path',
+      artifact_ids: [],
+      created_at: '2026-08-25T00:00:00.000Z',
+      updated_at: '2026-08-25T00:00:00.000Z',
+    }],
+    taskEvents: [{
+      event_id: 'event_console01',
+      event_type: 'task.started',
+      tenant_id: 'tenant_alpha01',
+      task_id: 'task_console01',
+      attempt_id: 'attempt_console01',
+      execution_id: 'exec_console01',
+      trace_id: 'trace_console02',
+      occurred_at: '2026-08-25T00:00:00.000Z',
+      payload: {
+        raw_credential: 'secret',
+        provider_runtime: 'native',
+        native_url: 'https://example.com',
+      },
+    }],
+    taskEventsByTaskId: {
+      task_console01: [{
+        event_id: 'event_console01',
+        event_type: 'task.started',
+        tenant_id: 'tenant_alpha01',
+        task_id: 'task_console01',
+        attempt_id: 'attempt_console01',
+        execution_id: 'exec_console01',
+        trace_id: 'trace_console02',
+        occurred_at: '2026-08-25T00:00:00.000Z',
+        payload: {
+          raw_credential: 'secret',
+          provider_runtime: 'native',
+          native_url: 'https://example.com',
+        },
+      }],
+    },
+    tenants: [],
+    tenantUsers: [],
+    channels: [],
+    scheduledGoals: [],
+    approvals: [],
+    skills: [],
+    capabilities: [],
+    skillEvaluationRuns: [],
+    memory: [],
+    memoryConflicts: [],
+    budgetLedger: [],
+    plugins: [],
+  }, 'conv_console01', 'task_console01');
+  assert.equal(model.selectedConversation?.conversation_id, 'conv_console01');
+  assert.equal(model.selectedTask?.task_id, 'task_console01');
+  assert.doesNotMatch(model.transcript[0].input, blocked);
+  assert.doesNotMatch(model.transcript[0].summary ?? '', blocked);
+  assert.equal(model.selectedTaskEvents[0].event_type, 'task.started');
+  assert.equal(Object.hasOwn(model.selectedTaskEvents[0], 'payload'), false);
+  assert.doesNotMatch(JSON.stringify(model), blocked);
 });
 
 test('web console dashboard model rejects non-platform markers', () => {

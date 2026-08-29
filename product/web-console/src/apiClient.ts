@@ -168,6 +168,7 @@ export interface PlatformTask {
   conversation_id: string;
   state: TaskState;
   trace_id: string;
+  input: string;
   summary?: string;
   artifact_ids: readonly string[];
   created_at: string;
@@ -611,7 +612,7 @@ export class PlatformApiClient {
     return this.#request<HealthStatus>("GET", "/v1/health", { auth: false });
   }
 
-  listTasks(params: { tenant_id?: string; limit?: number; cursor?: string; state?: TaskState } = {}): Promise<PlatformList<PlatformTask>> {
+  listTasks(params: { tenant_id?: string; conversation_id?: string; limit?: number; cursor?: string; state?: TaskState } = {}): Promise<PlatformList<PlatformTask>> {
     return this.#request<PlatformList<PlatformTask>>("GET", withQuery("/v1/tasks", params));
   }
 

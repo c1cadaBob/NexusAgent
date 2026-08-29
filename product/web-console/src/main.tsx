@@ -32,9 +32,14 @@ import {
   type TokenBudgetLedgerEntry,
   type TokenBudgetPolicy,
 } from "./apiClient";
-import { actionEnabled, buildConsoleDashboardModel, visibleNavigation, type ConsoleDataset } from "./viewModel";
+import { actionEnabled, buildConsoleDashboardModel, buildConversationWorkbenchModel, visibleNavigation, type ConsoleDataset } from "./viewModel";
 import type { ConsoleViewId } from "./viewModel";
 import "./styles.css";
+
+type ConversationWorkbenchModel = ReturnType<typeof buildConversationWorkbenchModel>;
+type ConversationSummary = ConversationWorkbenchModel["conversations"][number];
+type ConversationTurn = ConversationWorkbenchModel["transcript"][number];
+type ConversationEvent = ConversationWorkbenchModel["selectedTaskEvents"][number];
 
 const initialDataset: ConsoleDataset = {
   tasks: [],
@@ -58,13 +63,14 @@ function App() {
   const profile = DEV_PRINCIPALS.find((item) => item.key === profileKey) ?? DEV_PRINCIPALS[2];
   const client = useMemo(() => new PlatformApiClient(profile), [profile]);
   const traceRef = useRef(createTraceFactory());
-  const [activeView, setActiveView] = useState<ConsoleViewId>("overview");
+  const [activeView, setActiveView] = useState<ConsoleViewId>("tasks");
   const [data, setData] = useState<ConsoleDataset>(initialDataset);
+  const [selectedConversationId, setSelectedConversationId] = useState<string>("");
   const [selectedTaskId, setSelectedTaskId] = useState<string>("");
   const [message, setMessage] = useState<string>("");
   const [loading, setLoading] = useState<boolean>(false);
   const [taskInput, setTaskInput] = useState("Review current platform task queue");
-  const [conversationId, setConversationId] = useState("conv_console01");
+  const [conversationId, setConversationId] = useState("");
   const [agentId, setAgentId] = useState("agent_alpha01");
   const [scheduledGoalInput, setScheduledGoalInput] = useState("Review current platform task queue");
   const [scheduledGoalCron, setScheduledGoalCron] = useState("*/5 * * * *");
@@ -101,8 +107,27 @@ function App() {
 
       const canReadTenantUsers = profile.roles.includes("admin") || profile.roles.includes("tenant-admin") || profile.roles.includes("platform-admin");
       const tenantUsers = canReadTenantUsers && tenants.items[0] ? await client.listTenantUsers(tenants.items[0].tenant_id) : { items: [] as TenantUserRecord[] };
-      const task_id = selectedTaskId || tasks.items[0]?.task_id || "";
-      const taskEvents = task_id ? await client.listTaskEvents(task_id) : { items: [] as PlatformEvent[] };
+      const previewWorkbench = buildConversationWorkbenchModel({
+        ...initialDataset,
+        tasks: tasks.items,
+        taskEvents: [],
+        taskEventsByTaskId: {},
+      }, selectedConversationId || undefined, selectedTaskId || undefined);
+      const selectedConversation = previewWorkbench.selectedConversation;
+      const conversationTasks = selectedConversation === undefined
+        ? []
+        : tasks.items.filter((task) => task.conversation_id === selectedConversation.conversation_id);
+      const taskEventsByTaskIdEntries = await Promise.all(conversationTasks.map(async (task) => [task.task_id, (await client.listTaskEvents(task.task_id)).items] as const));
+      const taskEventsByTaskId = Object.fromEntries(taskEventsByTaskIdEntries) as Readonly<Record<string, readonly PlatformEvent[]>>;
+      const workbench = buildConversationWorkbenchModel({
+        ...initialDataset,
+        tasks: tasks.items,
+        taskEvents: [],
+        taskEventsByTaskId,
+      }, selectedConversationId || undefined, selectedTaskId || undefined);
+      const nextSelectedTaskId = workbench.selectedTask?.task_id ?? "";
+      const nextSelectedConversationId = workbench.selectedConversation?.conversation_id ?? "";
+      const selectedTaskEvents = nextSelectedTaskId ? taskEventsByTaskId[nextSelectedTaskId] ?? [] : [];
       const channels = profile.canReadChannels ? await client.listChannels({ tenant_id: profile.tenant_id }) : { items: [] as ChannelConfigRecord[] };
       const scheduledGoalsConfig = profile.canReadScheduledGoals ? await client.getScheduledGoalsConfig({ tenant_id: profile.tenant_id, trace_id: traceRef.current() }) : undefined;
       const scheduledGoals = profile.canReadScheduledGoals ? await client.listScheduledGoals({ tenant_id: profile.tenant_id }) : { items: [] as ScheduledGoalRecord[] };
@@ -126,7 +151,8 @@ function App() {
         approvals: approvals.items,
         skills: skills.items,
         capabilities: capabilities.items,
-        taskEvents: taskEvents.items,
+        taskEvents: selectedTaskEvents,
+        taskEventsByTaskId,
         plugins: plugins.items,
         skillEvaluationConfig,
         skillEvaluationRuns: skillEvaluationRuns.items,
@@ -136,14 +162,16 @@ function App() {
         budgetPolicy,
         budgetLedger: budgetLedger.items,
       }));
-      setSelectedTaskId(task_id);
+      setSelectedConversationId(nextSelectedConversationId);
+      setConversationId((current) => current ? current : nextSelectedConversationId);
+      setSelectedTaskId(nextSelectedTaskId);
       setMessage("Refresh complete");
     } catch (error) {
       setMessage(errorMessage(error));
     } finally {
       setLoading(false);
     }
-  }, [client, profile, selectedTaskId]);
+  }, [client, profile, selectedConversationId, selectedTaskId]);
 
   useEffect(() => {
     void refresh();
@@ -152,7 +180,12 @@ function App() {
   }, [refresh]);
 
   const dashboard = buildConsoleDashboardModel(profile, data);
-  const selectedTask = data.tasks.find((task) => task.task_id === selectedTaskId);
+  const workbench = useMemo(() => buildConversationWorkbenchModel(data, selectedConversationId || undefined, selectedTaskId || undefined), [data, selectedConversationId, selectedTaskId]);
+  const selectedTask = workbench.selectedTask;
+  const selectedConversation = workbench.selectedConversation;
+  const selectedTaskEvents = workbench.selectedTaskEvents;
+  const conversationTasks = workbench.transcript;
+  const workspaceButtons = visibleNavigation(profile);
 
   async function runAction(action: () => Promise<unknown>, success: string) {
     try {
@@ -166,30 +199,50 @@ function App() {
 
   return (
     <main className="console-shell">
-      <aside className="sidebar">
-        <div className="brand-block">
-          <span className="folio">P5-02</span>
-          <h1>NexusAgent Console</h1>
-          <p>Platform API control surface</p>
-        </div>
-        <label className="field-label" htmlFor="principal">Principal</label>
-        <select id="principal" value={profileKey} onChange={(event) => setProfileKey(event.target.value as PrincipalProfile["key"])}>
-          {DEV_PRINCIPALS.map((principal) => <option key={principal.key} value={principal.key}>{principal.label}</option>)}
-        </select>
-        <nav className="nav-list" aria-label="Console sections">
-          {visibleNavigation(profile).map((item, index) => (
-            <button key={item.id} type="button" className={activeView === item.id ? "active" : ""} onClick={() => setActiveView(item.id)}>
-              <span>{String(index + 1).padStart(2, "0")}</span>{item.label}
-            </button>
-          ))}
-        </nav>
+      <aside className="rail rail-left">
+        <section className="rail-section principal-gate">
+          <div className="brand-block">
+            <span className="folio">P5-02</span>
+            <h1>NexusAgent Console</h1>
+            <p>Conversation workbench and inspector</p>
+          </div>
+          <label className="field-label" htmlFor="principal">Principal</label>
+          <select id="principal" value={profileKey} onChange={(event) => setProfileKey(event.target.value as PrincipalProfile["key"])}>
+            {DEV_PRINCIPALS.map((principal) => <option key={principal.key} value={principal.key}>{principal.label}</option>)}
+          </select>
+          <div className="status-stack">
+            <span className="status-line">{profile.tenant_id}</span>
+            <span className="status-line">{data.health?.status ?? "not checked"}</span>
+          </div>
+        </section>
+        <section className="rail-section">
+          <div className="section-heading">
+            <h2>Conversations</h2>
+            <span>{workbench.conversations.length}</span>
+          </div>
+          <Table
+            title="Conversation index"
+            rows={workbench.conversations}
+            columns={["conversation_id", "task_count", "latest_task_state", "latest_updated_at", "latest_trace_id"]}
+            onRowClick={(row) => {
+              const conversation_id = String(row.conversation_id ?? "");
+              const latest_task_id = String(row.latest_task_id ?? "");
+              setSelectedConversationId(conversation_id);
+              setConversationId(conversation_id);
+              setSelectedTaskId(latest_task_id);
+            }}
+            selectedId={selectedConversation?.conversation_id}
+            idKey="conversation_id"
+          />
+        </section>
       </aside>
 
-      <section className="workspace">
-        <header className="topbar">
-          <div>
-            <p className="eyebrow">{profile.tenant_id}</p>
-            <h2>{profile.label}</h2>
+      <section className="workbench">
+        <header className="workbench-header">
+          <div className="workbench-heading">
+            <p className="eyebrow">{profile.label}</p>
+            <h2>{selectedConversation?.conversation_id ?? "No conversation selected"}</h2>
+            <p>{selectedConversation ? `${selectedConversation.task_count} tasks, ${selectedConversation.agent_ids.length} agents, ${selectedConversation.user_ids.length} users` : "The transcript projection is task-backed and platform-neutral."}</p>
           </div>
           <div className="topbar-actions">
             <span className="status-line">{data.health?.status ?? "not checked"}</span>
@@ -199,173 +252,334 @@ function App() {
 
         {message && <div className="message" role="status">{message}</div>}
 
-        {activeView === "overview" && <Overview health={data.health} dashboard={dashboard} />}
-        {activeView === "tenants" && <Tenants tenants={data.tenants} users={data.tenantUsers} agents={dashboard.agents} />}
-        {activeView === "channels" && profile.canReadChannels && (
-          <Channels
-            profile={profile}
-            channels={data.channels}
-            channelRows={dashboard.channelRows}
-            lastTest={data.channelTest}
-            channelName={channelName}
-            setChannelName={setChannelName}
-            displayName={channelDisplayName}
-            setDisplayName={setChannelDisplayName}
-            accountRef={channelAccountRef}
-            setAccountRef={setChannelAccountRef}
-            conversationRef={channelConversationRef}
-            setConversationRef={setChannelConversationRef}
-            credentialRef={channelCredentialRef}
-            setCredentialRef={setChannelCredentialRef}
-            onCreate={() => runAction(() => client.createChannel({ channel_name: channelName, display_name: channelDisplayName, account_ref: channelAccountRef, conversation_ref: channelConversationRef, credential_ref: channelCredentialRef || undefined, trace_id: traceRef.current() }), "Channel created")}
-            onStatus={(channel_config_id, status) => runAction(() => client.setChannelStatus(channel_config_id, { status, reason: "Console status change", trace_id: traceRef.current() }), "Channel status updated")}
-            onTest={(channel_config_id) => runAction(async () => {
-              const result = await client.testChannel(channel_config_id, { trace_id: traceRef.current() });
-              setData((previous) => ({ ...previous, channelTest: result }));
-            }, "Channel test complete")}
+        <section className="workbench-grid">
+          <ConversationTranscript
+            conversation={selectedConversation}
+            turns={conversationTasks}
+            onSelectTask={(task_id) => setSelectedTaskId(task_id)}
           />
-        )}
-        {activeView === "scheduled-goals" && profile.canReadScheduledGoals && (
-          <ScheduledGoals
+          <ConversationComposer
             profile={profile}
-            config={data.scheduledGoalsConfig}
-            goals={data.scheduledGoals}
-            goalRows={dashboard.scheduledGoalRows}
-            configRows={dashboard.scheduledGoalConfigRows}
-            runDueRows={dashboard.scheduledGoalRunDueRows}
-            goalInput={scheduledGoalInput}
-            setGoalInput={setScheduledGoalInput}
-            cron={scheduledGoalCron}
-            setCron={setScheduledGoalCron}
             conversationId={conversationId}
             setConversationId={setConversationId}
             agentId={agentId}
             setAgentId={setAgentId}
-            budgetUnits={scheduledGoalBudgetUnits}
-            setBudgetUnits={setScheduledGoalBudgetUnits}
-            onEnable={(enabled) => runAction(() => client.updateScheduledGoalsConfig({ enabled, trace_id: traceRef.current() }), "Scheduled goals config updated")}
-            onCreate={() => runAction(() => client.createScheduledGoal({ input: scheduledGoalInput, cron: scheduledGoalCron, conversation_id: conversationId, agent_id: agentId, trace_id: traceRef.current(), ...(scheduledGoalBudgetUnits ? { budget_units: Number(scheduledGoalBudgetUnits) } : {}) }), "Scheduled goal created")}
-            onPause={(scheduled_goal_id) => runAction(() => client.updateScheduledGoal(scheduled_goal_id, { status: "paused", trace_id: traceRef.current() }), "Scheduled goal paused")}
-            onResume={(scheduled_goal_id) => runAction(() => client.updateScheduledGoal(scheduled_goal_id, { status: "scheduled", trace_id: traceRef.current() }), "Scheduled goal resumed")}
-            onCancel={(scheduled_goal_id) => runAction(() => client.cancelScheduledGoal(scheduled_goal_id, { reason: "Console scheduled goal cancellation", trace_id: traceRef.current() }), "Scheduled goal cancelled")}
-            onRetry={(scheduled_goal_id) => runAction(() => client.retryScheduledGoal(scheduled_goal_id, { reason: "Console scheduled goal retry", trace_id: traceRef.current() }), "Scheduled goal retried")}
-            onRunDue={() => runAction(async () => {
-              const result = await client.runDueScheduledGoals({ trace_id: traceRef.current() });
-              setData((previous) => ({ ...previous, scheduledGoalsRunDue: result }));
-            }, "Scheduled goals due scan complete")}
-          />
-        )}
-        {activeView === "tasks" && (
-          <Tasks
-            profile={profile}
-            tasks={data.tasks}
-            events={data.taskEvents}
-            selectedTask={selectedTask}
-            selectedTaskId={selectedTaskId}
-            setSelectedTaskId={setSelectedTaskId}
             taskInput={taskInput}
             setTaskInput={setTaskInput}
-            conversationId={conversationId}
-            setConversationId={setConversationId}
-            agentId={agentId}
-            setAgentId={setAgentId}
             budgetUnits={taskBudgetUnits}
             setBudgetUnits={setTaskBudgetUnits}
-            onSubmit={() => runAction(() => client.submitTask({ input: taskInput, conversation_id: conversationId, agent_id: agentId, trace_id: traceRef.current(), ...(taskBudgetUnits ? { budget_units: Number(taskBudgetUnits) } : {}) }), "Task submitted")}
-            onCancel={(task_id) => runAction(() => client.cancelTask(task_id, { reason: "Cancelled from console", trace_id: traceRef.current() }), "Cancel accepted")}
-            onRetry={(task_id) => runAction(() => client.retryTask(task_id, { reason: "Retry from console", trace_id: traceRef.current() }), "Retry accepted")}
+            selectedConversation={selectedConversation}
+            onSubmit={() => runAction(async () => {
+              const task = await client.submitTask({
+                input: taskInput,
+                conversation_id: conversationId || selectedConversation?.conversation_id || "",
+                agent_id: agentId,
+                trace_id: traceRef.current(),
+                ...(taskBudgetUnits ? { budget_units: Number(taskBudgetUnits) } : {}),
+              });
+              setSelectedConversationId(task.conversation_id);
+              setConversationId(task.conversation_id);
+              setSelectedTaskId(task.task_id);
+            }, "Task submitted")}
           />
-        )}
-        {activeView === "approvals" && <Approvals approvals={data.approvals} onDecision={(approval_id, decision) => runAction(() => client.decideApproval(approval_id, { decision, reason: "Console decision", trace_id: traceRef.current() }), "Approval updated")} />}
-        {activeView === "skills" && <Skills skills={data.skills} capabilities={data.capabilities} />}
-        {activeView === "evaluations" && profile.canManageSkillEvaluation && (
-          <Evaluations
-            profile={profile}
-            config={data.skillEvaluationConfig}
-            latestRun={data.selectedSkillEvaluationRun}
-            runs={dashboard.skillEvaluationRows}
-            cases={dashboard.skillEvaluationCaseRows}
-            onEnable={(enabled) => runAction(() => client.updateSkillEvaluationConfig({ enabled, trace_id: traceRef.current() }), "Skill evaluation config updated")}
-            onRun={() => runAction(() => client.runSkillEvaluation({ trace_id: traceRef.current() }), "Skill evaluation run complete")}
-          />
-        )}
-        {activeView === "memory" && (
-          <MemoryPanel
-            profile={profile}
-            records={data.memory}
-            retentionRows={dashboard.memoryRetentionRows}
-            conflictRows={dashboard.memoryConflictRows}
-            conflicts={data.memoryConflicts ?? []}
-            retentionPolicy={data.memoryRetentionPolicy}
-            retentionSweep={data.memoryRetentionSweep}
-            memoryText={memoryText}
-            setMemoryText={setMemoryText}
-            memoryQuery={memoryQuery}
-            setMemoryQuery={setMemoryQuery}
-            onWrite={() => runAction(() => client.writeMemory({ text: memoryText, layer: "user", trace_id: traceRef.current() }), "Memory written")}
-            onSearch={() => runAction(async () => {
-              const result = await client.searchMemory({ query: memoryQuery, layer: "user", trace_id: traceRef.current(), user_id: profile.user_id });
-              setData((previous) => ({ ...previous, memory: result.items }));
-            }, "Memory search complete")}
-            onSweep={() => runAction(async () => {
-              const result = await client.sweepMemoryRetention({ trace_id: traceRef.current() });
-              setData((previous) => ({ ...previous, memoryRetentionSweep: result }));
-            }, "Memory retention sweep complete")}
-            onDelete={(memory_id) => runAction(async () => {
-              const result = await client.deleteMemory(memory_id, { reason: "Console memory retention delete", trace_id: traceRef.current() });
-              setData((previous) => ({ ...previous, memoryRetentionSweep: resultToSweep(result) }));
-            }, "Memory deleted")}
-            onConflictDecision={(conflict_id, decision) => runAction(() => client.decideMemoryConflict(conflict_id, { decision, reason: "Console memory conflict decision", trace_id: traceRef.current() }), "Memory conflict updated")}
-          />
-        )}
-        {activeView === "budget" && (
-          <BudgetPanel
-            budget={data.budget}
-            policyRows={dashboard.budgetPolicyRows}
-            ledgerRows={dashboard.budgetLedgerRows}
-            budgetUnits={budgetUnits}
-            setBudgetUnits={setBudgetUnits}
-            tenantLimit={tenantBudgetLimit}
-            setTenantLimit={setTenantBudgetLimit}
-            userLimit={userBudgetLimit}
-            setUserLimit={setUserBudgetLimit}
-            agentLimit={agentBudgetLimit}
-            setAgentLimit={setAgentBudgetLimit}
-            taskLimit={taskBudgetLimit}
-            setTaskLimit={setTaskBudgetLimit}
-            attemptLimit={attemptBudgetLimit}
-            setAttemptLimit={setAttemptBudgetLimit}
-            canManage={profile.canManageTokenBudget}
-            onCheck={() => runAction(async () => {
-              const result = await client.checkBudget({ requested_units: Number(budgetUnits), user_id: profile.user_id, trace_id: traceRef.current() });
-              setData((previous) => ({ ...previous, budget: result }));
-            }, "Budget checked")}
-            onPolicyUpdate={() => runAction(() => client.updateBudgetPolicy({
-              trace_id: traceRef.current(),
-              limits: {
-                tenant_units: Number(tenantBudgetLimit),
-                user_units: Number(userBudgetLimit),
-                agent_units: Number(agentBudgetLimit),
-                task_units: Number(taskBudgetLimit),
-                max_units_per_attempt: Number(attemptBudgetLimit),
-              },
-            }), "Budget policy updated")}
-          />
-        )}
-        {activeView === "plugins" && profile.canManagePlugins && (
-          <Plugins
-            plugins={dashboard.pluginRows}
-            pluginName={pluginName}
-            setPluginName={setPluginName}
-            pluginHash={pluginHash}
-            setPluginHash={setPluginHash}
-            onImport={() => runAction(() => client.importPlugin({ source_kind: "package_registry", source_ref: "registry:console.approved", display_name: pluginName, version: "1.0.0", expected_sha256: pluginHash, license: "MIT", notice_status: "recorded", risk_level: "medium", trace_id: traceRef.current() }), "Plugin imported")}
-            onAdmission={(plugin_id, decision) => runAction(() => client.decidePluginAdmission(plugin_id, { decision, reason: "Console admission decision", trace_id: traceRef.current() }), "Plugin admission updated")}
-          />
-        )}
+        </section>
       </section>
+
+      <aside className="rail rail-right">
+        <section className="rail-section">
+          <div className="section-heading">
+            <h2>Inspector</h2>
+            <span>{inspectorLabel(activeView)}</span>
+          </div>
+          <nav className="workspace-tabs" aria-label="Inspector workspaces">
+            {workspaceButtons.map((item) => (
+              <button key={item.id} type="button" className={activeView === item.id ? "active" : ""} onClick={() => setActiveView(item.id)}>
+                {item.label}
+              </button>
+            ))}
+          </nav>
+          <div className="inspector-summary">
+            <p className="eyebrow">{selectedTask?.task_id ?? "No task selected"}</p>
+            <h3>{selectedTask?.state ?? "No task selected"}</h3>
+            <p>{selectedTask ? selectedTask.input : "Select a conversation turn to inspect its task and event history."}</p>
+          </div>
+        </section>
+        <section className="rail-section inspector-body">
+          {activeView === "tasks" && (
+            <TaskInspector
+              tasks={conversationTasks}
+              selectedTask={selectedTask}
+              selectedTaskEvents={selectedTaskEvents}
+              selectedTaskId={selectedTaskId}
+              setSelectedTaskId={setSelectedTaskId}
+              onCancel={(task_id) => runAction(() => client.cancelTask(task_id, { reason: "Cancelled from console", trace_id: traceRef.current() }), "Cancel accepted")}
+              onRetry={(task_id) => runAction(() => client.retryTask(task_id, { reason: "Retry from console", trace_id: traceRef.current() }), "Retry accepted")}
+            />
+          )}
+          {activeView === "overview" && <Overview health={data.health} dashboard={dashboard} />}
+          {activeView === "tenants" && <Tenants tenants={data.tenants} users={data.tenantUsers} agents={dashboard.agents} />}
+          {activeView === "channels" && profile.canReadChannels && (
+            <Channels
+              profile={profile}
+              channels={data.channels}
+              channelRows={dashboard.channelRows}
+              lastTest={data.channelTest}
+              channelName={channelName}
+              setChannelName={setChannelName}
+              displayName={channelDisplayName}
+              setDisplayName={setChannelDisplayName}
+              accountRef={channelAccountRef}
+              setAccountRef={setChannelAccountRef}
+              conversationRef={channelConversationRef}
+              setConversationRef={setChannelConversationRef}
+              credentialRef={channelCredentialRef}
+              setCredentialRef={setChannelCredentialRef}
+              onCreate={() => runAction(() => client.createChannel({ channel_name: channelName, display_name: channelDisplayName, account_ref: channelAccountRef, conversation_ref: channelConversationRef, credential_ref: channelCredentialRef || undefined, trace_id: traceRef.current() }), "Channel created")}
+              onStatus={(channel_config_id, status) => runAction(() => client.setChannelStatus(channel_config_id, { status, reason: "Console status change", trace_id: traceRef.current() }), "Channel status updated")}
+              onTest={(channel_config_id) => runAction(async () => {
+                const result = await client.testChannel(channel_config_id, { trace_id: traceRef.current() });
+                setData((previous) => ({ ...previous, channelTest: result }));
+              }, "Channel test complete")}
+            />
+          )}
+          {activeView === "scheduled-goals" && profile.canReadScheduledGoals && (
+            <ScheduledGoals
+              profile={profile}
+              config={data.scheduledGoalsConfig}
+              goals={data.scheduledGoals}
+              goalRows={dashboard.scheduledGoalRows}
+              configRows={dashboard.scheduledGoalConfigRows}
+              runDueRows={dashboard.scheduledGoalRunDueRows}
+              goalInput={scheduledGoalInput}
+              setGoalInput={setScheduledGoalInput}
+              cron={scheduledGoalCron}
+              setCron={setScheduledGoalCron}
+              conversationId={conversationId || selectedConversation?.conversation_id || ""}
+              setConversationId={setConversationId}
+              agentId={agentId}
+              setAgentId={setAgentId}
+              budgetUnits={scheduledGoalBudgetUnits}
+              setBudgetUnits={setScheduledGoalBudgetUnits}
+              onEnable={(enabled) => runAction(() => client.updateScheduledGoalsConfig({ enabled, trace_id: traceRef.current() }), "Scheduled goals config updated")}
+              onCreate={() => runAction(() => client.createScheduledGoal({ input: scheduledGoalInput, cron: scheduledGoalCron, conversation_id: conversationId || selectedConversation?.conversation_id || "", agent_id: agentId, trace_id: traceRef.current(), ...(scheduledGoalBudgetUnits ? { budget_units: Number(scheduledGoalBudgetUnits) } : {}) }), "Scheduled goal created")}
+              onPause={(scheduled_goal_id) => runAction(() => client.updateScheduledGoal(scheduled_goal_id, { status: "paused", trace_id: traceRef.current() }), "Scheduled goal paused")}
+              onResume={(scheduled_goal_id) => runAction(() => client.updateScheduledGoal(scheduled_goal_id, { status: "scheduled", trace_id: traceRef.current() }), "Scheduled goal resumed")}
+              onCancel={(scheduled_goal_id) => runAction(() => client.cancelScheduledGoal(scheduled_goal_id, { reason: "Console scheduled goal cancellation", trace_id: traceRef.current() }), "Scheduled goal cancelled")}
+              onRetry={(scheduled_goal_id) => runAction(() => client.retryScheduledGoal(scheduled_goal_id, { reason: "Console scheduled goal retry", trace_id: traceRef.current() }), "Scheduled goal retried")}
+              onRunDue={() => runAction(async () => {
+                const result = await client.runDueScheduledGoals({ trace_id: traceRef.current() });
+                setData((previous) => ({ ...previous, scheduledGoalsRunDue: result }));
+              }, "Scheduled goals due scan complete")}
+            />
+          )}
+          {activeView === "approvals" && <Approvals approvals={data.approvals} onDecision={(approval_id, decision) => runAction(() => client.decideApproval(approval_id, { decision, reason: "Console decision", trace_id: traceRef.current() }), "Approval updated")} />}
+          {activeView === "skills" && <Skills skills={data.skills} capabilities={data.capabilities} />}
+          {activeView === "evaluations" && profile.canManageSkillEvaluation && (
+            <Evaluations
+              profile={profile}
+              config={data.skillEvaluationConfig}
+              latestRun={data.selectedSkillEvaluationRun}
+              runs={dashboard.skillEvaluationRows}
+              cases={dashboard.skillEvaluationCaseRows}
+              onEnable={(enabled) => runAction(() => client.updateSkillEvaluationConfig({ enabled, trace_id: traceRef.current() }), "Skill evaluation config updated")}
+              onRun={() => runAction(() => client.runSkillEvaluation({ trace_id: traceRef.current() }), "Skill evaluation run complete")}
+            />
+          )}
+          {activeView === "memory" && (
+            <MemoryPanel
+              profile={profile}
+              records={data.memory}
+              retentionRows={dashboard.memoryRetentionRows}
+              conflictRows={dashboard.memoryConflictRows}
+              conflicts={data.memoryConflicts ?? []}
+              retentionPolicy={data.memoryRetentionPolicy}
+              retentionSweep={data.memoryRetentionSweep}
+              memoryText={memoryText}
+              setMemoryText={setMemoryText}
+              memoryQuery={memoryQuery}
+              setMemoryQuery={setMemoryQuery}
+              onWrite={() => runAction(() => client.writeMemory({ text: memoryText, layer: "user", trace_id: traceRef.current() }), "Memory written")}
+              onSearch={() => runAction(async () => {
+                const result = await client.searchMemory({ query: memoryQuery, layer: "user", trace_id: traceRef.current(), user_id: profile.user_id });
+                setData((previous) => ({ ...previous, memory: result.items }));
+              }, "Memory search complete")}
+              onSweep={() => runAction(async () => {
+                const result = await client.sweepMemoryRetention({ trace_id: traceRef.current() });
+                setData((previous) => ({ ...previous, memoryRetentionSweep: result }));
+              }, "Memory retention sweep complete")}
+              onDelete={(memory_id) => runAction(async () => {
+                const result = await client.deleteMemory(memory_id, { reason: "Console memory retention delete", trace_id: traceRef.current() });
+                setData((previous) => ({ ...previous, memoryRetentionSweep: resultToSweep(result) }));
+              }, "Memory deleted")}
+              onConflictDecision={(conflict_id, decision) => runAction(() => client.decideMemoryConflict(conflict_id, { decision, reason: "Console memory conflict decision", trace_id: traceRef.current() }), "Memory conflict updated")}
+            />
+          )}
+          {activeView === "budget" && (
+            <BudgetPanel
+              budget={data.budget}
+              policyRows={dashboard.budgetPolicyRows}
+              ledgerRows={dashboard.budgetLedgerRows}
+              budgetUnits={budgetUnits}
+              setBudgetUnits={setBudgetUnits}
+              tenantLimit={tenantBudgetLimit}
+              setTenantLimit={setTenantBudgetLimit}
+              userLimit={userBudgetLimit}
+              setUserLimit={setUserBudgetLimit}
+              agentLimit={agentBudgetLimit}
+              setAgentLimit={setAgentBudgetLimit}
+              taskLimit={taskBudgetLimit}
+              setTaskLimit={setTaskBudgetLimit}
+              attemptLimit={attemptBudgetLimit}
+              setAttemptLimit={setAttemptBudgetLimit}
+              canManage={profile.canManageTokenBudget}
+              onCheck={() => runAction(async () => {
+                const result = await client.checkBudget({ requested_units: Number(budgetUnits), user_id: profile.user_id, trace_id: traceRef.current() });
+                setData((previous) => ({ ...previous, budget: result }));
+              }, "Budget checked")}
+              onPolicyUpdate={() => runAction(() => client.updateBudgetPolicy({
+                trace_id: traceRef.current(),
+                limits: {
+                  tenant_units: Number(tenantBudgetLimit),
+                  user_units: Number(userBudgetLimit),
+                  agent_units: Number(agentBudgetLimit),
+                  task_units: Number(taskBudgetLimit),
+                  max_units_per_attempt: Number(attemptBudgetLimit),
+                },
+              }), "Budget policy updated")}
+            />
+          )}
+          {activeView === "plugins" && profile.canManagePlugins && (
+            <Plugins
+              plugins={dashboard.pluginRows}
+              pluginName={pluginName}
+              setPluginName={setPluginName}
+              pluginHash={pluginHash}
+              setPluginHash={setPluginHash}
+              onImport={() => runAction(() => client.importPlugin({ source_kind: "package_registry", source_ref: "registry:console.approved", display_name: pluginName, version: "1.0.0", expected_sha256: pluginHash, license: "MIT", notice_status: "recorded", risk_level: "medium", trace_id: traceRef.current() }), "Plugin imported")}
+              onAdmission={(plugin_id, decision) => runAction(() => client.decidePluginAdmission(plugin_id, { decision, reason: "Console admission decision", trace_id: traceRef.current() }), "Plugin admission updated")}
+            />
+          )}
+        </section>
+      </aside>
     </main>
   );
+}
+
+function ConversationTranscript(props: { conversation?: ConversationSummary; turns: readonly ConversationTurn[]; onSelectTask: (task_id: string) => void }) {
+  return (
+    <section className="conversation-stack">
+      <div className="section-heading">
+        <h3>Transcript</h3>
+        <span>{props.conversation ? `${props.turns.length} turns` : "No conversation selected"}</span>
+      </div>
+      {props.conversation === undefined ? (
+        <EmptyState text="Select a conversation from the left rail" />
+      ) : props.turns.length === 0 ? (
+        <EmptyState text="No tasks in this conversation" />
+      ) : (
+        <div className="transcript-list">
+          {props.turns.map((turn) => (
+            <button key={turn.task_id} type="button" className="turn-card" onClick={() => props.onSelectTask(turn.task_id)}>
+              <div className="turn-card-head">
+                <strong>{turn.task_id}</strong>
+                <span>{turn.state}</span>
+              </div>
+              <p className="turn-input">{turn.input}</p>
+              {turn.summary && <p className="turn-summary">{turn.summary}</p>}
+              <div className="turn-meta">
+                <span>{turn.agent_id}</span>
+                <span>{turn.event_count} events</span>
+                <span>{turn.last_event_type ?? "no events"}</span>
+                <span>{turn.updated_at}</span>
+              </div>
+            </button>
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
+
+function ConversationComposer(props: {
+  profile: PrincipalProfile;
+  conversationId: string;
+  setConversationId: (value: string) => void;
+  agentId: string;
+  setAgentId: (value: string) => void;
+  taskInput: string;
+  setTaskInput: (value: string) => void;
+  budgetUnits: string;
+  setBudgetUnits: (value: string) => void;
+  selectedConversation?: ConversationSummary;
+  onSubmit: () => void;
+}) {
+  const canSubmit = actionEnabled(props.profile, "submit_task") && props.taskInput.trim().length > 0 && props.conversationId.trim().length > 0 && props.agentId.trim().length > 0;
+  return (
+    <section className="composer-stack">
+      <div className="section-heading">
+        <h3>Composer</h3>
+        <span>{props.conversationId || props.selectedConversation?.conversation_id || "Draft"}</span>
+      </div>
+      <form className="composer-form" onSubmit={(event) => { event.preventDefault(); props.onSubmit(); }}>
+        <label>Conversation ID<input value={props.conversationId} onChange={(event) => props.setConversationId(event.target.value)} disabled={!actionEnabled(props.profile, "submit_task")} placeholder="conv_console01" /></label>
+        <label>Agent ID<input value={props.agentId} onChange={(event) => props.setAgentId(event.target.value)} disabled={!actionEnabled(props.profile, "submit_task")} placeholder="agent_alpha01" /></label>
+        <label>Budget units<input type="number" min="1" value={props.budgetUnits} onChange={(event) => props.setBudgetUnits(event.target.value)} disabled={!actionEnabled(props.profile, "submit_task")} /></label>
+        <label className="span-2">Task input<textarea value={props.taskInput} onChange={(event) => props.setTaskInput(event.target.value)} disabled={!actionEnabled(props.profile, "submit_task")} rows={4} /></label>
+        <button type="submit" disabled={!canSubmit}>Send task</button>
+      </form>
+    </section>
+  );
+}
+
+function TaskInspector(props: {
+  tasks: readonly ConversationTurn[];
+  selectedTask?: ConversationTurn;
+  selectedTaskEvents: readonly ConversationEvent[];
+  selectedTaskId: string;
+  setSelectedTaskId: (value: string) => void;
+  onCancel: (task_id: string) => void;
+  onRetry: (task_id: string) => void;
+}) {
+  return (
+    <section className="stack">
+      <Table
+        title="Conversation tasks"
+        rows={props.tasks}
+        columns={["task_id", "state", "agent_id", "event_count", "last_event_type", "updated_at", "trace_id"]}
+        onRowClick={(row) => props.setSelectedTaskId(String(row.task_id ?? ""))}
+        selectedId={props.selectedTaskId}
+        idKey="task_id"
+      />
+      {props.selectedTask ? (
+        <>
+          <Table
+            title="Selected task"
+            rows={[props.selectedTask]}
+            columns={["task_id", "conversation_id", "state", "user_id", "agent_id", "attempt_id", "execution_id", "input", "summary", "trace_id"]}
+          />
+          <div className="button-row">
+            <button type="button" onClick={() => props.onCancel(props.selectedTask!.task_id)}>Cancel selected task</button>
+            <button type="button" onClick={() => props.onRetry(props.selectedTask!.task_id)}>Retry selected task</button>
+          </div>
+        </>
+      ) : <EmptyState text="No task selected" />}
+      <Table title="Task events" rows={props.selectedTaskEvents} columns={["event_id", "event_type", "task_id", "attempt_id", "execution_id", "trace_id", "occurred_at"]} />
+    </section>
+  );
+}
+
+function inspectorLabel(view: ConsoleViewId): string {
+  if (view === "overview") return "Overview";
+  if (view === "tenants") return "Tenants";
+  if (view === "channels") return "Channels";
+  if (view === "scheduled-goals") return "Scheduled goals";
+  if (view === "tasks") return "Tasks";
+  if (view === "approvals") return "Approvals";
+  if (view === "skills") return "Skills";
+  if (view === "evaluations") return "Evaluations";
+  if (view === "memory") return "Memory";
+  if (view === "budget") return "Budget";
+  return "Plugins";
 }
 
 function Overview({ health, dashboard }: { health?: HealthStatus; dashboard: ReturnType<typeof buildConsoleDashboardModel> }) {
