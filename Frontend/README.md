@@ -59,6 +59,9 @@ controllers.
 
 ## Features
 
+Repository-level layout and cross-project guidance live in
+[../docs/README.md](../docs/README.md).
+
 ### AI Chat
 
 - Real-time chat streaming over Socket.IO `/chat-run`; Studio dispatches each run to Hermes, Ekko, Claude Code, Codex, or Pi through runtime adapters

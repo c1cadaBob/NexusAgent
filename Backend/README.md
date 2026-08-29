@@ -162,6 +162,9 @@ For the full command lists, see the [CLI guide](https://hermes-agent.nousresearc
 
 ## Documentation
 
+Repository-level layout and cross-project guidance live in
+[../docs/README.md](../docs/README.md).
+
 All documentation lives at **[hermes-agent.nousresearch.com/docs](https://hermes-agent.nousresearch.com/docs/)**:
 
 | Section                                                                                             | What's Covered                                             |
