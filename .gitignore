@@ -1,0 +1,6 @@
+# Generated dashboard build outputs
+Backend/plugins/*/dashboard/dist/
+Frontend/packages/desktop/build/
+
+# Desktop runtime scratch tree accidentally emitted under the repo checkout
+Backend/apps/desktop/'*
