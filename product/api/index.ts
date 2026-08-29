@@ -16,7 +16,7 @@ import {
   type TokenBudgetLimits,
 } from "../../platform/coordinator/index.ts";
 import { LocalCredentialCenter } from "../../platform/credentials/index.ts";
-import { InMemoryEventBus } from "../../platform/event-bus/index.ts";
+import { InMemoryEventBus, type EventBus } from "../../platform/event-bus/index.ts";
 import { LocalMemoryGateway, MemoryGatewayError, type MemoryLayer } from "../../platform/memory-gateway/index.ts";
 import { LocalObservability } from "../../platform/observability/index.ts";
 import { LocalPluginGovernance, PluginGovernanceError } from "../../platform/plugin-governance/index.ts";
@@ -26,6 +26,15 @@ import { LocalRbacPolicy, PLATFORM_PERMISSIONS, type PlatformPermission } from "
 import { LocalSkillEvaluation } from "../../platform/skill-evaluation/index.ts";
 import { assertPlatformId, type TaskState } from "../../platform/task-state/index.ts";
 import { LocalTenantRegistry } from "../../platform/tenancy/index.ts";
+import {
+  createDistributedPlatformRuntime,
+  type DistributedAuditLog,
+  type DistributedCredentialCenter,
+  type DistributedMemoryGateway,
+  type DistributedObservability,
+  type DistributedPlatformRuntime,
+  type InternalRuntimeOptions,
+} from "../../platform/internal-http/index.ts";
 
 export const PLATFORM_API_SCHEMA_VERSION = "nexus.platform_api.p5.v1";
 
@@ -82,6 +91,8 @@ interface Principal {
 
 export interface PlatformApiOptions {
   clock?: PlatformClock;
+  runtime?: "in_process" | "distributed";
+  internal?: InternalRuntimeOptions;
 }
 
 export class PlatformApiError extends Error {
@@ -105,15 +116,15 @@ export class PlatformApiError extends Error {
 
 export class PlatformApiApp {
   readonly clock: PlatformClock;
-  readonly eventBus = new InMemoryEventBus();
+  readonly eventBus: EventBus;
   readonly policyGate = new PolicyGate();
   readonly coordinator: Coordinator;
   readonly tenancy = new LocalTenantRegistry();
   readonly rbac = new LocalRbacPolicy();
-  readonly memory: LocalMemoryGateway;
-  readonly credentials: LocalCredentialCenter;
-  readonly audit: LocalAuditLog;
-  readonly observability: LocalObservability;
+  readonly memory: LocalMemoryGateway | DistributedMemoryGateway;
+  readonly credentials: LocalCredentialCenter | DistributedCredentialCenter;
+  readonly audit: LocalAuditLog | DistributedAuditLog;
+  readonly observability: LocalObservability | DistributedObservability;
   readonly tokenBudget: LocalTokenBudget;
   readonly scheduledGoals: LocalScheduledGoals;
   readonly pluginGovernance = new LocalPluginGovernance({ tenant_id: "tenant_alpha01", trace_id: "trace_plugin01" });
@@ -128,7 +139,11 @@ export class PlatformApiApp {
 
   constructor(options: PlatformApiOptions = {}) {
     this.clock = options.clock ?? new SystemClock();
-    this.observability = new LocalObservability({ clock: this.clock, service: "nexusagent-platform-api", version: "p5-local" });
+    const distributed: DistributedPlatformRuntime | undefined = options.runtime === "distributed"
+      ? createDistributedPlatformRuntime(options.internal)
+      : undefined;
+    this.eventBus = distributed?.eventBus ?? new InMemoryEventBus();
+    this.observability = distributed?.observability ?? new LocalObservability({ clock: this.clock, service: "nexusagent-platform-api", version: "p5-local" });
     this.tokenBudget = new LocalTokenBudget({ clock: this.clock, eventBus: this.eventBus, observability: this.observability });
     this.coordinator = new Coordinator({
       policyGate: this.policyGate,
@@ -136,11 +151,15 @@ export class PlatformApiApp {
       clock: this.clock,
       tokenBudget: { enabled: true, service: this.tokenBudget },
     });
-    this.memory = new LocalMemoryGateway({ clock: this.clock, eventBus: this.eventBus, observability: this.observability });
-    this.credentials = new LocalCredentialCenter({ clock: this.clock, eventBus: this.eventBus });
-    this.audit = new LocalAuditLog({ clock: this.clock, eventBus: this.eventBus });
+    this.memory = distributed?.memory ?? new LocalMemoryGateway({ clock: this.clock, eventBus: this.eventBus, observability: this.observability });
+    this.credentials = distributed?.credentials ?? new LocalCredentialCenter({ clock: this.clock, eventBus: this.eventBus });
+    this.audit = distributed?.audit ?? new LocalAuditLog({ clock: this.clock, eventBus: this.eventBus });
+    const channelAdapter = distributed?.adapters.find((adapter) => adapter.kind === "channel");
+    for (const adapter of distributed?.adapters ?? []) {
+      if (adapter.kind !== "channel") this.coordinator.registerAdapter(adapter);
+    }
     this.scheduledGoals = new LocalScheduledGoals({ clock: this.clock, coordinator: this.coordinator, eventBus: this.eventBus, observability: this.observability });
-    this.channelManagement = new LocalChannelManagement({ clock: this.clock, coordinator: this.coordinator, eventBus: this.eventBus });
+    this.channelManagement = new LocalChannelManagement({ clock: this.clock, coordinator: this.coordinator, eventBus: this.eventBus, channelAdapter });
     this.skillEvaluation = new LocalSkillEvaluation({ clock: this.clock, catalog: this.pluginGovernance, observability: this.observability });
     this.#seedIdentity();
     this.#seedApprovals();
@@ -153,7 +172,7 @@ export class PlatformApiApp {
     let principal: Principal | undefined;
     try {
       if (method === "GET" && parsed.pathname === "/v1/health") {
-        const health = this.observability.health(["api.local", "contracts.p5"]);
+        const health = await Promise.resolve(this.observability.health(["api.local", "contracts.p5"]));
         return ok({
           status: health.status,
           checked_at: health.checked_at_utc,
@@ -192,15 +211,15 @@ export class PlatformApiApp {
       if (method === "GET" && parsed.pathname === "/v1/skill-evaluations/runs") return ok(paginate(this.#listSkillEvaluationRuns(parsed.query, principal), parsed.query));
       if (method === "GET" && /^\/v1\/skill-evaluations\/runs\/[^/]+$/.test(parsed.pathname)) return ok(this.#getSkillEvaluationRun(pathPart(parsed.pathname, 4), parsed.query, principal));
 
-      if (method === "POST" && parsed.pathname === "/v1/memory/search") return ok({ items: this.#searchMemory(asObject(body), principal) });
-      if (method === "POST" && parsed.pathname === "/v1/memory") return ok(this.#writeMemory(asObject(body), principal), 201);
-      if (method === "GET" && parsed.pathname === "/v1/memory/retention") return ok(this.#getMemoryRetention(parsed.query, principal));
-      if (method === "PATCH" && parsed.pathname === "/v1/memory/retention") return ok(this.#updateMemoryRetention(asObject(body), principal));
-      if (method === "POST" && parsed.pathname === "/v1/memory/retention/sweep") return ok(this.#sweepMemoryRetention(asObject(body), principal));
-      if (method === "GET" && parsed.pathname === "/v1/memory/conflicts") return ok(paginate(this.#listMemoryConflicts(parsed.query, principal), parsed.query));
-      if (method === "GET" && /^\/v1\/memory\/conflicts\/[^/]+$/.test(parsed.pathname)) return ok(this.#getMemoryConflict(pathPart(parsed.pathname, 4), parsed.query, principal));
-      if (method === "POST" && /^\/v1\/memory\/conflicts\/[^/]+\/decision$/.test(parsed.pathname)) return ok(this.#decideMemoryConflict(pathPart(parsed.pathname, 4), asObject(body), principal));
-      if (method === "POST" && /^\/v1\/memory\/[^/]+\/delete$/.test(parsed.pathname)) return ok(this.#deleteMemory(pathPart(parsed.pathname, 3), asObject(body), principal));
+      if (method === "POST" && parsed.pathname === "/v1/memory/search") return ok({ items: await this.#searchMemory(asObject(body), principal) });
+      if (method === "POST" && parsed.pathname === "/v1/memory") return ok(await this.#writeMemory(asObject(body), principal), 201);
+      if (method === "GET" && parsed.pathname === "/v1/memory/retention") return ok(await this.#getMemoryRetention(parsed.query, principal));
+      if (method === "PATCH" && parsed.pathname === "/v1/memory/retention") return ok(await this.#updateMemoryRetention(asObject(body), principal));
+      if (method === "POST" && parsed.pathname === "/v1/memory/retention/sweep") return ok(await this.#sweepMemoryRetention(asObject(body), principal));
+      if (method === "GET" && parsed.pathname === "/v1/memory/conflicts") return ok(paginate(await this.#listMemoryConflicts(parsed.query, principal), parsed.query));
+      if (method === "GET" && /^\/v1\/memory\/conflicts\/[^/]+$/.test(parsed.pathname)) return ok(await this.#getMemoryConflict(pathPart(parsed.pathname, 4), parsed.query, principal));
+      if (method === "POST" && /^\/v1\/memory\/conflicts\/[^/]+\/decision$/.test(parsed.pathname)) return ok(await this.#decideMemoryConflict(pathPart(parsed.pathname, 4), asObject(body), principal));
+      if (method === "POST" && /^\/v1\/memory\/[^/]+\/delete$/.test(parsed.pathname)) return ok(await this.#deleteMemory(pathPart(parsed.pathname, 3), asObject(body), principal));
 
       if (method === "GET" && parsed.pathname === "/v1/tenants") return ok(paginate(this.#listTenants(principal), parsed.query));
       if (method === "GET" && /^\/v1\/tenants\/[^/]+\/users$/.test(parsed.pathname)) return ok(paginate(this.#listTenantUsers(pathPart(parsed.pathname, 3), principal), parsed.query));
@@ -549,12 +568,12 @@ export class PlatformApiApp {
     return this.skillEvaluation.getRun(tenant_id, run_id) as unknown as JsonObject;
   }
 
-  #searchMemory(body: JsonObject, principal: Principal): readonly JsonObject[] {
+  async #searchMemory(body: JsonObject, principal: Principal): Promise<readonly JsonObject[]> {
     const tenant_id = requiredId("tenant_id", body.tenant_id);
     this.#assertTenant(principal, tenant_id);
     this.#require(principal, "memory:read");
     const trace_id = requiredId("trace_id", body.trace_id);
-    const records = this.memory.query({
+    const records = await Promise.resolve(this.memory.query({
       scope: {
         tenant_id,
         user_id: optionalId("user_id", body.user_id),
@@ -564,7 +583,7 @@ export class PlatformApiApp {
       layer: optionalMemoryLayer(body.layer),
       query: body.query === undefined ? undefined : requiredText(body.query, "query"),
       trace_id,
-    });
+    }));
     return records.map((record) => ({
       memory_id: record.memory_id,
       tenant_id: record.tenant_id,
@@ -575,12 +594,12 @@ export class PlatformApiApp {
     }));
   }
 
-  #writeMemory(body: JsonObject, principal: Principal): JsonObject {
+  async #writeMemory(body: JsonObject, principal: Principal): Promise<JsonObject> {
     const tenant_id = requiredId("tenant_id", body.tenant_id);
     this.#assertTenant(principal, tenant_id);
     this.#require(principal, "memory:write");
     const trace_id = requiredId("trace_id", body.trace_id);
-    const record = this.memory.write({
+    const record = await Promise.resolve(this.memory.write({
       scope: {
         tenant_id,
         user_id: optionalId("user_id", body.user_id),
@@ -592,7 +611,7 @@ export class PlatformApiApp {
       source: "platform-api",
       trace_id,
       ...(body.expected_version === undefined ? {} : { expected_version: nonNegativeInteger(body.expected_version, "expected_version") }),
-    });
+    }));
     return {
       memory_id: record.memory_id,
       tenant_id: record.tenant_id,
@@ -603,81 +622,81 @@ export class PlatformApiApp {
     };
   }
 
-  #getMemoryRetention(query: URLSearchParams, principal: Principal): JsonObject {
+  async #getMemoryRetention(query: URLSearchParams, principal: Principal): Promise<JsonObject> {
     const tenant_id = query.get("tenant_id") ?? principal.tenant_id;
     this.#assertTenant(principal, tenant_id);
     this.#require(principal, "tenant:manage");
     const trace_id = query.get("trace_id") ?? "trace_memory_retention01";
-    return this.memory.getRetentionPolicy(tenant_id, requiredId("trace_id", trace_id)) as unknown as JsonObject;
+    return await Promise.resolve(this.memory.getRetentionPolicy(tenant_id, requiredId("trace_id", trace_id))) as JsonObject;
   }
 
-  #updateMemoryRetention(body: JsonObject, principal: Principal): JsonObject {
+  async #updateMemoryRetention(body: JsonObject, principal: Principal): Promise<JsonObject> {
     const tenant_id = requiredId("tenant_id", body.tenant_id);
     this.#assertTenant(principal, tenant_id);
     this.#require(principal, "tenant:manage");
-    return this.memory.updateRetentionPolicy({
+    return await Promise.resolve(this.memory.updateRetentionPolicy({
       tenant_id,
       trace_id: requiredId("trace_id", body.trace_id),
       ...(body.enabled === undefined ? {} : { enabled: requiredBoolean(body.enabled, "enabled") }),
       ...(body.rules === undefined ? {} : { rules: requiredArray(body.rules, "rules") as never }),
       ...(body.max_sweep_records === undefined ? {} : { max_sweep_records: positiveInteger(body.max_sweep_records, "max_sweep_records") }),
-    }) as unknown as JsonObject;
+    })) as JsonObject;
   }
 
-  #sweepMemoryRetention(body: JsonObject, principal: Principal): JsonObject {
+  async #sweepMemoryRetention(body: JsonObject, principal: Principal): Promise<JsonObject> {
     const tenant_id = requiredId("tenant_id", body.tenant_id);
     this.#assertTenant(principal, tenant_id);
     this.#require(principal, "tenant:manage");
-    return this.memory.sweepRetention({
+    return await Promise.resolve(this.memory.sweepRetention({
       tenant_id,
       trace_id: requiredId("trace_id", body.trace_id),
       requested_by_user_id: principal.user_id,
       ...(body.max_records === undefined ? {} : { max_records: positiveInteger(body.max_records, "max_records") }),
-    }) as unknown as JsonObject;
+    })) as JsonObject;
   }
 
-  #listMemoryConflicts(query: URLSearchParams, principal: Principal): readonly JsonObject[] {
+  async #listMemoryConflicts(query: URLSearchParams, principal: Principal): Promise<readonly JsonObject[]> {
     const tenant_id = query.get("tenant_id") ?? principal.tenant_id;
     this.#assertTenant(principal, tenant_id);
     this.#require(principal, "tenant:manage");
     const trace_id = query.get("trace_id") ?? "trace_memory_conflict01";
     const status = query.get("status") ?? undefined;
-    return this.memory.listConflicts(tenant_id, requiredId("trace_id", trace_id), optionalMemoryConflictStatus(status)) as unknown as JsonObject[];
+    return await Promise.resolve(this.memory.listConflicts(tenant_id, requiredId("trace_id", trace_id), optionalMemoryConflictStatus(status))) as readonly JsonObject[];
   }
 
-  #getMemoryConflict(conflict_id: string, query: URLSearchParams, principal: Principal): JsonObject {
+  async #getMemoryConflict(conflict_id: string, query: URLSearchParams, principal: Principal): Promise<JsonObject> {
     const tenant_id = query.get("tenant_id") ?? principal.tenant_id;
     this.#assertTenant(principal, tenant_id);
     this.#require(principal, "tenant:manage");
-    return this.memory.getConflict(tenant_id, requiredConflictId(conflict_id)) as unknown as JsonObject;
+    return await Promise.resolve(this.memory.getConflict(tenant_id, requiredConflictId(conflict_id))) as JsonObject;
   }
 
-  #decideMemoryConflict(conflict_id: string, body: JsonObject, principal: Principal): JsonObject {
+  async #decideMemoryConflict(conflict_id: string, body: JsonObject, principal: Principal): Promise<JsonObject> {
     const tenant_id = requiredId("tenant_id", body.tenant_id);
     this.#assertTenant(principal, tenant_id);
     this.#require(principal, "tenant:manage");
-    return this.memory.decideConflict({
+    return await Promise.resolve(this.memory.decideConflict({
       tenant_id,
       conflict_id: requiredConflictId(conflict_id),
       decision: requiredMemoryConflictDecision(body.decision),
       reason: requiredText(body.reason, "reason"),
       trace_id: requiredId("trace_id", body.trace_id),
       decided_by_user_id: principal.user_id,
-    }) as unknown as JsonObject;
+    })) as JsonObject;
   }
 
-  #deleteMemory(memory_id: string, body: JsonObject, principal: Principal): JsonObject {
+  async #deleteMemory(memory_id: string, body: JsonObject, principal: Principal): Promise<JsonObject> {
     const tenant_id = requiredId("tenant_id", body.tenant_id);
     this.#assertTenant(principal, tenant_id);
     this.#require(principal, "tenant:manage");
-    return this.memory.softDeleteMemory({
+    return await Promise.resolve(this.memory.softDeleteMemory({
       tenant_id,
       memory_id,
       trace_id: requiredId("trace_id", body.trace_id),
       reason: requiredText(body.reason, "reason"),
       requested_by_user_id: principal.user_id,
       delete_kind: "manual",
-    }) as unknown as JsonObject;
+    })) as JsonObject;
   }
 
   #listTenants(principal: Principal): readonly JsonObject[] {

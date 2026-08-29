@@ -898,7 +898,7 @@ export function createTraceFactory(prefix = "trace_console"): () => string {
 
 function defaultBaseUrl(): string {
   const env = import.meta.env?.VITE_NEXUS_API_BASE_URL;
-  return typeof env === "string" && env.trim() ? env : "http://localhost:8080";
+  return typeof env === "string" && env.trim() ? env : "";
 }
 
 function trimTrailingSlash(value: string): string {

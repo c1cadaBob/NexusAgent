@@ -5,7 +5,8 @@ import {
 } from "../adapters/openclaw/index.ts";
 import type { PlatformClock } from "../clock/index.ts";
 import type { Coordinator } from "../coordinator/index.ts";
-import type { InMemoryEventBus } from "../event-bus/index.ts";
+import type { EventBus } from "../event-bus/index.ts";
+import type { CoordinatorAdapterPort } from "../coordinator/index.ts";
 import type { PolicyPrincipal } from "../policy-gate/index.ts";
 import { assertPlatformId } from "../task-state/index.ts";
 
@@ -20,7 +21,8 @@ export type ChannelTestStatus = "passed" | "failed";
 export interface ChannelManagementOptions {
   clock: PlatformClock;
   coordinator: Coordinator;
-  eventBus: InMemoryEventBus;
+  eventBus: EventBus;
+  channelAdapter?: CoordinatorAdapterPort;
 }
 
 export interface ChannelConfigCreateInput {
@@ -117,7 +119,7 @@ export class ChannelManagementError extends Error {
 export class LocalChannelManagement {
   readonly clock: PlatformClock;
   readonly coordinator: Coordinator;
-  readonly eventBus: InMemoryEventBus;
+  readonly eventBus: EventBus;
   readonly #configs = new Map<string, StoredChannelConfig>();
   #sequence = 0;
 
@@ -126,8 +128,10 @@ export class LocalChannelManagement {
     this.coordinator = options.coordinator;
     this.eventBus = options.eventBus;
     const registry = new OpenClawProviderRegistry();
-    const adapter = new OpenClawGatewayAdapter({ registry, eventBus: this.eventBus });
-    adapter.start();
+    const adapter = options.channelAdapter ?? new OpenClawGatewayAdapter({ registry, eventBus: this.eventBus });
+    if ("start" in adapter && typeof adapter.start === "function") {
+      void adapter.start();
+    }
     this.coordinator.registerAdapter(adapter);
   }
 

@@ -34,6 +34,7 @@
 - [P8-04 升级迁移手册](operations/upgrade-migration.md)：P8-04 upgrade/migration guide，覆盖 canary-first、backup/restore checkpoint、Kubernetes 主路径、Compose 私有路径和 public API 不漂移要求。
 - [P8-04 provider/plugin 回滚手册](operations/provider-plugin-rollback.md)：P8-04 provider/plugin rollback manual，覆盖 provider contract stability、plugin admission rollback、rollback target 和 tenant self-service 禁止。
 - [P8-04 交付就绪清单](operations/delivery-readiness.md)：P8-04 delivery readiness，覆盖 `nexus.delivery_readiness.p8.v1`、deploy/upgrade/rollback gates、legal notice closure 和验收命令。
+- [开发热更新与局域网访问](operations/development-hot-reload-lan.md)：真实 API、Web Console 和内部平台服务的 Compose LAN 覆盖层，覆盖 distributed runtime、Vite proxy、内部 HTTP 鉴权、局域网暴露边界、热更新和回滚命令。
 - [P8-04 第三方 NOTICE](legal/THIRD_PARTY_NOTICE.md)：P8-04 legal NOTICE package，覆盖 `nexus.legal_notice.p8.v1`、provider 根许可证、nested notice evidence、plugin license/hash/NOTICE/rollback 证据，并关闭 `OQ-LEGAL-001`。
 - [P8 阶段门禁报告](planning/phase-gates/P8-gate-review.md)：P8 门禁收口，确认 P8-01 至 P8-04 完成，列明已关闭 OQ、仍为 `自动确认` 的 release pause 项和完整验收命令。
 - [AI 排期提示词模板](planning/ai-schedule-prompt-template.md)
