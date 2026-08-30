@@ -14,6 +14,7 @@ import { logger } from '../../public/logging'
 import { config } from '../../public/config'
 import { shouldRejectUpgradeOrigin, writeForbiddenOrigin } from '../../middleware/security'
 import { killOwnedProcessTree } from '../../infrastructure/process-tree'
+import { isSetupComplete, writeSetupRequiredUpgrade } from '../../public/setup'
 
 export interface LanPeerFilesystemDependencies {
   getActiveProfileDir: () => string
@@ -945,6 +946,11 @@ export class LanPeerSocketManager {
 
         if (shouldRejectUpgradeOrigin(req, config.corsOrigins)) {
           writeForbiddenOrigin(socket)
+          return
+        }
+
+        if (!await isSetupComplete()) {
+          writeSetupRequiredUpgrade(socket)
           return
         }
 

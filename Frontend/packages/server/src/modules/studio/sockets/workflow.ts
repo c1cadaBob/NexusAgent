@@ -3,6 +3,7 @@ import { authenticateUserToken, isAuthEnabled, type AuthenticatedUser } from '..
 import { listUserProfiles } from '../repositories/users-store'
 import { getWorkflowRunWithEvidence, type WorkflowRunWithEvidenceRecord } from '../repositories/workflow-run-store'
 import { logger } from '../public/logging'
+import { createSetupRequiredError, isSetupComplete } from '../public/setup'
 import {
   getWorkflowManager,
   type WorkflowManager,
@@ -79,6 +80,11 @@ export class WorkflowSocketServer {
   }
 
   private async authMiddleware(socket: Socket, next: (err?: Error) => void): Promise<void> {
+    if (!await isSetupComplete()) {
+      next(createSetupRequiredError())
+      return
+    }
+
     if (!await isAuthEnabled()) {
       next()
       return

@@ -8,6 +8,7 @@ import { authenticateUserToken, type AuthenticatedUser } from '../public/auth'
 import { userCanAccessProfile } from '../public/users'
 import { config } from '../public/config'
 import { getChatRunServer } from '../public/chat-run'
+import { createSetupRequiredError, isSetupComplete } from '../public/setup'
 import { transcodeToPcmS16le } from '../services/voice/stt/audio-convert'
 import { decodeMcuImaAdpcm, encodeMcuImaAdpcm } from '../services/voice/mcu/adpcm'
 import { MCU_TTS_SAMPLE_RATE, mcuPromptText, mcuPromptUrl } from '../services/voice/mcu/prompts'
@@ -460,6 +461,11 @@ export class GlobalAgentServer {
     if (this.initialized) return
     this.initialized = true
     this.nsp.use(async (socket, next) => {
+      if (!await isSetupComplete()) {
+        next(createSetupRequiredError())
+        return
+      }
+
       const auth = socket.handshake.auth || {}
       const token = String(auth.token || '')
       if (token === this.authToken) {

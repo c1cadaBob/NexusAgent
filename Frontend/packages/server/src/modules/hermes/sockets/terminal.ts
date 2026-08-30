@@ -11,6 +11,7 @@ import { logger } from '../../studio/public/logging'
 import { config } from '../../studio/public/config'
 import { shouldRejectUpgradeOrigin, writeForbiddenOrigin } from '../../studio/public/security'
 import { killOwnedProcessTree } from '../../studio/public/process-tree'
+import { isSetupComplete, writeSetupRequiredUpgrade } from '../../studio/public/setup'
 
 let pty: any = null
 
@@ -165,6 +166,11 @@ export function setupTerminalWebSocket(httpServers: HttpServer | HttpServer[]) {
 
     if (shouldRejectUpgradeOrigin(req, config.corsOrigins)) {
       writeForbiddenOrigin(socket)
+      return
+    }
+
+    if (!await isSetupComplete()) {
+      writeSetupRequiredUpgrade(socket)
       return
     }
 

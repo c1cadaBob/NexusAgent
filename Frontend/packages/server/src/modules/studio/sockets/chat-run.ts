@@ -54,6 +54,7 @@ import { authenticateUserToken, isAuthEnabled, type AuthenticatedUser } from '..
 import { userCanAccessProfile } from '../repositories/users-store'
 import { observeRunChatPetEvent } from '../public/pet-events'
 import { observeChatRunWebhookEvent, type ChatRunWebhookAgent } from '../services/webhooks'
+import { createSetupRequiredError, isSetupComplete } from '../public/setup'
 
 type AgentBridgeBackgroundNotification = any
 type AgentBridgeBackgroundSession = any
@@ -262,6 +263,11 @@ export class ChatRunSocket {
   // --- Auth middleware ---
 
   private async authMiddleware(socket: Socket, next: (err?: Error) => void) {
+    if (!await isSetupComplete()) {
+      next(createSetupRequiredError())
+      return
+    }
+
     const token = socket.handshake.auth?.token as string | undefined
     if (!await isAuthEnabled()) {
       next()

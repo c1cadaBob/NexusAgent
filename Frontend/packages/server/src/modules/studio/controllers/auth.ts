@@ -3,7 +3,6 @@ import { checkPassword, recordPasswordFailure, recordPasswordSuccess, extractIp,
 import {
   DEFAULT_PASSWORD,
   DEFAULT_USERNAME,
-  bootstrapDefaultSuperAdmin,
   countActiveSuperAdmins,
   countUsers,
   createUser,
@@ -30,15 +29,19 @@ import { startOutboundRelayClient, stopOutboundRelayClient } from '../public/glo
 import { getLanEndpointKind } from '../services/network/lan-discovery'
 import { getPublicSystemInfo } from '../public/system-info'
 import { config } from '../public/config'
+import { getSetupStatus, setupRequiredResponseBody } from '../public/setup'
 
 /**
  * GET /api/auth/status
  * Check if username/password login is configured (public).
  */
 export async function authStatus(ctx: Context) {
+  const setup = await getSetupStatus()
   ctx.body = {
-    hasPasswordLogin: true,
+    hasPasswordLogin: setup.setupComplete && countUsers() > 0,
     hasUsers: countUsers() > 0,
+    requiresSetup: setup.requiresSetup,
+    setupComplete: setup.setupComplete,
   }
 }
 
@@ -169,6 +172,13 @@ async function authenticatePasswordUser(
   username: string,
   password: string,
 ): Promise<{ ok: true; ip: string; user: UserRecord } | { ok: false }> {
+  const setup = await getSetupStatus()
+  if (setup.requiresSetup) {
+    ctx.status = 428
+    ctx.body = setupRequiredResponseBody()
+    return { ok: false }
+  }
+
   const ip = extractIp(ctx)
   const result = checkPassword(ip)
   if (!result.allowed) {
@@ -177,12 +187,9 @@ async function authenticatePasswordUser(
     return { ok: false }
   }
 
-  const existingUserCount = countUsers()
-  const user = existingUserCount === 0
-    ? bootstrapDefaultSuperAdmin(username, password)
-    : findUserByUsername(username)
+  const user = findUserByUsername(username)
 
-  if (!user || user.status !== 'active' || (existingUserCount > 0 && !verifyPassword(password, user.password_hash))) {
+  if (!user || user.status !== 'active' || !verifyPassword(password, user.password_hash)) {
     recordPasswordFailure(ip)
     ctx.status = 401
     ctx.body = { error: 'Invalid username or password' }
@@ -508,8 +515,8 @@ export async function microcontrollerLogin(ctx: Context) {
  * Set up username/password (protected).
  */
 export async function setupPassword(ctx: Context) {
-  ctx.status = 400
-  ctx.body = { error: 'Password login is managed by user accounts' }
+  ctx.status = 410
+  ctx.body = { error: 'Use /api/setup/admin for first-install administrator setup' }
 }
 
 /**

@@ -4,12 +4,12 @@ import type { UserThemeSettings } from './theme'
 export interface AuthStatus {
   hasPasswordLogin: boolean
   hasUsers?: boolean
+  requiresSetup?: boolean
+  setupComplete?: boolean
 }
 
 export async function fetchAuthStatus(): Promise<AuthStatus> {
-  const res = await fetch('/api/auth/status')
-  if (!res.ok) throw new Error('Failed to fetch auth status')
-  return res.json()
+  return request<AuthStatus>('/api/auth/status')
 }
 
 export interface LoginResponse {
@@ -19,19 +19,11 @@ export interface LoginResponse {
 }
 
 export async function loginWithPassword(username: string, password: string): Promise<LoginResponse> {
-  const res = await fetch('/api/auth/login', {
+  return request<LoginResponse>('/api/auth/login', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ username, password }),
   })
-  if (!res.ok) {
-    const data = await res.json().catch(() => ({}))
-    const err: any = new Error(data.error || 'Login failed')
-    err.status = res.status
-    throw err
-  }
-  const data = await res.json()
-  return data as LoginResponse
 }
 
 export interface CurrentUser {

@@ -25,6 +25,7 @@ import { authenticateUserToken, isAuthEnabled, type AuthenticatedUser } from '..
 import { getUserAvatar } from '../public/users'
 import { config } from '../public/config'
 import { createSocketIoCorsOrigin, shouldRejectUpgradeOrigin } from '../public/security'
+import { createSetupRequiredError, isSetupComplete } from '../public/setup'
 import { paginateRecentGroupMessagesCanonical, sliceGroupMessagesCanonical, type GroupMessageCursorCutoff } from '../services/group-chat/group-message-ordering'
 import { GroupRoomSummaryService, type GroupRoomSummary } from '../services/group-chat/room-summary'
 import { isAgentMentioned, isAllAgentsMentioned, isReservedMentionName, resolveMentionTargets } from '../services/group-chat/mention-routing'
@@ -3837,6 +3838,11 @@ export class GroupChatServer {
     // ─── Auth ───────────────────────────────────────────────────
 
     private async authMiddleware(socket: Socket, next: (err?: Error) => void): Promise<void> {
+        if (!await isSetupComplete()) {
+            next(createSetupRequiredError())
+            return
+        }
+
         const auth = socket.handshake.auth as {
             source?: string
             agentSocketSecret?: string

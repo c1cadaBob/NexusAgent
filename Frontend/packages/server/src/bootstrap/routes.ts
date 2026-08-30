@@ -18,11 +18,13 @@ import {
   codexProxyRoutes,
   codingAgentRoutes,
 } from './coding-agents'
+import { requireSetupComplete } from '../modules/studio/public/setup'
 
 // Studio and agent route modules composed into one HTTP application.
 import { uploadRoutes } from '../modules/studio/routes/upload'
 import { appUploadRoutes } from '../modules/studio/routes/app-upload'
-import { authPublicRoutes, authProtectedRoutes } from '../modules/studio/routes/auth'
+import { authPublicRoutes, authProtectedRoutes, authSessionRoutes } from '../modules/studio/routes/auth'
+import { setupPublicRoutes, setupSessionRoutes } from '../modules/studio/routes/setup'
 import { mcuDeviceRoutes } from '../modules/studio/routes/mcu-devices'
 
 import { sessionRoutes } from '../modules/studio/routes/sessions'
@@ -80,6 +82,7 @@ export function registerRoutes(app: any, authMiddleware: Array<(ctx: Context, ne
   // --- Public routes (no auth required) ---
   app.use(healthRoutes.routes())
   app.use(authPublicRoutes.routes())
+  app.use(setupPublicRoutes.routes())
   app.use(devicePublicRoutes.routes())
   app.use(claudeCodeProxyRoutes.routes())
   app.use(codexProxyRoutes.routes())
@@ -88,6 +91,11 @@ export function registerRoutes(app: any, authMiddleware: Array<(ctx: Context, ne
   app.use(petdexPublicRoutes.routes())
   app.use(groupChatPublicRoutes.routes())
   app.use(chatWebhookPublicRoutes.routes())
+  app.use(setupSessionRoutes.routes())
+
+  app.use(requireSetupComplete)
+
+  app.use(authSessionRoutes.routes())
 
   // --- Auth middleware: all routes below require authentication ---
   authMiddleware.forEach((middleware) => app.use(middleware))

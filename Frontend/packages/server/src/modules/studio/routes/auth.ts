@@ -5,9 +5,12 @@ import { requireSuperAdmin } from '../middleware/auth'
 // Public routes (no auth required)
 export const authPublicRoutes = new Router()
 authPublicRoutes.get('/api/auth/status', ctrl.authStatus)
-authPublicRoutes.post('/api/auth/login', ctrl.login)
-authPublicRoutes.post('/api/auth/app-login', ctrl.appLogin)
-authPublicRoutes.post('/api/auth/mcu-login', ctrl.microcontrollerLogin)
+
+// Unauthenticated routes that are only reachable after setup completes.
+export const authSessionRoutes = new Router()
+authSessionRoutes.post('/api/auth/login', ctrl.login)
+authSessionRoutes.post('/api/auth/app-login', ctrl.appLogin)
+authSessionRoutes.post('/api/auth/mcu-login', ctrl.microcontrollerLogin)
 
 // Protected routes (auth required)
 export const authProtectedRoutes = new Router()

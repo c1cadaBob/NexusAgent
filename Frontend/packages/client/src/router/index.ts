@@ -2,6 +2,7 @@ import { createRouter, createWebHashHistory } from 'vue-router'
 import { hasApiKey, isStoredSuperAdmin } from '@/api/client'
 import { hasDesktopBrowserBridge } from '@/utils/desktop-bridge'
 import { resolveLoginRedirect } from '@/utils/login-redirect'
+import { useSetupStore } from '@/stores/hermes/setup'
 
 const router = createRouter({
   history: createWebHashHistory(),
@@ -16,6 +17,12 @@ const router = createRouter({
       path: '/',
       name: 'login',
       component: () => import('@/views/LoginView.vue'),
+      meta: { public: true },
+    },
+    {
+      path: '/setup',
+      name: 'setup',
+      component: () => import('@/views/SetupView.vue'),
       meta: { public: true },
     },
     {
@@ -303,6 +310,29 @@ function isDesktopShell(): boolean {
 
 router.beforeEach(async (to, _from, next) => {
   await ensureDesktopAuth()
+  const setupStore = useSetupStore()
+  const shouldRefreshSetup = !setupStore.status || !setupStore.setupComplete
+  try {
+    await setupStore.loadStatus(shouldRefreshSetup)
+  } catch {
+    // If setup status cannot be loaded, fall through and let the request
+    // layer surface the failure. The guard still blocks obvious business
+    // routes once a status snapshot exists.
+  }
+
+  if (!setupStore.setupComplete && to.name !== 'setup') {
+    next({ name: 'setup', query: { redirect: to.fullPath } })
+    return
+  }
+
+  if (setupStore.setupComplete && to.name === 'setup') {
+    if (hasApiKey()) {
+      next(resolveLoginRedirect(to.query.redirect))
+    } else {
+      next({ name: 'login', query: { redirect: to.query.redirect } })
+    }
+    return
+  }
 
   // Public pages don't need auth
   if (to.meta.public) {

@@ -6,6 +6,7 @@ import type { Server, Socket as ServerSocket } from 'socket.io'
 import { io, type Socket as ClientSocket } from 'socket.io-client'
 import { config } from '../../public/config'
 import { logger } from '../../public/logging'
+import { createSetupRequiredError, isSetupComplete } from '../../public/setup'
 import {
   createGroupPrimaryAgentBridge,
   respondToGroupEkkoClarification,
@@ -1167,6 +1168,11 @@ export class GroupAgentRelayServer {
 
   private async authenticate(socket: ServerSocket, next: (error?: Error) => void): Promise<void> {
     try {
+      if (!await isSetupComplete()) {
+        next(createSetupRequiredError())
+        return
+      }
+
       const auth = socket.handshake.auth as Record<string, unknown>
       if (Number(auth.protocolVersion) !== GROUP_AGENT_RELAY_PROTOCOL_VERSION) {
         next(relayError('Unsupported group Agent relay protocol', 'GROUP_AGENT_PROTOCOL_VERSION'))

@@ -63,6 +63,7 @@ import { configurePreferredHermesRuntime } from '../modules/hermes/services/runt
 import { configureRuntimeInstallCompletedHandler, getRuntimeVersionStatus } from '../modules/hermes/services/runtime/version-manager'
 import { isHermesAgentAvailable, updateAgentStatus } from '../modules/studio/public/agent-status-registry'
 import { scheduleWebUiRestart } from '../modules/studio/public/web-ui-restart'
+import { isSetupComplete, onSetupComplete } from '../modules/studio/public/setup'
 
 // Injected by esbuild at build time; fallback to reading package.json in dev mode
 declare const __APP_VERSION__: string
@@ -223,30 +224,54 @@ function skillInjectionDisabled(): boolean {
   return envFlagEnabled('HERMES_WEB_UI_DISABLE_SKILL_INJECTION')
 }
 
-async function startRuntimeServicesBeforeListen(hermesAvailable: boolean): Promise<void> {
-  if (!hermesAvailable) {
-    console.log('[bootstrap] Hermes Agent unavailable; skipping profile gateways and agent bridge')
+let setupDependentRuntimeStarted = false
+let setupDependentRuntimeListenerAttached = false
+let setupLanDiscoveryStarted = false
+
+async function startSetupDependentRuntimeServices(hermesAvailable: boolean): Promise<void> {
+  if (shutdownRequested || setupDependentRuntimeStarted) return
+
+  if (!await isSetupComplete()) {
+    if (!setupDependentRuntimeListenerAttached) {
+      setupDependentRuntimeListenerAttached = true
+      onSetupComplete(() => {
+        void startSetupDependentRuntimeServices(hermesAvailable)
+      })
+    }
     return
   }
-  if (gatewayAutostartDisabled()) {
-    console.log('[bootstrap] profile gateway check disabled by HERMES_WEB_UI_DISABLE_GATEWAY_AUTOSTART')
-  } else {
+
+  setupDependentRuntimeStarted = true
+  try {
+    startChatWebhookDispatcher()
+    console.log('[bootstrap] chat webhook dispatcher started')
+  } catch (err) {
+    logger.warn(err, '[bootstrap] failed to start chat webhook dispatcher')
+  }
+
+  try {
+    await startRuntimeServicesAfterListen(hermesAvailable)
+  } catch (err) {
+    logger.warn(err, '[bootstrap] failed to start setup-dependent runtime services')
+  }
+
+  if (!setupLanDiscoveryStarted) {
+    setupLanDiscoveryStarted = true
     try {
-      await ensureProfileGatewaysRunning()
-      console.log('[bootstrap] profile gateways checked')
+      startLanDiscovery()
+      additionalShutdownSteps.push({
+        name: 'LAN discovery responder',
+        close: stopLanDiscoveryResponder,
+      })
     } catch (err) {
-      logger.warn(err, '[bootstrap] failed to ensure profile gateways')
-      console.warn('[bootstrap] failed to ensure profile gateways:', err instanceof Error ? err.message : err)
+      logger.warn(err, '[bootstrap] failed to start LAN discovery')
     }
   }
 
-  if (shutdownRequested) return
   try {
-    agentBridgeManager = await startAgentBridgeManager()
-    console.log('[bootstrap] agent bridge started')
+    refreshConfiguredProviderModelCatalogsInBackground('setup-complete')
   } catch (err) {
-    logger.warn(err, '[bootstrap] agent bridge failed to start')
-    console.warn('[bootstrap] agent bridge failed to start:', err instanceof Error ? err.message : err)
+    logger.warn(err, '[bootstrap] failed to refresh provider model catalogs after setup')
   }
 }
 
@@ -393,16 +418,12 @@ export async function bootstrap() {
   console.log('[bootstrap] ekko-agent setup complete')
 
   agentBridgeManager = getAgentBridgeManager()
-  if (!isDesktopRuntime()) {
-    await startRuntimeServicesBeforeListen(hermesAgentAvailable)
-  }
   if (shutdownRequested) return
 
   const app = new Koa()
   // Initialize all web-ui SQLite tables
   const { initAllStores } = await import('../modules/studio/infrastructure/database/init')
   initAllStores()
-  startChatWebhookDispatcher()
   console.log('[bootstrap] all stores initialized')
 
   app.use(securityHeaders())
@@ -562,16 +583,7 @@ export async function bootstrap() {
   console.log(`Server: http://localhost:${config.port} (LAN: http://${localIp}:${config.port})`)
   console.log(`Log: ${config.appHome}/logs/server.log`)
   logger.info('Server: http://localhost:%d (LAN: http://%s:%d)', config.port, localIp, config.port)
-  startLanDiscovery()
-  additionalShutdownSteps.push({
-    name: 'LAN discovery responder',
-    close: stopLanDiscoveryResponder,
-  })
-  refreshConfiguredProviderModelCatalogsInBackground('bootstrap')
-
-  if (isDesktopRuntime()) {
-    await startRuntimeServicesAfterListen(hermesAgentAvailable)
-  }
+  await startSetupDependentRuntimeServices(hermesAgentAvailable)
   if (shutdownRequested) return
 
   // Restore group chat agents after server is ready.

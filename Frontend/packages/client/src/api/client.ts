@@ -140,6 +140,11 @@ function emitAuthNotice(kind: 'expired' | 'forbidden') {
   window.dispatchEvent(new CustomEvent('hermes-auth-notice', { detail: { kind } }))
 }
 
+function emitSetupNotice(kind: 'required' | 'expired' = 'required') {
+  if (typeof window === 'undefined') return
+  window.dispatchEvent(new CustomEvent('hermes-setup-notice', { detail: { kind } }))
+}
+
 function messageFromErrorValue(value: unknown): string {
   if (typeof value === 'string') return value
   if (value == null) return ''
@@ -224,6 +229,20 @@ export async function request<T>(path: string, options: RequestInit = {}): Promi
 
   if (!res.ok) {
     const text = await res.text().catch(() => '')
+    if (res.status === 428 && isLocalBff) {
+      const setupCode = responseErrorCode(text)
+      if (setupCode === 'setup_required') {
+        clearAuthSessionState()
+        emitSetupNotice('required')
+        if (router.currentRoute.value.name !== 'setup') {
+          router.replace({ name: 'setup' })
+        }
+        throw Object.assign(
+          new Error('Setup required'),
+          { status: 428, code: 'setup_required' },
+        )
+      }
+    }
     if (res.status === 403 && isLocalBff) {
       if (text.includes('User is disabled or does not exist')) {
         clearAuthSessionState()

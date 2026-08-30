@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import { ref, onMounted } from "vue";
+import { computed, ref, onMounted } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useI18n } from "vue-i18n";
 import { setApiKey, clearApiKey, hasApiKey } from "@/api/client";
-import { fetchAuthStatus, loginWithPassword } from "@/api/studio/auth";
+import { fetchAuthStatus, loginWithPassword, type AuthStatus } from "@/api/studio/auth";
 import { isDesktopShell } from "@/utils/desktop-bridge";
 import { resolveLoginRedirect } from "@/utils/login-redirect";
 import { useTheme } from "@/composables/useTheme";
@@ -18,19 +18,30 @@ const password = ref("");
 const loading = ref(false);
 const errorMsg = ref("");
 const showLockResetHint = ref(false);
+const authStatus = ref<AuthStatus | null>(null);
 const desktopShell = isDesktopShell();
+const redirectTarget = computed(() => resolveLoginRedirect(route.query.redirect));
+const showDefaultHint = computed(() => authStatus.value?.setupComplete === true);
 
 if (desktopShell) {
   // Desktop login is a recovery path. Drop stale JWTs before any background
   // request can reuse them and show an unrelated expiry notice.
   clearApiKey();
 } else if (hasApiKey()) {
-  router.replace(resolveLoginRedirect(route.query.redirect));
+  router.replace(redirectTarget.value);
 }
 
 onMounted(async () => {
   try {
-    await fetchAuthStatus();
+    const status = await fetchAuthStatus();
+    authStatus.value = status;
+    if (status.requiresSetup || status.setupComplete === false) {
+      clearApiKey();
+      await router.replace({
+        name: "setup",
+        query: { redirect: redirectTarget.value },
+      });
+    }
   } catch {
     // Login remains available; the submit request will surface connection errors.
   }
@@ -54,11 +65,19 @@ async function handlePasswordLogin() {
     const session = await loginWithPassword(username.value.trim(), password.value);
     setApiKey(session.token);
     activateUserTheme(session.userId, session.theme);
-    router.replace(resolveLoginRedirect(route.query.redirect));
+    router.replace(redirectTarget.value);
   } catch (err: any) {
+    if (err.status === 428 || err.code === "setup_required") {
+      return;
+    }
     if (err.status === 429 || err.status === 503) {
       errorMsg.value = t("login.tooManyAttempts");
       showLockResetHint.value = true;
+    } else if (err.status === 401) {
+      errorMsg.value =
+        typeof err.message === "string" && err.message.includes(": ")
+          ? err.message.split(": ").slice(1).join(": ") || t("login.invalidCredentials")
+          : err.message || t("login.invalidCredentials");
     } else {
       errorMsg.value = err.message || t("login.invalidCredentials");
     }
@@ -76,7 +95,7 @@ async function handlePasswordLogin() {
       </div>
       <h1 class="login-title">{{ t("login.title") }}</h1>
       <p class="login-desc">{{ t("login.description") }}</p>
-      <p class="login-default-hint">{{ t("login.defaultCredentialsHint") }}</p>
+      <p v-if="showDefaultHint" class="login-default-hint">{{ t("login.defaultCredentialsHint") }}</p>
 
       <form class="login-form" @submit.prevent="handleLogin">
         <input

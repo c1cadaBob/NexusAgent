@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { mount } from '@vue/test-utils'
+import { flushPromises, mount } from '@vue/test-utils'
 
 const mockReplace = vi.hoisted(() => vi.fn())
 const mockFetchAuthStatus = vi.hoisted(() => vi.fn())
@@ -55,7 +55,12 @@ describe('LoginView password login', () => {
     mockIsDesktopShell.mockReturnValue(false)
     mockRoute.query = {}
     mockHasApiKey.mockReturnValue(false)
-    mockFetchAuthStatus.mockResolvedValue({ hasPasswordLogin: true, username: 'admin' })
+    mockFetchAuthStatus.mockResolvedValue({
+      hasPasswordLogin: true,
+      hasUsers: true,
+      requiresSetup: false,
+      setupComplete: true,
+    })
   })
 
   it('keeps the web login redirect when a token already exists', () => {
@@ -113,14 +118,35 @@ describe('LoginView password login', () => {
     expect(mockReplace).toHaveBeenCalledWith(redirect)
   })
 
-  it('shows the default login hint', () => {
+  it('redirects to setup when the server requires first-install setup', async () => {
+    mockFetchAuthStatus.mockResolvedValue({
+      hasPasswordLogin: false,
+      hasUsers: false,
+      requiresSetup: true,
+      setupComplete: false,
+    })
+
+    mount(LoginView)
+    await flushPromises()
+
+    expect(mockClearApiKey).toHaveBeenCalledOnce()
+    expect(mockReplace).toHaveBeenCalledWith({
+      name: 'setup',
+      query: { redirect: '/hermes/chat' },
+    })
+  })
+
+  it('shows the default login hint after setup completes', async () => {
     const wrapper = mount(LoginView)
+    await flushPromises()
 
     expect(wrapper.text()).toContain('login.defaultCredentialsHint')
   })
 
   it('shows an error when password login fails', async () => {
-    mockLoginWithPassword.mockRejectedValue(new Error('Invalid username or password'))
+    const err: any = new Error('API Error 401: Invalid username or password')
+    err.status = 401
+    mockLoginWithPassword.mockRejectedValue(err)
     const wrapper = mount(LoginView)
 
     const inputs = wrapper.findAll('input.login-input')

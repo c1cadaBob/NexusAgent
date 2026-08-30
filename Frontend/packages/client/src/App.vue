@@ -80,6 +80,7 @@ const themeOverrides = computed(() =>
 );
 const naiveTheme = computed(() => (isDark.value ? darkTheme : null));
 
+const isSetupPage = computed(() => route.name === "setup");
 const isLoginPage = computed(() => route.name === "login");
 const isStandaloneChatPage = computed(
   () => route.meta?.standaloneChat === true,
@@ -154,6 +155,7 @@ const desktopTitleBarLeft = computed(() => {
 const isDesktopPetRoute = computed(() => route.name === "desktop.pet");
 const showWebPet = computed(
   () =>
+    !isSetupPage.value &&
     !isLoginPage.value &&
     !isStandaloneChatPage.value &&
     !isDesktopShell.value &&
@@ -174,9 +176,9 @@ function handleMobileMenuClick() {
 }
 
 watch(
-  [isLoginPage, isInviteOnlyPage],
-  ([loginPage, inviteOnlyPage]) => {
-    if (loginPage || inviteOnlyPage) {
+  [isSetupPage, isLoginPage, isInviteOnlyPage],
+  ([setupPage, loginPage, inviteOnlyPage]) => {
+    if (setupPage || loginPage || inviteOnlyPage) {
       appStore.stopHealthPolling();
       return;
     }
@@ -230,6 +232,7 @@ useKeyboard();
       <NDialogProvider>
         <NNotificationProvider>
           <router-view v-if="isDesktopPetRoute" />
+          <router-view v-else-if="isSetupPage" />
           <div
             v-else
             class="app-shell"
@@ -302,17 +305,17 @@ useKeyboard();
           <WebPet v-if="showWebPet" />
           <SessionSearchModal
             v-if="
-              !isDesktopPetRoute && !isStandaloneChatPage && sessionSearchOpen
+              !isDesktopPetRoute && !isStandaloneChatPage && !isSetupPage && sessionSearchOpen
             "
           />
           <DefaultCredentialPrompt
-            v-if="!isDesktopPetRoute && !isStandaloneChatPage"
+            v-if="!isDesktopPetRoute && !isStandaloneChatPage && !isSetupPage"
           />
           <ProviderConfigurationPrompt
-            v-if="!isDesktopPetRoute && !isStandaloneChatPage"
+            v-if="!isDesktopPetRoute && !isStandaloneChatPage && !isSetupPage"
           />
           <GlobalPendingActions
-            v-if="!isLoginPage && !isDesktopPetRoute && !isStandaloneChatPage"
+            v-if="!isLoginPage && !isDesktopPetRoute && !isStandaloneChatPage && !isSetupPage"
           />
         </NNotificationProvider>
       </NDialogProvider>

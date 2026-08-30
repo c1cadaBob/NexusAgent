@@ -4,6 +4,7 @@ import { authenticateUserToken, inspectAppUserToken } from '../../middleware/aut
 import { config } from '../../public/config'
 import { logger } from '../../public/logging'
 import { getDeviceId } from '../../public/system-info'
+import { createSetupRequiredError, isSetupComplete } from '../../public/setup'
 import type { AppConnectionType } from '../../repositories/app-connections-store'
 import {
   inspectAppEntitlementToken,
@@ -169,6 +170,11 @@ export class LocalAppRelayServer {
     this.initialized = true
     this.namespace.use(async (socket, next) => {
       try {
+        if (!await isSetupComplete()) {
+          next(createSetupRequiredError())
+          return
+        }
+
         const auth = socket.handshake.auth || {}
         const role = String(auth.role || '').trim().toLowerCase()
         const machineId = normalizeIdentifier(auth.machineId || auth.machine_id || auth.instanceId)

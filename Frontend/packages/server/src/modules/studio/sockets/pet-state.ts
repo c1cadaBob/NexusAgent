@@ -3,6 +3,7 @@ import { authenticateUserToken, isAuthEnabled, type AuthenticatedUser } from '..
 import { userCanAccessProfile } from '../public/users'
 import { logger } from '../public/logging'
 import { configureRunChatPetObserver } from '../public/pet-events'
+import { createSetupRequiredError, isSetupComplete } from '../public/setup'
 
 const PET_STATE_NAMESPACE = '/pet-state'
 const DEFAULT_PROFILE = 'default'
@@ -253,6 +254,11 @@ export class PetStateSocketServer {
   }
 
   private async authMiddleware(socket: Socket, next: (err?: Error) => void): Promise<void> {
+    if (!await isSetupComplete()) {
+      next(createSetupRequiredError())
+      return
+    }
+
     if (!await isAuthEnabled()) {
       next()
       return
