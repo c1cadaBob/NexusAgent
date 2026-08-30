@@ -155,7 +155,7 @@ onMounted(() => {
           <div class="setup-brand__name">{{ setupTitle }}</div>
           <div class="setup-brand__meta">{{ setupSubtitle }}</div>
         </div>
-        <nav class="setup-steps" aria-label="Setup steps">
+        <nav class="setup-steps" :aria-label="t('setup.stepsAria')">
           <button
             v-for="step in summaryItems"
             :key="step.key"

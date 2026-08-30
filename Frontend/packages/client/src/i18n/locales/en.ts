@@ -203,6 +203,7 @@ export default {
     title: 'Setup',
     subtitle: 'Complete first-time configuration before entering chat.',
     eyebrow: 'First-time setup',
+    stepsAria: 'Setup steps',
     steps: {
       bootstrap: 'Install code',
       admin: 'Administrator',
@@ -233,7 +234,7 @@ export default {
     sessionIdle: 'Waiting',
     installCode: 'Installation code',
     installCodePlaceholder: 'Enter the installation code',
-    installCodeHelp: 'Use the code shown in the server logs. It expires after 24 hours and rotates after repeated failures.',
+    installCodeHelp: 'Use the code shown in the server logs. A text file is also written to the home directory of the user who launched deployment so the code is not lost. It expires after 24 hours and rotates after repeated failures.',
     start: 'Start',
     adminUsername: 'Administrator username',
     adminUsernamePlaceholder: 'Choose a username',

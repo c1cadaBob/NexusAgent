@@ -12,7 +12,7 @@
 <p align="center">
   <a href="https://github.com/EKKOLearnAI/hermes-studio/releases/latest">Download Hermes Studio Desktop</a>
   ·
-  <a href="https://hermes-studio.ai/#/docs/getting-started">Documentation</a>
+  <a href="https://hermes-studio.ai/#/docs/getting-started">文档</a>
   ·
   <code>npm install -g hermes-web-ui && hermes-web-ui start</code>
 </p>

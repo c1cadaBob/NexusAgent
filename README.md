@@ -17,9 +17,10 @@ NexusAgent/
 └── docs/          # Shared architecture, development, and documentation indexes
 ```
 
-The two projects keep their own dependency manifests, test suites, CI
-configuration, and project-specific documentation. Run commands from the
-project they belong to.
+The two projects keep their own dependency manifests, test suites, and CI
+configuration. Project documentation is centralized under [docs/](./docs/),
+with [docs/README.md](./docs/README.md) as the unified entry point. Run
+commands from the project they belong to.
 
 ## Project Entry Points
 
@@ -72,14 +73,15 @@ npm run dev
 The commands above are entry points only. Each project README and development
 guide contains its complete setup and validation instructions.
 
-## Documentation
+## 文档
 
-- [Repository layout](./docs/project-layout.md)
-- [Project boundaries](./docs/architecture/repository-boundaries.md)
-- [Development entry points](./docs/development/README.md)
-- [Documentation ownership map](./docs/documentation-map.md)
-- [Backend documentation index](./docs/backend/README.md)
-- [Frontend documentation index](./docs/frontend/README.md)
+- [仓库布局](./docs/project-layout.md)
+- [项目边界](./docs/architecture/repository-boundaries.md)
+- [开发入口](./docs/development/README.md)
+- [部署方式](./docs/deployment/README.md)
+- [文档归属映射](./docs/documentation-map.md)
+- [后端文档入口](./docs/backend/README.md)
+- [前端文档入口](./docs/frontend/README.md)
 
 ## Version Control
 

@@ -1,13 +1,13 @@
 # ============================================================================
-# Hermes Agent Installer for Windows
+# Hermes Agent Windows 安装脚本
 # ============================================================================
-# Installation script for Windows (PowerShell).
-# Uses uv for fast Python provisioning and package management.
+# 适用于 Windows 的 PowerShell 安装脚本。
+# 使用 uv 进行快速 Python 环境准备和包管理。
 #
-# Usage:
+# 用法：
 #   iex (irm https://hermes-agent.nousresearch.com/install.ps1)
 #
-# Or download and run with options:
+# 或下载后带参数运行：
 #   .\install.ps1 -NoVenv -SkipSetup
 #
 # ============================================================================
@@ -17,61 +17,54 @@ param(
     [switch]$SkipSetup,
     [switch]$SkipComputerUse,
     [string]$Branch = "main",
-    # -Commit and -Tag are higher-precedence variants of -Branch for users
-    # who need reproducible installs (desktop installer pinning, CI, release
-    # bundles).  When set, the repository stage clones $Branch (faster than
-    # cloning the full default-branch history) and then `git checkout`s the
-    # exact ref.  Precedence: Commit > Tag > Branch.
+    # -Commit 和 -Tag 是比 -Branch 更高优先级的安装方式，适合需要可复现
+    # 安装的场景（桌面安装器固定版本、CI、发布包）。启用后，仓库阶段先克隆
+    # $Branch（比完整默认分支历史更快），再 `git checkout` 到精确引用。
+    # 优先级：Commit > Tag > Branch。
     [string]$Commit = "",
-    # Apply -Commit even when it would roll an existing install BACKWARDS.
-    # Without this the repository stage skips a pin that is already an ancestor
-    # of HEAD, so a stale baked-in BUILD_PIN_COMMIT can't downgrade a current
-    # checkout. Reproducible/CI installs that genuinely want an older SHA on an
-    # existing tree pass -ForceCommit.
+    # 即使会让现有安装回退，也强制应用 -Commit。
+    # 如果不这样做，当 pin 已经是 HEAD 的祖先时，仓库阶段会跳过它，导致
+    # 一个过期的 BUILD_PIN_COMMIT 无法把当前 checkout 降级。确实想在已有
+    # 树上安装更旧 SHA 的可复现/CI 安装，需要传 -ForceCommit。
     [switch]$ForceCommit,
     [string]$Tag = "",
     [string]$HermesHome = $(if ($env:HERMES_HOME) { $env:HERMES_HOME } else { "$env:LOCALAPPDATA\hermes" }),
     [string]$InstallDir = $(if ($env:HERMES_HOME) { "$env:HERMES_HOME\hermes-agent" } else { "$env:LOCALAPPDATA\hermes\hermes-agent" }),
 
-    # --- Stage protocol (additive; default invocation behaves as before) ----
-    # See the "Stage protocol" section near the bottom of the file for the
-    # full contract.  Intended for programmatic drivers (the desktop GUI's
-    # onboarding wizard, CI, future install.sh parity, etc.).  CLI users
-    # running the canonical `irm | iex` one-liner never touch these flags.
+    # --- 阶段协议（增量兼容；默认调用行为保持不变）------------------------
+    # 完整约定见文件底部的 “Stage protocol” 小节。
+    # 供程序化驱动使用（桌面 GUI 的 onboarding 向导、CI、未来与 install.sh 对齐等）。
+    # 直接运行标准 `irm | iex` 一行命令的 CLI 用户不会接触这些参数。
     [switch]$Manifest,
     [string]$Stage,
     [switch]$ProtocolVersion,
     [switch]$NonInteractive,
     [switch]$Json,
 
-    # Print the paths this install would use, as JSON, and exit without
-    # touching anything. The first question on any "installer says a path
-    # doesn't exist" report is which paths it actually resolved -- especially
-    # on profiles Windows exposes through an 8.3 alias, where what the user
-    # sees in Explorer and what the installer receives differ.
+    # 以 JSON 输出本次安装会使用的路径，然后直接退出，不做任何改动。
+    # 任何“安装器说路径不存在”的问题，第一件事都是先看它实际解析了哪些路径。
+    # Windows 上的 8.3 别名用户尤其如此，Explorer 里看到的路径和安装器拿到的
+    # 路径可能不是同一个。
     #
     #   powershell -File install.ps1 -ShowResolvedPaths
     [switch]$ShowResolvedPaths,
 
-    # --- Ensure mode (dep_ensure.py entry point) ---
+    # --- 依赖补装模式（dep_ensure.py 入口） ---
     [string]$Ensure = "",
     [switch]$PostInstall,
 
-    # --- Desktop GUI build (opt-in) ---
-    # When set, install.ps1 includes Stage-Desktop in the manifest and
-    # builds apps/desktop into a launchable Hermes.exe.
+    # --- 桌面 GUI 构建（可选） ---
+    # 开启后，install.ps1 会把 Stage-Desktop 加入清单，并把 apps/desktop
+    # 构建成可直接启动的 Hermes.exe。
     #
-    # Why opt-in:
-    #   * Hermes-Setup.exe (the signed Tauri bootstrap installer) passes
-    #     -IncludeDesktop so a user who installed via the GUI ends up
-    #     with a launchable desktop binary.
-    #   * The Electron desktop's own bootstrap-runner.ts runs install.ps1
-    #     from inside an already-launched Hermes.exe; if THAT recursively
-    #     built apps/desktop it would try to overwrite the live Hermes.exe
-    #     on disk and fail. The recursive path omits the flag.
-    #   * The canonical CLI one-liner (irm | iex) omits the flag too;
-    #     terminal users don't need a desktop binary built for them, and
-    #     `hermes desktop` already builds on demand.
+    # 为什么要做成可选：
+    #   * Hermes-Setup.exe（签名过的 Tauri 引导安装器）会传 -IncludeDesktop，
+    #     这样通过 GUI 安装的用户最终会拿到一个可启动的桌面二进制。
+    #   * Electron 桌面端自己的 bootstrap-runner.ts 是在已经启动的 Hermes.exe
+    #     里面再运行 install.ps1；如果它递归地构建 apps/desktop，就会试图覆盖
+    #     磁盘上的活动 Hermes.exe 并失败。这个递归路径会省略该参数。
+    #   * 标准 CLI 一行命令（irm | iex）也不会传这个参数；终端用户并不需要
+    #     桌面二进制，`hermes desktop` 本身也支持按需构建。
     [switch]$IncludeDesktop
 )
 

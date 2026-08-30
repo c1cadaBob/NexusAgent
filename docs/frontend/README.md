@@ -1,24 +1,25 @@
-# Frontend Project Notes
+# Frontend 文档入口
 
-This section summarizes the frontend project that lives in `Frontend/`.
+这个目录是 Frontend / Hermes Studio 文档的统一存放位置。
 
-## What It Owns
-
-- Hermes Studio web UI and desktop shell
-- shared client/server packages and runtime glue
-- desktop packaging, builds, and workflows
-- frontend scripts, tests, and frontend-specific docs
-
-## Primary References
+## 项目入口
 
 - [Frontend README](../../Frontend/README.md)
-- [Frontend agent guide](../../Frontend/AGENTS.md)
-- [Frontend architecture](../../Frontend/ARCHITECTURE.md)
-- [Frontend development guide](../../Frontend/DEVELOPMENT.md)
-- [Frontend docs index](../../Frontend/docs/README.md)
+- [Frontend agent 指南](../../Frontend/AGENTS.md)
+- [Frontend 架构指南](../../Frontend/ARCHITECTURE.md)
+- [Frontend 开发指南](../../Frontend/DEVELOPMENT.md)
 
-## Doc Placement Guidance
+## 主要文档
 
-Keep frontend-specific documentation next to the frontend code under `Frontend/`.
-Use `docs/` only for content that needs to describe the whole repository or the
-relationship between the backend and the frontend.
+- 部署与运行：[Docker](./docker.md)、[工作流](./workflow.md)
+- 架构与协作：[app relay](./app-relay.md)、[agent runner](./agent-runner.md)、[CLI chat sessions](./cli-chat-sessions.md)
+- 运行边界：[Hermes write gate](./hermes-write-gate.md)、[voice dialogue](./voice-dialogue.md)
+- 验证与测试：[harness 目录](./harness/README.md)、[validation](./harness/validation.md)、[worktree runbook](./harness/worktree-runbook.md)、[PR review](./harness/pr-review.md)
+- 规划记录：[planning](./planning/)、[chat chain changes](./chat-chain-changes/)
+- 接口产物：[OpenAPI JSON](./openapi.json)
+
+## 存放规则
+
+- Frontend 专属文档放在 `docs/frontend/`
+- 跨 Backend / Frontend 的部署、开发和架构文档放在根级主题目录
+- `Frontend/docs/README.md` 只保留为旧路径兼容入口

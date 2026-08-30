@@ -1,38 +1,37 @@
 #!/bin/bash
 # ============================================================================
-# Hermes Agent Installer
+# Hermes Agent 安装脚本
 # ============================================================================
-# Installation script for Linux, macOS, and Android/Termux.
-# Uses uv for desktop/server installs and Python's stdlib venv + pip on Termux.
+# 适用于 Linux、macOS 和 Android/Termux。
+# 桌面/服务端安装优先使用 uv，Termux 则使用 Python 标准库 venv + pip。
 #
-# Usage:
+# 用法：
 #   curl -fsSL https://hermes-agent.nousresearch.com/install.sh | bash
 #
-# Or with options:
+# 带参数用法：
 #   curl -fsSL ... | bash -s -- --no-venv --skip-setup
 #
 # ============================================================================
 
 set -e
 
-# Guard against environment leakage when the installer is launched from another
-# Python-driven tool session (e.g. Hermes terminal tool). A pre-set PYTHONPATH
-# can force pip/entrypoints to import a different checkout than the one being
-# installed, which makes fresh installs appear broken or stale.
+# 防止安装器在另一个 Python 驱动的工具会话里启动时继承到不该有的环境。
+# 例如 Hermes 终端工具已经设置好的 PYTHONPATH，可能会让 pip 或入口点导入
+# 到别的 checkout，而不是正在安装的这一份，最终表现成“新装看起来坏了”。
 if [ -n "${PYTHONPATH:-}" ]; then
-    echo "⚠ Ignoring inherited PYTHONPATH during install to avoid module shadowing"
+    echo "⚠ 安装时忽略继承的 PYTHONPATH，避免模块被别的 checkout 遮蔽"
     unset PYTHONPATH
 fi
 if [ -n "${PYTHONHOME:-}" ]; then
-    echo "⚠ Ignoring inherited PYTHONHOME during install"
+    echo "⚠ 安装时忽略继承的 PYTHONHOME"
     unset PYTHONHOME
 fi
 
-# Prevent uv from discovering config files (uv.toml, pyproject.toml) from the
-# wrong user's home directory when running under sudo -u <user>.  See #21269.
+# 防止在 `sudo -u <user>` 下运行时，uv 去错误的用户主目录里发现配置文件
+#（uv.toml、pyproject.toml）。见 #21269。
 export UV_NO_CONFIG=1
 
-# Colors
+# 颜色
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[0;33m'
@@ -42,13 +41,12 @@ CYAN='\033[0;36m'
 NC='\033[0m' # No Color
 BOLD='\033[1m'
 
-# Configuration
+# 配置
 REPO_URL_SSH="git@github.com:NousResearch/hermes-agent.git"
 REPO_URL_HTTPS="https://github.com/NousResearch/hermes-agent.git"
 HERMES_HOME="${HERMES_HOME:-$HOME/.hermes}"
-# INSTALL_DIR is resolved AFTER arg parsing and OS detection so we can pick an
-# FHS-style layout for root installs.  Track whether the user gave us an
-# explicit directory — if so we never override it.
+# INSTALL_DIR 会在参数解析和系统检测之后再决定，这样 root 安装可以选用
+# FHS 风格布局。这里同时记录用户是否显式指定了目录；如果指定过，就绝不覆盖。
 if [ -n "${HERMES_INSTALL_DIR:-}" ]; then
     INSTALL_DIR="$HERMES_INSTALL_DIR"
     INSTALL_DIR_EXPLICIT=true
@@ -59,14 +57,14 @@ fi
 PYTHON_VERSION="3.11"
 NODE_VERSION="26"
 
-# FHS-style root install layout (set by resolve_install_layout when applicable):
-#   code at /usr/local/lib/hermes-agent, command at /usr/local/bin/hermes,
-#   data still at /root/.hermes (HERMES_HOME).  Matches Claude Code / Codex CLI
-#   and keeps Docker bind-mounted /root/ volumes lean.
+# FHS 风格的 root 安装布局（由 resolve_install_layout 在适用时设置）：
+#   代码放在 /usr/local/lib/hermes-agent，命令放在 /usr/local/bin/hermes，
+#   数据仍然在 /root/.hermes（HERMES_HOME）。这样和 Claude Code / Codex CLI
+#   保持一致，也能让 Docker 里挂载的 /root/ 卷尽量精简。
 ROOT_FHS_LAYOUT=false
 DETECTED_BROWSER_EXECUTABLE=""
 
-# Options
+# 选项
 USE_VENV=true
 RUN_SETUP=true
 SKIP_BROWSER=false
@@ -83,16 +81,15 @@ JSON_OUTPUT=false
 NON_INTERACTIVE=false
 INCLUDE_DESKTOP=false
 
-# Detect non-interactive mode (e.g. curl | bash)
-# When stdin is not a terminal, read -p will fail with EOF,
-# causing set -e to silently abort the entire script.
+# 检测非交互模式（例如 `curl | bash`）。
+# 当 stdin 不是终端时，read -p 会直接 EOF，配合 set -e 可能静默终止整个脚本。
 if [ -t 0 ]; then
     IS_INTERACTIVE=true
 else
     IS_INTERACTIVE=false
 fi
 
-# Parse arguments
+# 解析参数
 while [[ $# -gt 0 ]]; do
     case $1 in
         --no-venv)
@@ -162,44 +159,44 @@ while [[ $# -gt 0 ]]; do
             ;;
 
         -h|--help)
-            echo "Hermes Agent Installer"
+            echo "Hermes Agent 安装脚本"
             echo ""
-            echo "Usage: install.sh [OPTIONS]"
+            echo "用法: install.sh [OPTIONS]"
             echo ""
-            echo "Options:"
-            echo "  --no-venv      Don't create virtual environment"
-            echo "  --skip-setup   Skip interactive setup wizard"
-            echo "  --skip-browser Skip Playwright/Chromium install (browser tools won't work)"
-            echo "  --skip-computer-use  Skip the cua-driver (Computer Use) install"
-            echo "  --no-skills    Start with a blank slate — seed no bundled skills, and"
-            echo "                   write \$HERMES_HOME/.no-bundled-skills so future"
-            echo "                   'hermes update' runs never inject bundled skills either"
-            echo "  --branch NAME  Git branch to install (default: main)"
-            echo "  --commit SHA   Pin checkout to a specific commit after clone/update"
-            echo "                   (ignored when it would roll an existing install back)"
-            echo "  --force-commit Apply --commit even if it rolls the install backwards"
-            echo "  --manifest     Print desktop bootstrap stage manifest as JSON"
-            echo "  --stage NAME   Run one desktop bootstrap stage"
-            echo "  --json         Print a JSON result frame for --stage"
-            echo "  --non-interactive  Skip stages that require user input"
-            echo "  --include-desktop  Also build the desktop app (apps/desktop -> Hermes.app)"
-            echo "  --dir PATH     Installation directory"
-            echo "                   default (non-root):  ~/.hermes/hermes-agent"
-            echo "                   default (root, Linux): /usr/local/lib/hermes-agent"
-            echo "  --hermes-home PATH  Data directory (default: ~/.hermes, or \$HERMES_HOME)"
-            echo "  -h, --help     Show this help"
+            echo "选项:"
+            echo "  --no-venv      不创建虚拟环境"
+            echo "  --skip-setup   跳过交互式初始化向导"
+            echo "  --skip-browser 跳过 Playwright / Chromium 安装（浏览器工具将不可用）"
+            echo "  --skip-computer-use  跳过 cua-driver（Computer Use）安装"
+            echo "  --no-skills    以空白环境开始，不注入 bundled skills，并"
+            echo "                   写入 \$HERMES_HOME/.no-bundled-skills，让未来的"
+            echo "                   `hermes update` 也不会再注入 bundled skills"
+            echo "  --branch NAME  要安装的 Git 分支（默认: main）"
+            echo "  --commit SHA   克隆/更新后固定到某个 commit"
+            echo "                   （如果会把已有安装回退，则忽略）"
+            echo "  --force-commit 即使会回退安装，也强制应用 --commit"
+            echo "  --manifest     以 JSON 输出桌面 bootstrap 阶段清单"
+            echo "  --stage NAME   运行某一个桌面 bootstrap 阶段"
+            echo "  --json         为 --stage 输出 JSON 结果帧"
+            echo "  --non-interactive  跳过需要用户输入的阶段"
+            echo "  --include-desktop  额外构建桌面应用（apps/desktop -> Hermes.app）"
+            echo "  --dir PATH     安装目录"
+            echo "                   默认（非 root）：~/.hermes/hermes-agent"
+            echo "                   默认（root, Linux）：/usr/local/lib/hermes-agent"
+            echo "  --hermes-home PATH  数据目录（默认: ~/.hermes，或 \$HERMES_HOME）"
+            echo "  -h, --help     显示此帮助"
             echo ""
-            echo "Notes:"
-            echo "  When running as root on Linux, Hermes installs the code under"
-            echo "  /usr/local/lib/hermes-agent and links the command into"
-            echo "  /usr/local/bin/hermes (FHS layout — matches Claude Code / Codex CLI)."
-            echo "  Data, config, sessions, and logs still live in \$HERMES_HOME"
-            echo "  (default /root/.hermes).  This keeps Docker bind-mounted volumes"
-            echo "  small and ensures the command is on PATH for all shells."
-            echo "  Existing installs at \$HERMES_HOME/hermes-agent are preserved in-place."
-            echo "  --ensure DEPS  Install only specified deps (comma-separated)"
-            echo "                   Supported: node, browser, ripgrep, ffmpeg"
-            echo "                   Does NOT clone repo or create venv"
+            echo "说明:"
+            echo "  在 Linux 上以 root 运行时，Hermes 会把代码装到"
+            echo "  /usr/local/lib/hermes-agent，并把命令链接到 /usr/local/bin/hermes"
+            echo "  （FHS 布局，与 Claude Code / Codex CLI 保持一致）。"
+            echo "  数据、配置、会话和日志仍然放在 \$HERMES_HOME"
+            echo "  （默认 /root/.hermes）。这样既能保持 Docker 挂载卷精简，"
+            echo "  也能确保所有 shell 都能找到命令。"
+            echo "  已存在的 \$HERMES_HOME/hermes-agent 安装会原地保留。"
+            echo "  --ensure DEPS  只安装指定依赖（逗号分隔）"
+            echo "                   支持: node, browser, ripgrep, ffmpeg"
+            echo "                   不会克隆仓库，也不会创建 venv"
 
             exit 0
             ;;

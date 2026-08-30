@@ -1,6 +1,6 @@
-# Development Entry Points
+# 开发入口
 
-Run commands from the project that owns the code being changed.
+请在代码所属的项目目录里运行命令。
 
 ## Backend
 
@@ -11,12 +11,12 @@ source .venv/bin/activate
 python run_agent.py --help
 ```
 
-Useful backend references:
+后端参考：
 
 - [Backend README](../../Backend/README.md)
-- [Backend contributing guide](../../Backend/CONTRIBUTING.md)
-- [Backend agent guide](../../Backend/AGENTS.md)
-- [Backend docs index](../../Backend/docs/README.md)
+- [Backend 贡献指南](../../Backend/CONTRIBUTING.md)
+- [Backend agent 指南](../../Backend/AGENTS.md)
+- [Backend 文档入口](../backend/README.md)
 
 ## Frontend
 
@@ -26,23 +26,19 @@ npm install
 npm run dev
 ```
 
-Useful frontend references:
+前端参考：
 
 - [Frontend README](../../Frontend/README.md)
-- [Frontend development guide](../../Frontend/DEVELOPMENT.md)
-- [Frontend architecture](../../Frontend/ARCHITECTURE.md)
-- [Frontend agent guide](../../Frontend/AGENTS.md)
-- [Frontend docs index](../../Frontend/docs/README.md)
+- [Frontend 开发指南](../../Frontend/DEVELOPMENT.md)
+- [Frontend 架构](../../Frontend/ARCHITECTURE.md)
+- [Frontend agent 指南](../../Frontend/AGENTS.md)
+- [Frontend 文档入口](../frontend/README.md)
 
-## Validation
+## 验证
 
-Validation is project-specific:
+验证方式按项目分别执行：
 
-- Backend: follow the test and lint instructions in
-  `Backend/CONTRIBUTING.md` and `Backend/scripts/run_tests.sh`.
-- Frontend: use `npm run harness:check`, `npm run test`, `npm run test:e2e`,
-  and `npm run build` as appropriate for the change.
+- 后端：按 `Backend/CONTRIBUTING.md` 和 `Backend/scripts/run_tests.sh` 的说明执行测试与 lint。
+- 前端：按改动需要使用 `npm run harness:check`、`npm run test`、`npm run test:e2e` 和 `npm run build`。
 
-Do not run a root-level command that assumes one shared dependency environment.
-The root git repository provides version control; each child project owns its
-runtime and package tooling.
+不要运行依赖单一共享环境的根级命令。根 git 仓库只负责版本控制，各子项目各自管理运行时和包工具链。

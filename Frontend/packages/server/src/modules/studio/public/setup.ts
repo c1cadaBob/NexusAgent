@@ -1,5 +1,6 @@
 import { createHash, randomBytes } from 'crypto'
-import { join } from 'path'
+import { join, resolve } from 'path'
+import { homedir } from 'os'
 import type { Duplex } from 'stream'
 import type { Context, Next } from 'koa'
 import { countActiveSuperAdmins, countUsers, createUser, findFirstUser, findUserById, listUsers, type UserRecord } from './users'
@@ -190,6 +191,44 @@ function generateReadableCode(groups = 3, groupLength = 4): string {
     parts.push(chunk)
   }
   return parts.join('-')
+}
+
+function installCodeRecordDir(): string {
+  const custom = normalizeInputText(process.env.HERMES_INSTALL_CODE_DIR)
+  return custom ? resolve(custom) : homedir()
+}
+
+function formatInstallCodeTimestamp(timestamp: number): string {
+  return new Date(timestamp)
+    .toISOString()
+    .replace(/:/g, '-')
+    .replace(/\.\d{3}Z$/, 'Z')
+}
+
+async function writeInstallCodeRecord(
+  code: string,
+  issuedAt: number,
+  expiresAt: number,
+  rotationCount: number,
+  reason: string,
+): Promise<void> {
+  const fileName = `hermes-install-code-${formatInstallCodeTimestamp(issuedAt)}-r${rotationCount}.txt`
+  const filePath = join(installCodeRecordDir(), fileName)
+  const body = [
+    'Hermes Studio 安装码记录',
+    `安装时间: ${new Date(issuedAt).toISOString()}`,
+    `过期时间: ${new Date(expiresAt).toISOString()}`,
+    `轮换次数: ${rotationCount}`,
+    `轮换原因: ${reason}`,
+    `安装码: ${code}`,
+    '',
+  ].join('\n')
+
+  try {
+    await safeFileStore.writeText(filePath, body)
+  } catch (error) {
+    logger.warn({ error, filePath }, '[setup] failed to write installation code record')
+  }
 }
 
 function defaultState(): PersistedSetupState {
@@ -396,6 +435,13 @@ class SetupManager {
     state.installCodeRotationCount += 1
     this.runtimeInstallCode = code
     await this.persistState(state)
+    await writeInstallCodeRecord(
+      code,
+      state.installCodeIssuedAt,
+      state.installCodeExpiresAt,
+      state.installCodeRotationCount,
+      reason,
+    )
     logger.info({
       install_code: code,
       reason,
@@ -554,7 +600,7 @@ class SetupManager {
         ok: false,
         status: 401,
         code: 'setup_session_required',
-        message: 'A valid setup session is required',
+        message: '需要有效的安装会话',
         setup: this.snapshot(state),
       }
     }
@@ -564,7 +610,7 @@ class SetupManager {
         ok: false,
         status: 401,
         code: 'setup_session_invalid',
-        message: 'The setup session is invalid or has expired',
+        message: '安装会话无效或已过期',
         setup: this.snapshot(state),
       }
     }
@@ -581,14 +627,14 @@ class SetupManager {
     state.lastValidatedAt = now()
     state.lastValidationMode = ok ? 'ready' : 'failed'
     state.lastValidationError = ok ? '' : [
-      adminOk ? '' : 'An administrator account is required',
-      modelOk ? '' : 'A usable model configuration is required',
-      gatewayOk ? '' : 'Select at least one gateway platform or skip the gateway step',
+      adminOk ? '' : '需要管理员账户',
+      modelOk ? '' : '需要可用的模型配置',
+      gatewayOk ? '' : '请至少选择一个网关平台，或者直接跳过网关步骤',
     ].filter(Boolean).join('; ')
     await this.persistState(state)
     return {
       ok,
-      message: ok ? 'Setup is ready to complete' : state.lastValidationError,
+      message: ok ? '安装已就绪，可以完成' : state.lastValidationError,
       setup: this.snapshot(state),
       checks: {
         admin: adminOk,
@@ -618,7 +664,7 @@ class SetupManager {
         state.installCodeFailureCount += 1
         state.lastValidatedAt = now()
         state.lastValidationMode = 'failed'
-        state.lastValidationError = 'Invalid installation code'
+        state.lastValidationError = '安装码无效'
         await this.persistState(state)
         if (state.installCodeFailureCount >= INSTALL_CODE_FAILURE_LIMIT) {
           await this.rotateInstallCode(state, 'failure-lockout')
@@ -626,7 +672,7 @@ class SetupManager {
             ok: false,
             status: 429,
             code: 'setup_code_locked',
-            message: 'The installation code has been rotated after too many failures',
+            message: '安装码已因失败次数过多而轮换',
             setup: this.snapshot(state),
           }
         }
@@ -635,7 +681,7 @@ class SetupManager {
             ok: false,
             status: 410,
             code: 'setup_code_expired',
-            message: 'The installation code has expired',
+            message: '安装码已过期',
             setup: this.snapshot(state),
           }
         }
@@ -643,7 +689,7 @@ class SetupManager {
           ok: false,
           status: 401,
           code: 'setup_code_invalid',
-          message: 'The installation code is invalid',
+          message: '安装码无效',
           setup: this.snapshot(state),
         }
       }
@@ -671,7 +717,7 @@ class SetupManager {
           ok: false,
           status: 400,
           code: 'setup_admin_invalid',
-          message: 'Username must be at least 2 characters and password at least 6 characters',
+          message: '用户名至少需要 2 个字符，密码至少需要 6 个字符',
           setup: this.snapshot(state),
         }
       }
@@ -694,7 +740,7 @@ class SetupManager {
           ok: false,
           status: 500,
           code: 'setup_admin_failed',
-          message: 'Failed to create the first administrator',
+          message: '创建首个管理员失败',
           setup: this.snapshot(state),
         }
       }
@@ -708,7 +754,7 @@ class SetupManager {
       await this.persistState(state)
       return {
         ok: true,
-        message: 'Administrator configured',
+        message: '管理员已配置',
         setup: this.snapshot(state),
         checks: {
           admin: true,
@@ -731,7 +777,7 @@ class SetupManager {
           ok: false,
           status: 400,
           code: 'setup_profile_unsupported',
-          message: 'First-install setup only writes the default profile',
+          message: '首次安装仅会写入默认配置档案',
           setup: this.snapshot(state),
         }
       }
@@ -745,7 +791,7 @@ class SetupManager {
           ok: false,
           status: 400,
           code: 'setup_model_invalid',
-          message: 'Provider and model are required',
+          message: '服务商和模型不能为空',
           setup: this.snapshot(state),
         }
       }
@@ -780,7 +826,7 @@ class SetupManager {
             state.modelReady = false
             state.lastValidatedAt = now()
             state.lastValidationMode = 'failed'
-            state.lastValidationError = `Model "${model}" was not returned by the provider`
+            state.lastValidationError = `服务商未返回模型“${model}”`
             await this.persistState(state)
             return {
               ok: false,
@@ -797,7 +843,7 @@ class SetupManager {
           ok: false,
           status: 500,
           code: 'setup_model_save_failed',
-          message: 'Failed to save model configuration',
+          message: '保存模型配置失败',
           setup: this.snapshot(state),
         }
       }
@@ -813,7 +859,7 @@ class SetupManager {
       const validation = await this.validateCurrentSetup(state)
       return {
         ...validation,
-        message: validation.ok ? 'Model saved successfully' : validation.message,
+        message: validation.ok ? '模型已保存' : validation.message,
       }
     })
   }
@@ -848,7 +894,7 @@ class SetupManager {
       const validation = await this.validateCurrentSetup(state)
       return {
         ...validation,
-        message: validation.ok ? 'Gateway settings saved' : validation.message,
+        message: validation.ok ? '网关设置已保存' : validation.message,
       }
     })
   }
@@ -910,7 +956,7 @@ class SetupManager {
           ok: false,
           status: 500,
           code: 'setup_complete_missing_admin',
-          message: 'Setup completed but no administrator account was found',
+          message: '安装已完成，但未找到管理员账户',
           setup: snapshot,
         }
       }

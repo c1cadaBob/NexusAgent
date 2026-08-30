@@ -1,0 +1,67 @@
+services:
+  studio-dev:
+    image: nousresearch/hermes-agent:latest
+    container_name: hermes-studio-dev
+    restart: unless-stopped
+    stdin_open: true
+    tty: true
+    working_dir: /workspace
+    ports:
+      - "3050:8649"
+      - "3051:8647"
+      - "3052:56121"
+    volumes:
+      - ./:/workspace
+      - studio-dev-hermes-home:/opt/data
+      - ${HOME}/.hermes-install-codes:/install-code-records
+    environment:
+      - HERMES_UID=${HERMES_UID:-10000}
+      - HERMES_GID=${HERMES_GID:-10000}
+      - HERMES_HOME=/opt/data
+      - HERMES_WEB_UI_HOME=/opt/data/.hermes-web-ui
+      - HERMES_INSTALL_CODE_DIR=/install-code-records
+      - HERMES_BIN=/workspace/Backend/.venv/bin/hermes
+      - HERMES_WEB_UI_BACKEND_PORT=8647
+      - HERMES_WEB_UI_FRONTEND_PORT=8649
+      - HERMES_WEB_UI_XAI_CALLBACK_BIND_HOST=0.0.0.0
+      - HERMES_WEB_UI_MANAGED_GATEWAY=1
+      - HERMES_WEB_UI_STOP_GATEWAYS_ON_SHUTDOWN=1
+      - PLAYWRIGHT_BROWSERS_PATH=/opt/data/.playwright
+      - CHOKIDAR_USEPOLLING=1
+      - CHOKIDAR_INTERVAL=500
+      - WATCHPACK_POLLING=true
+      - NODE_ENV=development
+    command:
+      - bash
+      - -lc
+      - |
+          set -euo pipefail
+
+          mkdir -p /opt/data/.hermes-web-ui /opt/data/.playwright /opt/data/dev/backend-venv /opt/data/dev/frontend-node-modules /opt/data/dev/frontend-data
+          rm -rf /workspace/Backend/.venv /workspace/Frontend/node_modules /workspace/Frontend/packages/server/data
+          ln -sfn /opt/data/dev/backend-venv /workspace/Backend/.venv
+          ln -sfn /opt/data/dev/frontend-node-modules /workspace/Frontend/node_modules
+          ln -sfn /opt/data/dev/frontend-data /workspace/Frontend/packages/server/data
+
+          cd /workspace/Backend
+          export UV_PROJECT_ENVIRONMENT=/workspace/Backend/.venv
+          backend_hash="$$(sha256sum pyproject.toml uv.lock | sha256sum | awk '{print $$1}')"
+          if [ ! -x .venv/bin/hermes ] || [ "$$(cat .venv/.install-hash 2>/dev/null || true)" != "$$backend_hash" ]; then
+            uv sync --frozen --extra all --extra dev
+            printf '%s' "$$backend_hash" > .venv/.install-hash
+          fi
+
+          cd /workspace/Frontend
+          frontend_hash="$$(sha256sum package.json package-lock.json | sha256sum | awk '{print $$1}')"
+          if [ ! -d node_modules ] || [ ! -x node_modules/.bin/vite ] || [ "$$(cat node_modules/.install-hash 2>/dev/null || true)" != "$$frontend_hash" ]; then
+            npm ci --ignore-scripts
+            printf '%s' "$$frontend_hash" > node_modules/.install-hash
+          fi
+
+          # 重新编译 node-pty，保证终端能力在 dev 容器里可用。
+          npm rebuild node-pty
+
+          exec npm run dev
+
+volumes:
+  studio-dev-hermes-home:

@@ -58,7 +58,7 @@ export async function bootstrap(ctx: Context) {
   const code = String(body.code || body.installCode || body.install_code || '').trim()
   if (!code) {
     ctx.status = 400
-    ctx.body = { error: 'Installation code is required' }
+    ctx.body = { error: '请输入安装码' }
     return
   }
 

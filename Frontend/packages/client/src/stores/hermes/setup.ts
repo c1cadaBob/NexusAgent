@@ -131,7 +131,7 @@ export const useSetupStore = defineStore('setup', () => {
       applyStatus(next)
       return next
     } catch (error: any) {
-      stepError.value = error?.message || 'Failed to load setup status'
+      stepError.value = error?.message || '加载安装状态失败'
       return null
     } finally {
       loading.value = false
@@ -150,7 +150,7 @@ export const useSetupStore = defineStore('setup', () => {
       installCode.value = ''
       return result
     } catch (error: any) {
-      stepError.value = error?.message || 'Failed to validate installation code'
+      stepError.value = error?.message || '验证安装码失败'
       return null
     } finally {
       bootstrapping.value = false
@@ -175,7 +175,7 @@ export const useSetupStore = defineStore('setup', () => {
       adminPassword.value = ''
       return true
     } catch (error: any) {
-      stepError.value = error?.message || 'Failed to save administrator'
+      stepError.value = error?.message || '保存管理员信息失败'
       return false
     } finally {
       savingAdmin.value = false
@@ -203,7 +203,7 @@ export const useSetupStore = defineStore('setup', () => {
       applyStatus(result.setup)
       return true
     } catch (error: any) {
-      stepError.value = error?.message || 'Failed to save model configuration'
+      stepError.value = error?.message || '保存模型配置失败'
       return false
     } finally {
       savingModel.value = false
@@ -228,7 +228,7 @@ export const useSetupStore = defineStore('setup', () => {
       applyStatus(result.setup)
       return true
     } catch (error: any) {
-      stepError.value = error?.message || 'Failed to save gateway configuration'
+      stepError.value = error?.message || '保存网关配置失败'
       return false
     } finally {
       savingGateway.value = false
@@ -249,7 +249,7 @@ export const useSetupStore = defineStore('setup', () => {
       applyStatus(result.setup)
       return true
     } catch (error: any) {
-      stepError.value = error?.message || 'Failed to validate setup'
+      stepError.value = error?.message || '验证安装配置失败'
       return false
     } finally {
       validating.value = false
@@ -272,7 +272,7 @@ export const useSetupStore = defineStore('setup', () => {
       clearSessionToken()
       return success
     } catch (error: any) {
-      stepError.value = error?.message || 'Failed to complete setup'
+      stepError.value = error?.message || '完成安装失败'
       return null
     } finally {
       completing.value = false
