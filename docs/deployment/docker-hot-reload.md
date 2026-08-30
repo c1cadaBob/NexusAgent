@@ -5,7 +5,7 @@
 ## 一键启动
 
 ```bash
-HERMES_UID=$(id -u) HERMES_GID=$(id -g) docker compose -f docker-compose.dev.yml up -d
+HERMES_UID=$(id -u) HERMES_GID=$(id -g) DOCKER_GID=$(stat -c '%g' /var/run/docker.sock) docker compose -f docker-compose.dev.yml up -d
 ```
 
 Windows / Docker Desktop 也可以直接用同一个 compose 文件，只是 `HERMES_UID` / `HERMES_GID` 取值方式不同。
@@ -27,6 +27,7 @@ Windows / Docker Desktop 也可以直接用同一个 compose 文件，只是 `HE
 - `Frontend/node_modules`：前端依赖
 - `Backend/.venv`：后端 editable 环境
 - Playwright 浏览器缓存：容器卷保存
+- `docker.sock`：宿主机 `/var/run/docker.sock`，容器内的 Docker CLI 会直接连到宿主机守护进程
 
 ## 适用边界
 
@@ -40,3 +41,5 @@ Windows / Docker Desktop 也可以直接用同一个 compose 文件，只是 `HE
 - 3050 / 3051 / 3052 这组端口应视为 dev 专用，和 `6060`、`8642`、`8647`、`8648`、`8649` 保持分离
 - 这条路径依赖写权限和文件监听，和只读镜像部署的约束不同
 - `HERMES_HOME` 与 `HERMES_WEB_UI_HOME` 要分开持久化，不要混成一个目录
+- Docker socket 是宿主机级权限入口，容器拿到它以后就等于拿到了宿主机 Docker 的控制面；只在受信任的开发环境里保留这条挂载
+- 如果宿主机 `docker.sock` 的 group GID 不是 983，请在启动前显式设置 `DOCKER_GID=$(stat -c '%g' /var/run/docker.sock)`

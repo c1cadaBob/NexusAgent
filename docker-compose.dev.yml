@@ -6,6 +6,8 @@ services:
     stdin_open: true
     tty: true
     working_dir: /workspace
+    group_add:
+      - "${DOCKER_GID:-983}"
     ports:
       - "3050:8649"
       - "3051:8647"
@@ -14,12 +16,15 @@ services:
       - ./:/workspace
       - studio-dev-hermes-home:/opt/data
       - ${HOME}/.hermes-install-codes:/install-code-records
+      - /var/run/docker.sock:/var/run/docker.sock
     environment:
       - HERMES_UID=${HERMES_UID:-10000}
       - HERMES_GID=${HERMES_GID:-10000}
       - HERMES_HOME=/opt/data
       - HERMES_WEB_UI_HOME=/opt/data/.hermes-web-ui
       - HERMES_INSTALL_CODE_DIR=/install-code-records
+      - DOCKER_HOST=unix:///var/run/docker.sock
+      - DOCKER_GID=${DOCKER_GID:-983}
       - HERMES_BIN=/workspace/Backend/.venv/bin/hermes
       - HERMES_WEB_UI_BACKEND_PORT=8647
       - HERMES_WEB_UI_FRONTEND_PORT=8649
